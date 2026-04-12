@@ -1,0 +1,686 @@
+import { useEffect, useRef, useState, useCallback } from 'react';
+import Hls from 'hls.js';
+import { Play, Pause, Volume2, VolumeX, Maximize, Settings, Lock, Unlock, RotateCcw, RotateCw } from 'lucide-react';
+import type { SyncState } from '../lib/types';
+import { api } from '../lib/api';
+import { cn } from '../lib/utils';
+import { Loader } from './ui/Loader';
+
+interface VideoPlayerProps {
+  streamUrl: string;
+  isHost: boolean;
+  onPlayStateChange?: (playing: boolean, time: number) => void;
+  onSeek?: (currentTime: number) => void;
+  onSyncReport?: (currentTime: number) => void;
+  syncState?: SyncState;
+  seekTrigger?: number;
+}
+
+export function VideoPlayer({ 
+  streamUrl, 
+  isHost, 
+  onPlayStateChange,
+  onSeek,
+  onSyncReport,
+  syncState,
+  seekTrigger
+}: VideoPlayerProps) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const hlsRef = useRef<Hls | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  
+  // Player state (local UI only)
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [volume, setVolume] = useState(1);
+  const [isMuted, setIsMuted] = useState(true); // Default to muted for autoplay safety
+  const [isBuffering, setIsBuffering] = useState(true);
+  const [showControls, setShowControls] = useState(true);
+  const [isLocked, setIsLocked] = useState(false);
+  const [isStreamReady, setIsStreamReady] = useState(false);
+  const [isScrubbing, setIsScrubbing] = useState(false);
+  const [vReadyState, setVReadyState] = useState(0); 
+  const [bufferDepth, setBufferDepth] = useState(0);
+  const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Refs for sync stabilization
+  const lastSeekTimeRef = useRef(0);
+  const isSeekingRef = useRef(false);
+  const isSyncLockedRef = useRef(false);
+  const initializingRef = useRef(false);
+  const lastSyncRef = useRef<SyncState | undefined>(undefined);
+  const lastSeekTriggerRef = useRef(0);
+  const isDriftInhibitedRef = useRef(false);
+  const pausedAtRef = useRef(0); // PART 2: Reset Baseline
+  const isWaitingForBufferRef = useRef(false);
+  const lastInteractionTimeRef = useRef(0);
+  const isSyncInhibitedRef = useRef(false);
+
+  // Constants (CRITICAL CONFIG)
+  const TARGET_OFFSET = 0.5;    // Viewer target offset from host (Reduced from 2.0s to 0.5s)
+  const SAFETY_CEILING = 0.5;   // Hard wall (viewer never closer than 0.5s)
+  const SEEK_THRESHOLD = 1.5;   // Switch from rate correction to hard seek
+  const BUFFER_REQUIRED = 2.0;  // Minimum buffer to allow video.play()
+
+  // Helper: Acquire sync lock for a set duration (defaults to 1s)
+  const acquireSyncLock = useCallback((duration = 1000) => {
+    isSyncLockedRef.current = true;
+
+    setTimeout(() => {
+      isSyncLockedRef.current = false;
+
+    }, duration);
+  }, []);
+
+  // Helper: Calculate seconds of data buffered ahead of a specific time
+  const getBufferAhead = useCallback((timeToCheck?: number) => {
+    const video = videoRef.current;
+    if (!video) return 0;
+    const time = timeToCheck !== undefined ? timeToCheck : video.currentTime;
+    const { buffered } = video;
+    for (let i = 0; i < buffered.length; i++) {
+      if (time >= buffered.start(i) && time <= buffered.end(i)) {
+        return buffered.end(i) - time;
+      }
+    }
+    return 0;
+  }, []);
+
+  const lastEmitRef = useRef<number>(0);
+  // ==========================================
+  // RULE 1: SINGLE INITIALIZATION
+  // HLS player initializes IMMEDIATELY
+  // ==========================================
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !streamUrl || initializingRef.current) return;
+
+    initializingRef.current = true;
+    const fullSourceUrl = api.getStreamUrl(streamUrl);
+
+    if (Hls.isSupported()) {
+      const hls = new Hls({
+        enableWorker: true,
+        lowLatencyMode: true,
+        maxBufferLength: 20,
+        maxMaxBufferLength: 40,
+        liveSyncDuration: 6,
+        liveMaxLatencyDuration: 10,
+        maxBufferHole: 0.5,
+        startPosition: syncState?.currentTime || 0,
+      });
+
+      hlsRef.current = hls;
+
+      hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        setIsStreamReady(true);
+        
+        // Auto-play from initial sync if available
+        if (lastSyncRef.current?.isPlaying && video.paused) {
+          video.play().catch(err => {
+            video.muted = true;
+            video.play().catch(() => {});
+          });
+        }
+      });
+
+      hls.on(Hls.Events.ERROR, (event, data) => {
+        if (data.fatal) {
+          switch (data.type) {
+            case Hls.ErrorTypes.NETWORK_ERROR:
+              hls.startLoad();
+              break;
+            case Hls.ErrorTypes.MEDIA_ERROR:
+              hls.recoverMediaError();
+              break;
+            default:
+              hls.destroy();
+              initializingRef.current = false;
+              setIsStreamReady(false);
+              break;
+          }
+        }
+      });
+
+      hls.loadSource(fullSourceUrl);
+      hls.attachMedia(video);
+
+    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      video.src = fullSourceUrl;
+      setIsStreamReady(true);
+    }
+
+    return () => {
+      if (hlsRef.current) {
+        hlsRef.current.destroy();
+        hlsRef.current = null;
+      }
+      initializingRef.current = false;
+    };
+  }, [streamUrl]);
+
+  // ==========================================
+  // SYNC CORE: PRODUCTION ENGINE
+  // ==========================================
+  useEffect(() => {
+    if (!syncState) return;
+    const video = videoRef.current;
+    
+    // PART 0: INTERACTION ISOLATION GATE (CRITICAL)
+    const timeSinceInteraction = Date.now() - lastInteractionTimeRef.current;
+    if (isScrubbing || timeSinceInteraction < 800) {
+      return;
+    }
+
+    const hls = hlsRef.current;
+    
+    // PART 0: EXTRACTION
+    const { isPlaying: shouldPlay, currentTime: hostTime, streamStatus } = syncState;
+    if (!video || vReadyState < 1) return;
+
+    // PART 1: TARGET CALCULATION
+    let targetTime = Math.max(0, hostTime - (isHost ? 0 : TARGET_OFFSET));
+    
+    // STEP 4: Constrain Viewer Seeks to Live Window Boundaries
+    if (!isHost) {
+        const windowSize = 18; // 20 segment list size, strictly locking within 18s threshold for starvation safety
+        const liveEdge = hostTime; 
+        const minAllowedTime = Math.max(0, liveEdge - windowSize);
+
+        if (targetTime < minAllowedTime) {
+            targetTime = minAllowedTime;
+        }
+    }
+
+    // PART 2: HARD PAUSE / MIRROR STATE
+    if (!shouldPlay || streamStatus !== 'live') {
+      if (video.playbackRate !== 1.0) video.playbackRate = 1.0;
+      setIsPlaying(false);
+      if (!video.paused) video.pause();
+      return;
+    }
+
+    // FIX BUFFER EXIT CONDITION
+    const buffer = getBufferAhead();
+    if (buffer >= 1.0) {
+        if (video.paused && shouldPlay) {
+            video.play().catch(() => {});
+            setIsPlaying(true);
+            setIsBuffering(false);
+        }
+    }
+
+    // SAFE SYNC LOGIC (VIEWERS ONLY)
+    if (isHost) return;
+    
+    const drift = targetTime - video.currentTime;
+
+    // 🚫 NEVER SEEK DURING SMALL DRIFT
+    if (Math.abs(video.currentTime - targetTime) < 1.0) {
+        if (drift > 0.3 && drift < 1.2) {
+            video.playbackRate = 1.05;
+        } else if (drift < -0.3) {
+            video.playbackRate = 0.95;
+        } else {
+            video.playbackRate = 1.0;
+        }
+    } else {
+        // 🔴 HARD SEEK FLOW 
+        if (Math.abs(video.currentTime - targetTime) > 1.2) {
+            if (!isSeekingRef.current) {
+                isSeekingRef.current = true;
+                video.currentTime = targetTime;
+
+                setTimeout(() => {
+                    isSeekingRef.current = false;
+                }, 800);
+            }
+        }
+    }
+
+  }, [syncState, isHost, seekTrigger, isScrubbing, vReadyState, getBufferAhead]);
+
+  // ==========================================
+  // RULE 7: HOST HEARTBEAT (500ms)
+  // ==========================================
+  useEffect(() => {
+    if (!isHost || !isPlaying) return;
+    
+    const interval = setInterval(() => {
+      const video = videoRef.current;
+      // Host pulse logic: Only broadcast if not scrubbing (peeking)
+      if (video && !video.paused && !isScrubbing) {
+        onSyncReport?.(video.currentTime);
+      }
+    }, 500); // 500ms high-precision heartbeat
+
+    return () => clearInterval(interval);
+  }, [isHost, isPlaying, onSyncReport, isScrubbing]);
+
+  // ==========================================
+  // RULE 7: PRODUCTION AUTO-HIDE CONTROLS
+  // ==========================================
+  const resetControlsTimer = useCallback(() => {
+    if (controlsTimeoutRef.current) {
+      clearTimeout(controlsTimeoutRef.current);
+    }
+
+    setShowControls(true);
+
+    if (isPlaying) {
+      controlsTimeoutRef.current = setTimeout(() => {
+        setShowControls(false);
+      }, 2000);
+    }
+  }, [isPlaying]);
+
+  useEffect(() => {
+    if (isPlaying) {
+      resetControlsTimer();
+    } else {
+      if (controlsTimeoutRef.current) {
+        clearTimeout(controlsTimeoutRef.current);
+      }
+      setShowControls(true);
+    }
+    return () => {
+      if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+    };
+  }, [isPlaying, resetControlsTimer]);
+
+  // Track time updates
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const handleTimeUpdate = () => {
+      setCurrentTime(video.currentTime);
+    };
+
+    const handleDurationChange = () => {
+      setDuration(video.duration);
+    };
+
+    // TASK: REAL-TIME BUFFER STATE BINDING
+    const handleBufferingStart = () => {
+        setIsBuffering(true);
+        if (videoRef.current) setVReadyState(videoRef.current.readyState);
+    };
+    const handleBufferingEnd = () => {
+        setIsBuffering(false);
+        if (videoRef.current) setVReadyState(videoRef.current.readyState);
+    };
+    const handleReadyChange = () => {
+        if (videoRef.current) {
+            setVReadyState(videoRef.current.readyState);
+            setBufferDepth(getBufferAhead());
+        }
+    };
+    const handleProgress = () => {
+        setBufferDepth(getBufferAhead());
+    };
+
+    video.addEventListener('timeupdate', handleTimeUpdate);
+    video.addEventListener('durationchange', handleDurationChange);
+    video.addEventListener('loadedmetadata', handleReadyChange);
+    
+    // Binding native HTML5 video events to UI state
+    video.addEventListener('progress', handleProgress);
+    video.addEventListener('waiting', handleBufferingStart);
+    video.addEventListener('stalled', handleBufferingStart);
+    video.addEventListener('playing', handleBufferingEnd);
+    video.addEventListener('canplay', handleBufferingEnd);
+
+    return () => {
+      video.removeEventListener('timeupdate', handleTimeUpdate);
+      video.removeEventListener('durationchange', handleDurationChange);
+      video.removeEventListener('loadedmetadata', handleReadyChange);
+      video.removeEventListener('progress', handleProgress);
+      video.removeEventListener('waiting', handleBufferingStart);
+      video.removeEventListener('stalled', handleBufferingStart);
+      video.removeEventListener('playing', handleBufferingEnd);
+      video.removeEventListener('canplay', handleBufferingEnd);
+    };
+  }, [getBufferAhead]);
+
+  // Host controls
+  const handlePlayPause = useCallback(() => {
+    const video = videoRef.current;
+    if (!video || !isHost || isLocked) return;
+
+    if (video.paused) {
+      video.play().then(() => {
+        setIsPlaying(true);
+        onPlayStateChange?.(true, video.currentTime);
+      }).catch(err => {
+        // Play error handled silently
+      });
+    } else {
+      video.pause();
+      setIsPlaying(false);
+      onPlayStateChange?.(false, video.currentTime);
+    }
+  }, [isHost, onPlayStateChange]);
+
+  const handleSeek = useCallback((time: number) => {
+    const video = videoRef.current;
+    if (!video || !isHost || isLocked) return;
+
+    // RULE: Max 1 seek per 800ms (Stabilization Mode)
+    const now = Date.now();
+    if (now - lastSeekTimeRef.current < 800) return;
+
+    const newTime = Math.max(0, Math.min(time, video.duration || Infinity));
+    
+    // 1. Initiate Isolation
+    isSeekingRef.current = true;
+    lastInteractionTimeRef.current = now;
+    lastSeekTimeRef.current = now;
+    setIsScrubbing(false); 
+    
+    // Broadcast immediately so viewers begin their snap
+    onSeek?.(newTime);
+    
+    // 2. Set Time directly without startLoad trigger
+    video.currentTime = newTime;
+    
+    // 3. Reliable completion listener
+    const onSeeked = () => {
+      setTimeout(() => {
+        lastInteractionTimeRef.current = Date.now();
+        isSeekingRef.current = false;
+        setIsBuffering(false);
+      }, 300);
+      video.removeEventListener('seeked', onSeeked);
+    };
+    
+    video.addEventListener('seeked', onSeeked);
+  }, [isHost, onSeek, isLocked, isPlaying]);
+
+  const handlePeek = useCallback((time: number) => {
+    const video = videoRef.current;
+    if (!video || !isHost || isLocked) return;
+
+    // RULE 4: PEEK MUST PROPAGATE
+    setIsScrubbing(true);
+    lastInteractionTimeRef.current = Date.now();
+    
+    const newTime = Math.max(0, Math.min(time, video.duration || Infinity));
+    
+    // Broadcast throttled to prevent WebSocket Storms
+    if (Date.now() - lastEmitRef.current > 500) {
+        onSeek?.(newTime);
+        lastEmitRef.current = Date.now();
+    }
+
+    // 2. Peek Time natively (paused visually)
+    video.currentTime = newTime;
+    setCurrentTime(newTime);
+  }, [isHost, isLocked, onSeek]);
+
+  const stepSeek = useCallback((offset: number) => {
+    const video = videoRef.current;
+    if (!video || !isHost || isLocked) return;
+    handleSeek(video.currentTime + offset);
+  }, [handleSeek, isHost, isLocked]);
+
+  const handleVolumeChange = useCallback((newVolume: number) => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const clampedVolume = Math.max(0, Math.min(newVolume, 1));
+    video.volume = clampedVolume;
+    setVolume(clampedVolume);
+    setIsMuted(clampedVolume === 0);
+  }, []);
+
+  const toggleMute = useCallback(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    if (isMuted) {
+      video.volume = volume || 0.5;
+      setIsMuted(false);
+    } else {
+      video.volume = 0;
+      setIsMuted(true);
+    }
+  }, [isMuted, volume]);
+
+  // Keyboard Shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA') return;
+
+      switch (e.code) {
+        case 'Space':
+          e.preventDefault();
+          if (isHost && !isLocked) handlePlayPause();
+          break;
+        case 'ArrowLeft':
+          e.preventDefault();
+          if (isHost && !isLocked) stepSeek(-10);
+          break;
+        case 'ArrowRight':
+          e.preventDefault();
+          if (isHost && !isLocked) stepSeek(10);
+          break;
+        case 'ArrowUp':
+          e.preventDefault();
+          handleVolumeChange(volume + 0.1);
+          break;
+        case 'ArrowDown':
+          e.preventDefault();
+          handleVolumeChange(volume - 0.1);
+          break;
+        case 'KeyM':
+          if (e.ctrlKey) {
+            e.preventDefault();
+            toggleMute();
+          }
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isHost, isLocked, handlePlayPause, stepSeek, volume, handleVolumeChange, toggleMute]);
+
+  const toggleFullscreen = useCallback(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    if (!document.fullscreenElement) {
+      container.requestFullscreen().catch(err => {
+
+      });
+    } else {
+      document.exitFullscreen();
+    }
+  }, []);
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
+
+  return (
+    <div 
+      ref={containerRef}
+      className="relative w-full h-full bg-black rounded-2xl overflow-hidden group shadow-2xl transition-all duration-500"
+      onMouseMove={resetControlsTimer}
+      onClick={resetControlsTimer}
+      onTouchStart={resetControlsTimer}
+    >
+      {/* Video Element */}
+      <video
+        ref={videoRef}
+        className="w-full h-full"
+        playsInline
+        muted={isMuted}
+      />
+
+      {/* Buffering/Initializing Overlay */}
+      {(isBuffering || !isStreamReady) && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black/70 backdrop-blur-sm z-10 transition-all duration-300">
+          <div className="flex flex-col items-center gap-6">
+            <Loader size="lg" />
+            <div className="flex flex-col items-center gap-1">
+              <p className="text-white font-semibold text-lg tracking-wide text-center">
+                {!isStreamReady ? 'Preparing Stream...' : (getBufferAhead() < BUFFER_REQUIRED ? 'Buffering...' : 'Smoothing Playback...')}
+              </p>
+              <p className="text-white/50 text-xs animate-pulse text-center">
+                {(isBuffering && isPlaying) ? 'Securing buffer for stable experience' : 'Optimizing sync with host'}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Controls Overlay */}
+      <div 
+        className={cn(
+          "absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent transition-all duration-500",
+          showControls || isLocked ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+        )}
+      >
+        {/* Top Indicators */}
+        <div className="absolute top-6 left-6 flex items-center gap-3">
+          {isLocked && (
+            <div className="flex items-center gap-2 px-4 py-2 bg-[var(--primary)] text-[var(--bg)] text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl shadow-xl shadow-[var(--primary)]/40 animate-pulse backdrop-blur-md">
+              <Lock className="w-3.5 h-3.5" />
+              Controls Locked
+            </div>
+          )}
+        </div>
+
+        {/* Center Play/Seek Controls (Host Only) */}
+        {isHost && !isLocked && (
+          <div className="absolute inset-0 flex items-center justify-center gap-12 pointer-events-none">
+            <button 
+              onClick={(e) => { e.stopPropagation(); stepSeek(-10); }}
+              className="p-5 bg-white/5 hover:bg-white/10 rounded-full border border-white/10 backdrop-blur-md transition-all group active:scale-90 pointer-events-auto shadow-2xl"
+            >
+              <RotateCcw className="w-8 h-8 text-white/70 group-hover:text-white" />
+            </button>
+            <button 
+              onClick={(e) => { e.stopPropagation(); handlePlayPause(); }}
+              className="w-24 h-24 bg-white text-black rounded-full flex items-center justify-center shadow-[0_0_50px_rgba(255,255,255,0.3)] hover:scale-110 active:scale-95 transition-all pointer-events-auto"
+            >
+              {isPlaying ? <Pause className="w-12 h-12" fill="black" /> : <Play className="w-12 h-12 ml-1.5" fill="black" />}
+            </button>
+            <button 
+              onClick={(e) => { e.stopPropagation(); stepSeek(10); }}
+              className="p-5 bg-white/5 hover:bg-white/10 rounded-full border border-white/10 backdrop-blur-md transition-all group active:scale-90 pointer-events-auto shadow-2xl"
+            >
+              <RotateCw className="w-8 h-8 text-white/70 group-hover:text-white" />
+            </button>
+          </div>
+        )}
+        {/* Bottom Controls */}
+        <div className="absolute bottom-0 left-0 right-0 p-4 lg:p-6 space-y-4">
+          {/* Progress Bar Area */}
+          <div className={`relative group/progress transition-all duration-300 ${isLocked ? 'opacity-30 pointer-events-none' : ''}`}>
+            <div className="h-1.5 bg-white/20 rounded-full overflow-hidden backdrop-blur-sm">
+              <div 
+                className="h-full bg-[var(--primary)] transition-all duration-100 relative"
+                style={{ width: `${progressPercent}%` }}
+              >
+                <div className="absolute right-0 top-1/2 -translate-y-1/2 w-4 h-4 bg-white rounded-full shadow-lg shadow-[var(--primary)]/50" />
+              </div>
+            </div>
+            {isHost && (
+              <input
+                type="range"
+                min="0"
+                max={duration || 100}
+                value={currentTime}
+                onInput={(e) => handlePeek(parseFloat(e.currentTarget.value))}
+                onChange={(e) => handleSeek(parseFloat(e.currentTarget.value))}
+                className="absolute inset-0 w-full opacity-0 cursor-pointer"
+              />
+            )}
+          </div>
+
+          {/* Control Buttons Bottom Bar */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              {/* Mini Play/Pause (Always visible but disabled if locked) */}
+              <button
+                onClick={handlePlayPause}
+                disabled={!isHost || isLocked}
+                className={`w-11 h-11 md:w-10 md:h-10 shrink-0 rounded-xl flex items-center justify-center transition-all ${
+                  isHost && !isLocked
+                    ? 'bg-white/10 hover:bg-white/20 cursor-pointer' 
+                    : 'bg-white/5 opacity-50 cursor-not-allowed'
+                }`}
+              >
+                {isPlaying ? (
+                  <Pause className="w-4 h-4 text-white" />
+                ) : (
+                  <Play className="w-4 h-4 text-white ml-0.5" />
+                )}
+              </button>
+
+              {/* Time Indicator */}
+              <div className="text-white/80 text-[11px] font-black uppercase tracking-widest bg-white/5 px-4 py-2 rounded-xl border border-white/5 backdrop-blur-sm shadow-inner">
+                {formatTime(currentTime)} <span className="text-white/20 mx-1">/</span> {formatTime(duration)}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {/* Volume Group */}
+              <div className="flex items-center gap-1 group/volume bg-white/5 rounded-xl p-1 border border-white/5 backdrop-blur-md">
+                <button 
+                  onClick={toggleMute} 
+                  className="w-10 h-10 shrink-0 rounded-lg hover:bg-white/10 flex items-center justify-center transition-all text-white/60 hover:text-white"
+                >
+                  {isMuted || volume === 0 ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+                </button>
+                <div className="w-0 group-hover/volume:w-24 overflow-hidden transition-all duration-300">
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.01"
+                    value={volume}
+                    onChange={(e) => handleVolumeChange(parseFloat(e.target.value))}
+                    className="w-24 h-1 bg-white/20 rounded-full appearance-none cursor-pointer accent-[var(--primary)]"
+                  />
+                </div>
+              </div>
+
+              {/* Host Specific: Lock Control */}
+              {isHost && (
+                <button 
+                  onClick={(e) => { e.stopPropagation(); setIsLocked(!isLocked); }}
+                  title={isLocked ? "Unlock Controls" : "Lock Controls"}
+                  className={`w-11 h-11 md:w-10 md:h-10 shrink-0 rounded-xl flex items-center justify-center transition-all border ${
+                    isLocked 
+                      ? 'bg-[var(--primary)] border-[var(--primary)]/40 text-[var(--bg)] shadow-[0_0_20px_var(--primary)] shake-on-click' 
+                      : 'bg-white/5 border-white/10 text-white/40 hover:text-white hover:bg-white/10'
+                  }`}
+                >
+                  {isLocked ? <Lock className="w-4 h-4" /> : <Unlock className="w-4 h-4" />}
+                </button>
+              )}
+
+              {/* Fullscreen */}
+              <button
+                onClick={toggleFullscreen}
+                className="w-10 h-10 shrink-0 rounded-xl bg-white/5 border border-white/10 text-white/60 hover:text-white hover:bg-[var(--primary)] hover:border-[var(--primary)] flex items-center justify-center transition-all shadow-lg"
+              >
+                <Maximize className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  );
+}

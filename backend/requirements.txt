@@ -1,0 +1,15 @@
+fastapi[standard]
+pymongo
+python-dotenv
+pydantic[email]
+python-multipart
+aiofiles
+boto3
+sqlalchemy
+psycopg2-binary
+python-jose[cryptography]
+passlib[bcrypt]
+google-auth
+httpx
+qrcode[pil]
+Pillow
