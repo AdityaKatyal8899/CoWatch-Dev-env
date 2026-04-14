@@ -3,6 +3,7 @@ import type { WebSocketMessage, SyncState, ChatMessage } from './types';
 const WS_BASE_URL = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8000';
 
 type MessageHandler = (message: WebSocketMessage) => void;
+const socketCache: Map<string, RealWebSocket> = new Map();
 
 export class RealWebSocket {
   private ws: WebSocket | null = null;
@@ -21,10 +22,13 @@ export class RealWebSocket {
   }
 
   private connect() {
-    // Add host prefix if needed for special backend logic, 
-    // though backend usually checks by ID.
-    const effectiveUserId = this.isHost ? `host_${this.userId}` : this.userId;
-    const url = `${WS_BASE_URL}/ws/rooms/${this.roomId}/${effectiveUserId}`;
+    // 1. WebSocket Persistence Guard
+    if (this.ws && (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)) {
+      return;
+    }
+
+    // Use raw userId to ensure consistent identity for reconnection/grace hooks
+    const url = `${WS_BASE_URL}/ws/rooms/${this.roomId}/${this.userId}`;
     
 
     this.ws = new WebSocket(url);
@@ -100,12 +104,12 @@ export class RealWebSocket {
   sendHostControl(action: 'play' | 'pause' | 'seek', data?: any) {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
 
-    // Backend expects specific types: "play", "pause", "seek"
     const payload = {
       type: action,
+      event_type: "control",
+      source: this.isHost ? "host" : "viewer",
       timestamp: data?.currentTime ?? data?.timestamp,
     };
-
 
     this.ws.send(JSON.stringify(payload));
   }
@@ -115,6 +119,8 @@ export class RealWebSocket {
 
     const payload = {
       type: 'sync_report',
+      event_type: "control",
+      source: "host",
       timestamp: currentTime,
     };
 
@@ -126,6 +132,8 @@ export class RealWebSocket {
 
     const payload = {
       type: 'chat',
+      event_type: "chat",
+      source: this.isHost ? "host" : "viewer",
       data: {
         id: Math.random().toString(36).substring(2),
         userId: this.userId,
@@ -140,22 +148,56 @@ export class RealWebSocket {
 
   sendEndRoom() {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN || !this.isHost) return;
-    this.ws.send(JSON.stringify({ type: 'end_room' }));
+    this.ws.send(JSON.stringify({ 
+      type: 'end_room',
+      event_type: "control",
+      source: "host"
+    }));
+  }
+
+  sendType(type: string, data: any) {
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+    this.ws.send(JSON.stringify({ 
+      type,
+      data,
+      source: this.isHost ? "host" : "viewer"
+    }));
   }
 
   disconnect() {
+    // Only disconnect if explicitly called from ROOM_ENDED or Room destruction
+    // We actually keep it alive in the cache for re-mounts.
     if (this.ws) {
       this.ws.close();
       this.ws = null;
     }
     this.handlers.clear();
+    socketCache.delete(this.roomId);
   }
 
   isConnected() {
     return this.ws?.readyState === WebSocket.OPEN;
   }
+
+  getRoomId() {
+    return this.roomId;
+  }
 }
 
 export function createWebSocket(roomId: string, userId: string, isHost: boolean): RealWebSocket {
-  return new RealWebSocket(roomId, userId, isHost);
+  const cacheKey = `${roomId}`;
+  const cached = socketCache.get(cacheKey);
+  
+  if (cached && cached.isConnected()) {
+    return cached;
+  }
+  
+  // If we have a dead socket in cache, clean it up
+  if (cached) {
+    cached.disconnect();
+  }
+
+  const socket = new RealWebSocket(roomId, userId, isHost);
+  socketCache.set(cacheKey, socket);
+  return socket;
 }

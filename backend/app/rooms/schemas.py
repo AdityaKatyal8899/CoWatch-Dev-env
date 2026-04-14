@@ -2,6 +2,7 @@ from pydantic import BaseModel, ConfigDict
 from typing import List, Optional, Union
 from datetime import datetime
 from uuid import UUID
+from app.videos.schemas import VideoResponse
 
 class ParticipantSchema(BaseModel):
     user_id: str
@@ -24,6 +25,7 @@ class RoomSchema(BaseModel):
     scheduled_time: Optional[datetime] = None
     countdown_start: Optional[datetime] = None
     invite_link: Optional[str] = None
+    video: Optional[VideoResponse] = None
     participants: List[ParticipantSchema] = []
     server_time: Optional[float] = None
     description: Optional[str] = None

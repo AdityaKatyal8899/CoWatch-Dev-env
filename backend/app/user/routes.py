@@ -35,7 +35,7 @@ async def get_user_stats(
     storage_sum = db.query(func.sum(models.Video.file_size)).filter(models.Video.user_id == current_user.id).scalar() or 0
     
     # 3. Active streams count (rooms where user is host)
-    active_streams = db.query(models.Room).filter(models.Room.host_id == current_user.id).count()
+    active_streams = db.query(models.Room).filter(models.Room.host_id == str(current_user.id)).count()
     
     # Update user's storage_used in DB record for consistency (syncing)
     if current_user.storage_used != storage_sum:

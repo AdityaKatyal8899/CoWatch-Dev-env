@@ -16,6 +16,7 @@ import { toast } from 'sonner';
 import { Loader } from '../components/ui/Loader';
 import { ConfirmModal } from '../components/ui/modal';
 import { cn } from '../lib/utils';
+import { motion, AnimatePresence } from 'motion/react';
 
 export default function Room() {
   const params = useParams();
@@ -40,7 +41,15 @@ export default function Room() {
   const [showEndConfirm, setShowEndConfirm] = useState(false);
   const [isRoomEnded, setIsRoomEnded] = useState(false);
   const wsRef = useRef<RealWebSocket | null>(null);
+  const lastInteractionTimeRef = useRef(0);
+  const hasInitialSyncRef = useRef(false);
+  const isHostRef = useRef(false);
+  const isProcessingRemoteEvent = useRef(false);
+  const unmountingRef = useRef(false);
+  const [isDisbanding, setIsDisbanding] = useState(false);
+  const [disbandCountdown, setDisbandCountdown] = useState(5);
 
+  // Constants (CRITICAL CONFIG)
   // Initialize room
   useEffect(() => {
     if (!roomId) {
@@ -73,88 +82,149 @@ export default function Room() {
           router.push('/');
           return;
         }
+        
         setRoom(roomData);
+        isHostRef.current = authUser?.id === roomData.host_id;
 
-
-        const videoData = await api.getVideo(roomData.video_id ? String(roomData.video_id) : roomData.room_id);
-        if (!videoData) {
-          toast.error('Video not found');
-          router.push('/');
-          return;
-        }
-        setVideo(videoData);
-
-
-        if (!wsRef.current) {
-          const websocket = createWebSocket(roomId, user.id, !!user.isHost);
-          setWs(websocket);
-          wsRef.current = websocket;
-
-          websocket.onMessage((message) => {
-            switch (message.type) {
-              case 'ROOM_ENDED':
-                toast.error('Host has left the room. Session ended.');
-                setSyncState(prev => ({ ...prev, streamStatus: 'ended', isPlaying: false }));
-                setIsRoomEnded(true);
-                websocket.disconnect();
-                setTimeout(() => {
-                  router.push('/dashboard');
-                }, 3000);
-                break;
-              case 'room_state':
-              case 'seek':
-                const data = message.data as SyncState & { participant_count?: number };
-                setSyncState({
-                  streamStatus: data.streamStatus || 'waiting',
-                  isPlaying: data.isPlaying,
-                  currentTime: data.currentTime,
-                  startedAt: data.startedAt,
-                  updatedAt: data.updatedAt,
-                });
-
-                if (data.participant_count !== undefined) {
-                  setParticipantCount(data.participant_count);
-                }
-
-                if (message.type === 'seek') setSeekTrigger(Date.now());
-                break;
-              case 'sync':
-                setSyncState(prev => ({ ...prev, currentTime: message.data.currentTime }));
-                if (message.data.participant_count !== undefined) {
-                  setParticipantCount(message.data.participant_count);
-                }
-                break;
-              case 'participant_join':
-              case 'participant_leave':
-                if (message.data.participant_count) {
-                  setParticipantCount(message.data.participant_count);
-                }
-                break;
-              case 'chat':
-                setMessages((prev: ChatMessage[]) => [...prev, message.data]);
-                break;
-            }
-          });
-        }
-
+        // Map data supporting both nested video object and flat room metadata
+        const videoData = roomData.video || {
+          video_id: roomData.video_id,
+          title: roomData.title,
+          description: roomData.description || roomData.video_description,
+          stream_url: roomData.stream_url,
+          duration: roomData.duration,
+          thumbnail_url: roomData.thumbnail_url
+        };
+        
+        setVideo(videoData as any);
         setLoading(false);
         toast.success('Connected to room');
       } catch (error) {
-
+        console.error('[Room] Init Error:', error);
         toast.error('Failed to join room');
         router.push('/');
       }
     };
 
     if (!authLoading) initRoom();
+  }, [roomId, router, authLoading]);
+
+  // TRACK UNMOUNTING STATUS
+  useEffect(() => {
+    return () => {
+      unmountingRef.current = true;
+    };
+  }, []);
+
+  // DISBANDING COUNTDOWN LIGIC
+  useEffect(() => {
+    if (!isDisbanding) return;
+    
+    if (disbandCountdown <= 0) {
+      router.push('/dashboard');
+      return;
+    }
+
+    const timer = setInterval(() => {
+      setDisbandCountdown(prev => prev - 1);
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [isDisbanding, disbandCountdown, router]);
+
+  // ==========================================
+  // WEBSOCKET LIFECYCLE (STRICT: ONCE PER ROOM)
+  // ==========================================
+  useEffect(() => {
+    if (!roomId || !currentUser?.id || wsRef.current) return;
+
+    const websocket = createWebSocket(roomId, currentUser.id, !!currentUser.isHost);
+    setWs(websocket);
+    wsRef.current = websocket;
+
+    websocket.onMessage((message) => {
+      // 3. Metadata Segregation: Bypass sync logic for chat
+      if (message.event_type === "chat") {
+        setMessages((prev: ChatMessage[]) => [...prev, message.data]);
+        return;
+      }
+
+      // 2. Feedback Loop Suppression (Echo Guard)
+      isProcessingRemoteEvent.current = true;
+
+      // INJECTION 1: Host Authority & Disband Lifecycle
+      if (message.action === "host_disconnected" || message.type === 'ROOM_ENDED' || (message.event_type === "control" && message.action === "disband")) {
+        setIsDisbanding(true);
+        toast.error('Host has left. Redirecting in 5s...');
+        return;
+      }
+
+      switch (message.type) {
+        case 'room_state':
+          const data = message.data as SyncState & { participant_count?: number };
+          setSyncState({
+            streamStatus: data.streamStatus || 'waiting',
+            isPlaying: data.isPlaying,
+            currentTime: data.currentTime,
+            startedAt: data.startedAt,
+            updatedAt: data.updatedAt,
+          });
+
+          if (data.participant_count !== undefined) {
+            setParticipantCount(data.participant_count);
+          }
+          break;
+        case 'seek':
+          setSyncState(prev => ({ ...prev, currentTime: message.data.currentTime }));
+          setSeekTrigger(Date.now());
+          break;
+        case 'sync':
+          setSyncState(prev => ({ ...prev, currentTime: message.data.currentTime }));
+          if (message.data.participant_count !== undefined) {
+            setParticipantCount(message.data.participant_count);
+          }
+          break;
+        case 'request_sync':
+          // INJECTION 2: Host Side - Emit targeted sync_state via stable Ref
+          if (isHostRef.current && syncState.streamStatus === 'live') {
+            ws?.sendHostControl('sync_state', { 
+              currentTime: syncState.currentTime,
+              isPlaying: syncState.isPlaying
+            });
+          }
+          break;
+        case 'participant_join':
+        case 'participant_leave':
+          if (message.data.participant_count) {
+            setParticipantCount(message.data.participant_count);
+          }
+          break;
+      }
+
+      // Clear Echo Guard after 200ms
+      setTimeout(() => {
+        isProcessingRemoteEvent.current = false;
+      }, 200);
+    });
+
+    // INJECTION 3: Viewer Side - Request sync on handshake completion
+    if (!currentUser?.isHost) {
+      setTimeout(() => {
+        websocket.sendType('request_sync', {});
+      }, 500);
+    }
 
     return () => {
-      if (wsRef.current) {
+      // SMART CLEANUP: Only disconnect if the roomId has changed OR we are unmounting
+      // This prevents React Strict Mode re-mounts from killing the host room
+      // while allowing navigation to /dashboard to clean up properly.
+      if (wsRef.current && (wsRef.current.getRoomId() !== roomId || unmountingRef.current)) {
         wsRef.current.disconnect();
         wsRef.current = null;
+        setWs(null);
       }
     };
-  }, [roomId, router, authLoading]);
+  }, [roomId, currentUser?.id]);
 
 
   const isHost = useMemo(() => {
@@ -217,13 +287,39 @@ export default function Room() {
   const isVideoProcessing = video.processing_status !== 'ready';
 
   return (
-    <div className="w-full h-screen bg-[#0B0B0F] flex flex-col overflow-hidden">
+    <div className="flex flex-col h-screen bg-[#050505] overflow-hidden selection:bg-[var(--primary)]/30">
       <TopBar 
         roomId={room.room_id}
         roomName={room.title}
         isHost={isHost}
         onLeave={handleLeave}
       />
+
+      {/* SESSION ENDED OVERLAY */}
+      <AnimatePresence>
+        {isDisbanding && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 backdrop-blur-xl"
+          >
+            <div className="text-center max-w-sm px-8">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-3xl bg-red-500/10 mb-8 border border-red-500/20">
+                <div className="w-8 h-8 rounded-xl bg-red-500 animate-pulse" />
+              </div>
+              <h2 className="text-3xl font-black text-white mb-4 tracking-tighter">Session Ended</h2>
+              <p className="text-white/40 mb-8 font-medium leading-relaxed">
+                The host has disbanded the room or disconnected permanently.
+              </p>
+              <div className="glass-card rounded-2xl py-3 px-6 inline-block border border-white/5">
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/20">
+                  Redirecting to Dashboard in <span className="text-white">{disbandCountdown}s</span>
+                </span>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Main Container */}
       <div className="flex-1 flex flex-col lg:flex-row overflow-x-hidden overflow-y-auto lg:overflow-hidden relative">
@@ -263,6 +359,8 @@ export default function Room() {
               onSyncReport={handleSyncReport}
               syncState={syncState}
               seekTrigger={seekTrigger}
+              isRemoteEvent={isProcessingRemoteEvent}
+              hostName={room.host_name}
             />
 
             {/* Preparation & Loading Overlay (only if processing) */}

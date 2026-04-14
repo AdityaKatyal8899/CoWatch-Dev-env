@@ -1,10 +1,13 @@
 fastapi[standard]
+uvicorn
+starlette
 pymongo
 python-dotenv
 pydantic[email]
 python-multipart
 aiofiles
 boto3
+botocore
 sqlalchemy
 psycopg2-binary
 python-jose[cryptography]
@@ -13,3 +16,7 @@ google-auth
 httpx
 qrcode[pil]
 Pillow
+celery[redis]
+redis
+slowapi
+requests

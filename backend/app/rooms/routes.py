@@ -1,6 +1,8 @@
 from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect, Depends, BackgroundTasks, Request, Response
 from typing import Dict, List, Any, Optional
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
+from sqlalchemy import cast, String, func
+from sqlalchemy.dialects.postgresql import UUID
 from ..database.config import get_db
 from ..database import models
 import uuid
@@ -152,38 +154,24 @@ async def get_room_qr(room_id: str):
 
 @router.get("/rooms/{room_id}", response_model=RoomSchema)
 async def get_room(room_id: str, db: Session = Depends(get_db)):
-    room_query = db.query(
-        models.Room, 
-        models.User.name.label("host_name"),
-        models.Video.description.label("video_description")
-    ).outerjoin(
-        models.User, models.Room.host_id == models.User.id
-    ).outerjoin(
-        models.Video, models.Room.video_id == models.Video.id
-    ).filter(models.Room.room_id == room_id)
+    # Use ORM model directly to benefit from Pydantic from_attributes and nested joins
+    room = db.query(models.Room).options(
+        joinedload(models.Room.video)
+    ).filter(models.Room.room_id == room_id).first()
     
-    result = room_query.first()
-    if not result:
-        video = db.query(models.Video).filter(models.Video.video_id == room_id).first()
-        if video:
-            return {
-                "room_id": video.video_id,
-                "title": video.title,
-                "stream_url": video.stream_url,
-                "is_playing": False,
-                "offset": 0.0,
-                "participants": [],
-                "server_time": datetime.now(timezone.utc).timestamp()
-            }
-        raise HTTPException(status_code=404, detail="Room not found")
+    if room:
+        # Manually attach host_name and video_description for schema compatibility 
+        # (until we refactor RoomSchema to rely solely on relations)
+        host = db.query(models.User).filter(models.User.id == cast(room.host_id, UUID(as_uuid=True))).first() if room.host_id else None
         
-    room, host_name, video_description = result
-    setattr(room, 'server_time', datetime.now(timezone.utc).timestamp())
-    setattr(room, 'host_name', host_name or "Anonymous")
-    setattr(room, 'description', video_description or "No description available")
-    setattr(room, 'thumbnail_url', "/placeholder-thumbnail.jpg") 
+        # We dynamic-patch the object so the response_model can pick it up
+        room.host_name = host.display_name if host else "Guest"
+        room.description = room.video.description if room.video else "No description available"
+        room.server_time = datetime.now(timezone.utc).timestamp()
+        
+        return room
     
-    return room
+    raise HTTPException(status_code=404, detail="Room not found")
 
 @router.delete("/rooms/{room_id}")
 async def disband_room(room_id: str, db: Session = Depends(get_db)):

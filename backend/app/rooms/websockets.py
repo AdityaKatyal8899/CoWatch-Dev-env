@@ -7,6 +7,8 @@ import time
 from datetime import datetime, timezone, timedelta
 from typing import Dict
 import uuid
+import traceback
+import asyncio
 
 router = APIRouter()
 
@@ -25,22 +27,37 @@ async def room_websocket(websocket: WebSocket, room_id: str, user_id: str):
             await websocket.close(code=4000, reason="Room does not exist")
             return
         
-        # Determine host status early
+        # Determine host status using CLEAN UUIDs (no dashes, lowercase)
         db_host_id = str(room.host_id).replace("-", "").lower() if room.host_id else "none"
-        clean_user_id = user_id.replace("host_", "").replace("-", "").lower()
+        clean_user_id = user_id.replace("-", "").lower()
         is_host_initial = (db_host_id == clean_user_id)
+
+        # Calculate live offset for late joiners
+        current_offset = room.offset
+        if room.is_playing and room.started_at:
+            try:
+                # We must handle timezone-aware or naive datetime consistently
+                # Current implementation uses timezone.utc
+                now = datetime.now(timezone.utc)
+                # Ensure the stored timestamp is treated as UTC
+                started_dt = room.started_at.replace(tzinfo=timezone.utc) if room.started_at.tzinfo is None else room.started_at
+                elapsed = (now - started_dt).total_seconds()
+                current_offset = max(0, elapsed)
+            except Exception as e:
+                print(f"Error calculating live offset: {e}")
+                current_offset = room.offset
 
         # Initial state to send
         initial_state = {
             "type": "room_state",
             "stream_status": room.stream_status,
             "is_playing": room.is_playing,
-            "currentTime": room.offset,
+            "currentTime": current_offset,
             "startedAt": room.started_at.isoformat() if room.started_at else None,
             "updatedAt": room.updated_at.isoformat() if room.updated_at else None,
             "title": room.title,
             "stream_url": room.stream_url,
-            "participant_count": len(active_connections.get(room_id, {})) + 1 # Include current connection
+            "participant_count": len(active_connections.get(room_id, {})) + 1 
         }
 
 
@@ -55,7 +72,7 @@ async def room_websocket(websocket: WebSocket, room_id: str, user_id: str):
     # Broadcast participant join
 
     with SessionLocal() as db:
-        user_uuid_str = user_id.replace("host_", "")
+        user_uuid_str = user_id
         db_user = None
         try:
             val_uuid = uuid.UUID(user_uuid_str)
@@ -87,7 +104,7 @@ async def room_websocket(websocket: WebSocket, room_id: str, user_id: str):
 
                 # Normalize comparison
                 db_host_id = str(room.host_id).replace("-", "").lower() if room.host_id else "none"
-                clean_user_id = user_id.replace("host_", "").replace("-", "").lower()
+                clean_user_id = user_id.replace("-", "").lower()
                 
                 is_host = (db_host_id == clean_user_id)
                 
@@ -162,6 +179,12 @@ async def room_websocket(websocket: WebSocket, room_id: str, user_id: str):
                         "data": message.get("data")
                     })
                     
+                elif msg_type == "request_sync":
+                    await broadcast_to_room(room_id, {
+                        "type": "request_sync",
+                        "data": {}
+                    })
+                    
                 elif msg_type == "end_room" and is_host:
 
                     db.delete(room)
@@ -181,35 +204,44 @@ async def room_websocket(websocket: WebSocket, room_id: str, user_id: str):
                 room = db.query(models.Room).filter(models.Room.room_id == room_id).first()
                 if room:
                     db_host_id = str(room.host_id).replace("-", "").lower() if room.host_id else "none"
-                    clean_user_id = user_id.replace("host_", "").replace("-", "").lower()
+                    clean_user_id = user_id.replace("-", "").lower()
                     
                     if db_host_id == clean_user_id:
-
-                        db.delete(room)
-                        db.commit()
-                        await broadcast_to_room(room_id, {
-                            "type": "ROOM_ENDED"
-                        })
-                        if room_id in active_connections:
-                            del active_connections[room_id]
+                        # TERMINATE THE LOOP: Do not delete the room immediately.
+                        # Launch grace period task.
+                        asyncio.create_task(disband_on_timeout(room_id, user_id))
                     else:
                         # Broadcast leave
                         await broadcast_to_room(room_id, {
                             "type": "participant_leave",
                             "data": {
-                                "id": user_id.replace("host_", ""),
+                                "id": user_id,
                                 "participant_count": len(active_connections.get(room_id, {}))
                             }
                         })
     except Exception as exc:
-        pass
-
-        pass
-
+        print(f"CRITICAL WS ERROR for Room {room_id}, User {user_id}: {exc}")
+        traceback.print_exc()
         if room_id in active_connections and user_id in active_connections[room_id]:
             del active_connections[room_id][user_id]
 
-# Removed check_scheduled_streams background task as scheduling logic has been decommissioned.
+# Helper to handle host-disconnect grace period
+async def disband_on_timeout(room_id: str, user_id: str):
+    await asyncio.sleep(5)
+    
+    # Check if host re-connected (they would have a new socket or same uid in the map)
+    # Note: user_id is unique, but if they refresh, the socket in active_connections[room_id][user_id] 
+    # will be the NEW one.
+    if room_id not in active_connections or user_id not in active_connections[room_id]:
+        with SessionLocal() as db:
+            room = db.query(models.Room).filter(models.Room.room_id == room_id).first()
+            if room:
+                print(f"Grace period expired for Room {room_id}. Disbanding session.")
+                await broadcast_to_room(room_id, {"type": "ROOM_ENDED"})
+                db.delete(room)
+                db.commit()
+                if room_id in active_connections:
+                    del active_connections[room_id]
 
 async def broadcast_to_room(room_id: str, message: dict, exclude_user: str = None):
     if room_id not in active_connections:

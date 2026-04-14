@@ -5,6 +5,7 @@ import type { SyncState } from '../lib/types';
 import { api } from '../lib/api';
 import { cn } from '../lib/utils';
 import { Loader } from './ui/Loader';
+import { motion, AnimatePresence } from 'motion/react';
 
 interface VideoPlayerProps {
   streamUrl: string;
@@ -14,6 +15,8 @@ interface VideoPlayerProps {
   onSyncReport?: (currentTime: number) => void;
   syncState?: SyncState;
   seekTrigger?: number;
+  isRemoteEvent?: React.RefObject<boolean>;
+  hostName?: string;
 }
 
 export function VideoPlayer({ 
@@ -23,7 +26,9 @@ export function VideoPlayer({
   onSeek,
   onSyncReport,
   syncState,
-  seekTrigger
+  seekTrigger,
+  isRemoteEvent,
+  hostName = "Host"
 }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
@@ -42,7 +47,9 @@ export function VideoPlayer({
   const [isScrubbing, setIsScrubbing] = useState(false);
   const [vReadyState, setVReadyState] = useState(0); 
   const [bufferDepth, setBufferDepth] = useState(0);
+  const [hostAction, setHostAction] = useState<string | null>(null);
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const actionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   // Refs for sync stabilization
   const lastSeekTimeRef = useRef(0);
@@ -53,14 +60,16 @@ export function VideoPlayer({
   const lastSeekTriggerRef = useRef(0);
   const isDriftInhibitedRef = useRef(false);
   const pausedAtRef = useRef(0); // PART 2: Reset Baseline
-  const isWaitingForBufferRef = useRef(false);
-  const lastInteractionTimeRef = useRef(0);
   const isSyncInhibitedRef = useRef(false);
+  const actionCounter = useRef(0);
+  const lastActionTime = useRef(0);
+  const lastInteractionTimeRef = useRef(0);
+  const hasInitialSyncRef = useRef(false);
 
   // Constants (CRITICAL CONFIG)
-  const TARGET_OFFSET = 0.5;    // Viewer target offset from host (Reduced from 2.0s to 0.5s)
-  const SAFETY_CEILING = 0.5;   // Hard wall (viewer never closer than 0.5s)
-  const SEEK_THRESHOLD = 1.5;   // Switch from rate correction to hard seek
+  const TARGET_OFFSET = 0.4;    // Viewer target offset (Compensated for ~100ms network lag = 500ms real)
+  const SAFETY_CEILING = 0.2;   // Min safety margin
+  const SEEK_THRESHOLD = 1.0;   // Aggressive seek trigger
   const BUFFER_REQUIRED = 2.0;  // Minimum buffer to allow video.play()
 
   // Helper: Acquire sync lock for a set duration (defaults to 1s)
@@ -72,6 +81,12 @@ export function VideoPlayer({
 
     }, duration);
   }, []);
+
+  const formatTime = (time: number) => {
+    const minutes = Math.floor(time / 60);
+    const seconds = Math.floor(time % 60);
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  };
 
   // Helper: Calculate seconds of data buffered ahead of a specific time
   const getBufferAhead = useCallback((timeToCheck?: number) => {
@@ -176,8 +191,39 @@ export function VideoPlayer({
     const hls = hlsRef.current;
     
     // PART 0: EXTRACTION
-    const { isPlaying: shouldPlay, currentTime: hostTime, streamStatus } = syncState;
+    const { isPlaying: shouldPlay, currentTime: hostTime, streamStatus, action: msgAction } = syncState as any;
     if (!video || vReadyState < 1) return;
+
+    // INJECTION: HOST ACTION NOTIFICATION (VIEWERS ONLY)
+    if (!isHost && lastSyncRef.current) {
+        const prev = lastSyncRef.current;
+        let actionMsg: string | null = null;
+        
+        if (prev.isPlaying !== shouldPlay) {
+            actionMsg = shouldPlay ? `${hostName} resumed playback` : `${hostName} paused playback`;
+        } else if (Math.abs(prev.currentTime - hostTime) > 3) {
+            actionMsg = `${hostName} seeked to ${formatTime(hostTime)}`;
+        }
+
+        if (actionMsg) {
+            setHostAction(actionMsg);
+            if (actionTimeoutRef.current) clearTimeout(actionTimeoutRef.current);
+            actionTimeoutRef.current = setTimeout(() => setHostAction(null), 3000);
+        }
+    }
+    lastSyncRef.current = { isPlaying: shouldPlay, currentTime: hostTime, streamStatus, startedAt: (syncState as any).startedAt, updatedAt: (syncState as any).updatedAt };
+
+    // INJECTION: Late-Joiner Catchup Guard
+    if (msgAction === "sync_state" && !isHost) {
+        if (!isRemoteEvent) return; // Guard against stale state
+        isRemoteEvent.current = true; // Lock feedback loop
+        video.currentTime = hostTime - 1.0; // Stay behind host for safety
+        if (shouldPlay) video.play().catch(() => {});
+        setTimeout(() => {
+          if (isRemoteEvent) isRemoteEvent.current = false;
+        }, 500);
+        return;
+    }
 
     // PART 1: TARGET CALCULATION
     let targetTime = Math.max(0, hostTime - (isHost ? 0 : TARGET_OFFSET));
@@ -211,26 +257,78 @@ export function VideoPlayer({
         }
     }
 
+    // INJECTION: Anti-Starvation Buffer Guard (Universal)
+    const timeDelta = Math.abs(video.currentTime - targetTime);
+
+    if (timeDelta > 2.0) {
+        video.pause();
+        video.currentTime = targetTime;
+        
+        const onCanPlay = () => {
+            if (shouldPlay) video.play().catch(() => {});
+            video.removeEventListener('canplay', onCanPlay);
+        };
+        video.addEventListener('canplay', onCanPlay);
+        return;
+    }
+
     // SAFE SYNC LOGIC (VIEWERS ONLY)
     if (isHost) return;
+
+    // RULE: Viewer MUST STAY BEHIND the host
+    if (video.currentTime > hostTime) {
+        video.currentTime = hostTime - TARGET_OFFSET;
+        return;
+    }
     
     const drift = targetTime - video.currentTime;
 
     // 🚫 NEVER SEEK DURING SMALL DRIFT
     if (Math.abs(video.currentTime - targetTime) < 1.0) {
-        if (drift > 0.3 && drift < 1.2) {
+        if (drift > 0.1 && drift < 1.0) {
             video.playbackRate = 1.05;
-        } else if (drift < -0.3) {
+        } else if (drift < -0.1) {
             video.playbackRate = 0.95;
         } else {
             video.playbackRate = 1.0;
         }
     } else {
+        // INJECTION: Anti-Starvation Buffer Guard
+        const timeDelta = Math.abs(video.currentTime - targetTime);
+
+        if (timeDelta > 2) {
+            video.pause();
+            video.currentTime = targetTime;
+            
+            const onCanPlay = () => {
+                if (shouldPlay) video.play().catch(() => {});
+                video.removeEventListener('canplay', onCanPlay);
+            };
+            video.addEventListener('canplay', onCanPlay);
+            return;
+        }
+
         // 🔴 HARD SEEK FLOW 
-        if (Math.abs(video.currentTime - targetTime) > 1.2) {
+        if (Math.abs(video.currentTime - targetTime) > 1.2 || !hasInitialSyncRef.current) {
             if (!isSeekingRef.current) {
+                // 3. Buffer-Starvation Guard
+                const buffered = getBufferAhead(targetTime);
+                if (buffered === 0 && !isHost) {
+                    setIsBuffering(true);
+                    return; // Wait for segments to load
+                }
+
                 isSeekingRef.current = true;
                 video.currentTime = targetTime;
+                
+                // 1. Initial State Sync (ONLY ONCE ON JOIN)
+                if (!hasInitialSyncRef.current) {
+                    hasInitialSyncRef.current = true;
+                    isRemoteEvent?.current && (isRemoteEvent.current = true);
+                    setTimeout(() => {
+                        isRemoteEvent?.current && (isRemoteEvent.current = false);
+                    }, 500);
+                }
 
                 setTimeout(() => {
                     isSeekingRef.current = false;
@@ -347,28 +445,52 @@ export function VideoPlayer({
   // Host controls
   const handlePlayPause = useCallback(() => {
     const video = videoRef.current;
-    if (!video || !isHost || isLocked) return;
+    if (!video || !isHost || isLocked || isRemoteEvent?.current) return;
+
+    // 4. Anti-Spam (Rate Limiting)
+    const now = Date.now();
+    if (now - lastActionTime.current < 1000) {
+      if (actionCounter.current >= 5) return;
+      actionCounter.current++;
+    } else {
+      actionCounter.current = 1;
+      lastActionTime.current = now;
+    }
+    
+    // Refresh interaction timestamp for isolation gate
+    lastInteractionTimeRef.current = now;
 
     if (video.paused) {
       video.play().then(() => {
         setIsPlaying(true);
         onPlayStateChange?.(true, video.currentTime);
       }).catch(err => {
-        // Play error handled silently
       });
     } else {
       video.pause();
       setIsPlaying(false);
       onPlayStateChange?.(false, video.currentTime);
     }
-  }, [isHost, onPlayStateChange]);
+  }, [isHost, onPlayStateChange, isLocked, isRemoteEvent]);
 
   const handleSeek = useCallback((time: number) => {
     const video = videoRef.current;
-    if (!video || !isHost || isLocked) return;
+    if (!video || !isHost || isLocked || isRemoteEvent?.current) return;
+
+    // 4. Anti-Spam (Rate Limiting)
+    const now = Date.now();
+    if (now - lastActionTime.current < 1000) {
+      if (actionCounter.current >= 5) return;
+      actionCounter.current++;
+    } else {
+      actionCounter.current = 1;
+      lastActionTime.current = now;
+    }
+    
+    // Refresh interaction timestamp for isolation gate
+    lastInteractionTimeRef.current = now;
 
     // RULE: Max 1 seek per 800ms (Stabilization Mode)
-    const now = Date.now();
     if (now - lastSeekTimeRef.current < 800) return;
 
     const newTime = Math.max(0, Math.min(time, video.duration || Infinity));
@@ -379,10 +501,12 @@ export function VideoPlayer({
     lastSeekTimeRef.current = now;
     setIsScrubbing(false); 
     
-    // Broadcast immediately so viewers begin their snap
-    onSeek?.(newTime);
+    // 4. Debounced Seek (300ms logic)
+    setTimeout(() => {
+        onSeek?.(newTime);
+    }, 300);
     
-    // 2. Set Time directly without startLoad trigger
+    // 2. Set Time directly
     video.currentTime = newTime;
     
     // 3. Reliable completion listener
@@ -396,13 +520,17 @@ export function VideoPlayer({
     };
     
     video.addEventListener('seeked', onSeeked);
-  }, [isHost, onSeek, isLocked, isPlaying]);
+  }, [isHost, onSeek, isLocked, isPlaying, isRemoteEvent]);
 
   const handlePeek = useCallback((time: number) => {
     const video = videoRef.current;
     if (!video || !isHost || isLocked) return;
 
-    // RULE 4: PEEK MUST PROPAGATE
+    // RULE: Auto-pause on scrub start to synchronize the "Peek" state across all viewers
+    if (isPlaying && !isScrubbing) {
+        handlePlayPause();
+    }
+
     setIsScrubbing(true);
     lastInteractionTimeRef.current = Date.now();
     
@@ -500,12 +628,6 @@ export function VideoPlayer({
     }
   }, []);
 
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
-
   const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   return (
@@ -548,6 +670,25 @@ export function VideoPlayer({
           showControls || isLocked ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
         )}
       >
+        {/* Host Action Notification Overlay */}
+        <AnimatePresence>
+          {hostAction && (
+            <motion.div
+              initial={{ y: -20, opacity: 0, x: '-50%' }}
+              animate={{ y: 0, opacity: 1, x: '-50%' }}
+              exit={{ y: -20, opacity: 0, x: '-50%' }}
+              className="absolute top-8 left-1/2 z-[60] pointer-events-none"
+            >
+              <div className="flex items-center gap-3 px-6 py-2.5 bg-black/60 backdrop-blur-xl border border-white/10 rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.8)]">
+                <div className="w-2 h-2 rounded-full bg-[var(--primary)] animate-pulse shadow-[0_0_8px_var(--primary)]" />
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/90 whitespace-nowrap">
+                  {hostAction}
+                </span>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* Top Indicators */}
         <div className="absolute top-6 left-6 flex items-center gap-3">
           {isLocked && (
@@ -560,24 +701,24 @@ export function VideoPlayer({
 
         {/* Center Play/Seek Controls (Host Only) */}
         {isHost && !isLocked && (
-          <div className="absolute inset-0 flex items-center justify-center gap-12 pointer-events-none">
+          <div className="absolute inset-0 flex items-center justify-center gap-6 sm:gap-12 pointer-events-none">
             <button 
               onClick={(e) => { e.stopPropagation(); stepSeek(-10); }}
-              className="p-5 bg-white/5 hover:bg-white/10 rounded-full border border-white/10 backdrop-blur-md transition-all group active:scale-90 pointer-events-auto shadow-2xl"
+              className="p-4 sm:p-5 bg-black/20 hover:bg-white/10 rounded-full border border-white/5 backdrop-blur-xl transition-all group active:scale-90 pointer-events-auto shadow-2xl"
             >
-              <RotateCcw className="w-8 h-8 text-white/70 group-hover:text-white" />
+              <RotateCcw className="w-5 h-5 sm:w-8 sm:h-8 text-white/70 group-hover:text-white" />
             </button>
             <button 
               onClick={(e) => { e.stopPropagation(); handlePlayPause(); }}
-              className="w-24 h-24 bg-white text-black rounded-full flex items-center justify-center shadow-[0_0_50px_rgba(255,255,255,0.3)] hover:scale-110 active:scale-95 transition-all pointer-events-auto"
+              className="w-16 h-16 sm:w-24 sm:h-24 bg-white text-black rounded-full flex items-center justify-center shadow-[0_0_50px_rgba(255,255,255,0.2)] hover:scale-105 active:scale-95 transition-all pointer-events-auto"
             >
-              {isPlaying ? <Pause className="w-12 h-12" fill="black" /> : <Play className="w-12 h-12 ml-1.5" fill="black" />}
+              {isPlaying ? <Pause className="w-8 h-8 sm:w-12 sm:h-12" fill="black" /> : <Play className="w-8 h-8 sm:w-12 sm:h-12 ml-1" fill="black" />}
             </button>
             <button 
               onClick={(e) => { e.stopPropagation(); stepSeek(10); }}
-              className="p-5 bg-white/5 hover:bg-white/10 rounded-full border border-white/10 backdrop-blur-md transition-all group active:scale-90 pointer-events-auto shadow-2xl"
+              className="p-4 sm:p-5 bg-black/20 hover:bg-white/10 rounded-full border border-white/5 backdrop-blur-xl transition-all group active:scale-90 pointer-events-auto shadow-2xl"
             >
-              <RotateCw className="w-8 h-8 text-white/70 group-hover:text-white" />
+              <RotateCw className="w-5 h-5 sm:w-8 sm:h-8 text-white/70 group-hover:text-white" />
             </button>
           </div>
         )}
@@ -613,31 +754,31 @@ export function VideoPlayer({
               <button
                 onClick={handlePlayPause}
                 disabled={!isHost || isLocked}
-                className={`w-11 h-11 md:w-10 md:h-10 shrink-0 rounded-xl flex items-center justify-center transition-all ${
+                className={`w-9 h-9 sm:w-10 sm:h-10 shrink-0 rounded-xl flex items-center justify-center transition-all ${
                   isHost && !isLocked
-                    ? 'bg-white/10 hover:bg-white/20 cursor-pointer' 
+                    ? 'bg-white/10 hover:bg-[var(--primary)] hover:text-black cursor-pointer' 
                     : 'bg-white/5 opacity-50 cursor-not-allowed'
                 }`}
               >
                 {isPlaying ? (
-                  <Pause className="w-4 h-4 text-white" />
+                  <Pause className="w-3.5 h-3.5" fill="currentColor" />
                 ) : (
-                  <Play className="w-4 h-4 text-white ml-0.5" />
+                  <Play className="w-3.5 h-3.5 ml-0.5" fill="currentColor" />
                 )}
               </button>
 
               {/* Time Indicator */}
-              <div className="text-white/80 text-[11px] font-black uppercase tracking-widest bg-white/5 px-4 py-2 rounded-xl border border-white/5 backdrop-blur-sm shadow-inner">
-                {formatTime(currentTime)} <span className="text-white/20 mx-1">/</span> {formatTime(duration)}
+              <div className="text-white/80 text-[10px] sm:text-[11px] font-black uppercase tracking-[0.15em] bg-black/40 px-3 py-2 rounded-xl border border-white/5 backdrop-blur-xl shadow-inner-lg">
+                {formatTime(currentTime)} <span className="text-white/20 mx-0.5">/</span> {formatTime(duration)}
               </div>
             </div>
 
             <div className="flex items-center gap-2">
               {/* Volume Group */}
-              <div className="flex items-center gap-1 group/volume bg-white/5 rounded-xl p-1 border border-white/5 backdrop-blur-md">
+              <div className="hidden sm:flex items-center gap-1 group/volume bg-black/40 rounded-xl p-1 border border-white/5 backdrop-blur-xl">
                 <button 
                   onClick={toggleMute} 
-                  className="w-10 h-10 shrink-0 rounded-lg hover:bg-white/10 flex items-center justify-center transition-all text-white/60 hover:text-white"
+                  className="w-9 h-9 shrink-0 rounded-lg hover:bg-white/10 flex items-center justify-center transition-all text-white/60 hover:text-white"
                 >
                   {isMuted || volume === 0 ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
                 </button>
@@ -659,10 +800,10 @@ export function VideoPlayer({
                 <button 
                   onClick={(e) => { e.stopPropagation(); setIsLocked(!isLocked); }}
                   title={isLocked ? "Unlock Controls" : "Lock Controls"}
-                  className={`w-11 h-11 md:w-10 md:h-10 shrink-0 rounded-xl flex items-center justify-center transition-all border ${
+                  className={`w-9 h-9 sm:w-10 sm:h-10 shrink-0 rounded-xl flex items-center justify-center transition-all border ${
                     isLocked 
-                      ? 'bg-[var(--primary)] border-[var(--primary)]/40 text-[var(--bg)] shadow-[0_0_20px_var(--primary)] shake-on-click' 
-                      : 'bg-white/5 border-white/10 text-white/40 hover:text-white hover:bg-white/10'
+                      ? 'bg-[var(--primary)] border-[var(--primary)]/40 text-black shadow-[0_0_20px_var(--primary)]' 
+                      : 'bg-black/40 border-white/10 text-white/40 hover:text-white hover:bg-white/10'
                   }`}
                 >
                   {isLocked ? <Lock className="w-4 h-4" /> : <Unlock className="w-4 h-4" />}
@@ -672,7 +813,7 @@ export function VideoPlayer({
               {/* Fullscreen */}
               <button
                 onClick={toggleFullscreen}
-                className="w-10 h-10 shrink-0 rounded-xl bg-white/5 border border-white/10 text-white/60 hover:text-white hover:bg-[var(--primary)] hover:border-[var(--primary)] flex items-center justify-center transition-all shadow-lg"
+                className="w-9 h-9 sm:w-10 sm:h-10 shrink-0 rounded-xl bg-black/40 border border-white/10 text-white/60 hover:text-[var(--primary)] hover:border-[var(--primary)] flex items-center justify-center transition-all"
               >
                 <Maximize className="w-4 h-4" />
               </button>
