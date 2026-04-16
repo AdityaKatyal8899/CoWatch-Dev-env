@@ -13,6 +13,7 @@ export class RealWebSocket {
   private isHost: boolean;
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
+  private roomInvalid = false;
 
   constructor(roomId: string, userId: string, isHost: boolean) {
     this.roomId = roomId;
@@ -23,6 +24,7 @@ export class RealWebSocket {
 
   private connect() {
     // 1. WebSocket Persistence Guard
+    if (this.roomInvalid) return;
     if (this.ws && (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)) {
       return;
     }
@@ -90,6 +92,10 @@ export class RealWebSocket {
         type: 'chat',
         data: message.data
       }));
+    } else if (message.type === 'error' && message.code === 'ROOM_NOT_FOUND') {
+      this.roomInvalid = true;
+      this.disconnect();
+      this.handlers.forEach(handler => handler(message));
     } else {
       // Generic fallback
       this.handlers.forEach(handler => handler(message));
@@ -127,7 +133,7 @@ export class RealWebSocket {
     this.ws.send(JSON.stringify(payload));
   }
 
-  sendChatMessage(message: string, username: string) {
+  sendChatMessage(message: string, username: string, theme?: string) {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
 
     const payload = {
@@ -138,6 +144,7 @@ export class RealWebSocket {
         id: Math.random().toString(36).substring(2),
         userId: this.userId,
         username,
+        theme,
         message,
         timestamp: new Date().toISOString(),
       }

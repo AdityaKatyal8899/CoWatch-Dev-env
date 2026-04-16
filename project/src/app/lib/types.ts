@@ -60,6 +60,7 @@ export interface ChatMessage {
   id: string;
   userId: string;
   username: string;
+  theme?: string;
   message: string;
   timestamp: string;
 }

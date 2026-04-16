@@ -39,7 +39,6 @@ export default function Room() {
   const [seekTrigger, setSeekTrigger] = useState(0);
   const [loading, setLoading] = useState(true);
   const [showEndConfirm, setShowEndConfirm] = useState(false);
-  const [isRoomEnded, setIsRoomEnded] = useState(false);
   const wsRef = useRef<RealWebSocket | null>(null);
   const lastInteractionTimeRef = useRef(0);
   const hasInitialSyncRef = useRef(false);
@@ -133,9 +132,10 @@ export default function Room() {
   }, [isDisbanding, disbandCountdown, router]);
 
   // ==========================================
-  // WEBSOCKET LIFECYCLE (STRICT: ONCE PER ROOM)
+  // WEBSOCKET LIFECYCLE (STRICT: ONCE PER SESSION)
   // ==========================================
   useEffect(() => {
+    // Strict Guard: Prevent re-initialization on re-renders
     if (!roomId || !currentUser?.id || wsRef.current) return;
 
     const websocket = createWebSocket(roomId, currentUser.id, !!currentUser.isHost);
@@ -144,7 +144,7 @@ export default function Room() {
 
     websocket.onMessage((message) => {
       // 3. Metadata Segregation: Bypass sync logic for chat
-      if (message.event_type === "chat") {
+      if (message.type === "chat") {
         setMessages((prev: ChatMessage[]) => [...prev, message.data]);
         return;
       }
@@ -153,9 +153,16 @@ export default function Room() {
       isProcessingRemoteEvent.current = true;
 
       // INJECTION 1: Host Authority & Disband Lifecycle
-      if (message.action === "host_disconnected" || message.type === 'ROOM_ENDED' || (message.event_type === "control" && message.action === "disband")) {
+      if (message.type === 'ROOM_ENDED' || (message.event_type === "control" && message.action === "disband") || message.type === "host_disconnected" || message.code === "ROOM_NOT_FOUND") {
+        // KILL SOCKET: Prevent automatic reconnect loops during the 5s redirect countdown
+        websocket.disconnect();
         setIsDisbanding(true);
-        toast.error('Host has left. Redirecting in 5s...');
+        
+        if (message.code === "ROOM_NOT_FOUND") {
+          toast.error('Room no longer exists. Redirecting...');
+        } else {
+          toast.error('Host has left. Redirecting in 5s...');
+        }
         return;
       }
 
@@ -215,16 +222,14 @@ export default function Room() {
     }
 
     return () => {
-      // SMART CLEANUP: Only disconnect if the roomId has changed OR we are unmounting
-      // This prevents React Strict Mode re-mounts from killing the host room
-      // while allowing navigation to /dashboard to clean up properly.
-      if (wsRef.current && (wsRef.current.getRoomId() !== roomId || unmountingRef.current)) {
+      // Only disconnect on explicit unmount of the page
+      if (unmountingRef.current && wsRef.current) {
         wsRef.current.disconnect();
         wsRef.current = null;
         setWs(null);
       }
     };
-  }, [roomId, currentUser?.id]);
+  }, [currentUser?.id, roomId]);
 
 
   const isHost = useMemo(() => {
@@ -244,7 +249,7 @@ export default function Room() {
 
   const handleSendMessage = useCallback((message: string) => {
     if (!ws || !currentUser) return;
-    ws.sendChatMessage(message, currentUser.name);
+    ws.sendChatMessage(message, currentUser.display_name || currentUser.name, currentUser.theme);
   }, [ws, currentUser]);
 
   const handleLeave = useCallback(async () => {
@@ -363,6 +368,8 @@ export default function Room() {
               hostName={room.host_name}
             />
 
+
+
             {/* Preparation & Loading Overlay (only if processing) */}
             {isVideoProcessing && (
               <div className="absolute inset-0 z-50 bg-[#0B0B0F] flex flex-col items-center justify-center p-12 text-center">
@@ -385,16 +392,7 @@ export default function Room() {
               </div>
             )}
 
-            {/* Room Ended Overlay */}
-            {isRoomEnded && (
-              <div className="absolute inset-0 z-[60] bg-[#0B0B0F]/80 backdrop-blur-md flex flex-col items-center justify-center p-12 text-center transition-all duration-500">
-                <AlertCircle className="w-16 h-16 text-red-500 mb-6 drop-shadow-[0_0_15px_rgba(239,68,68,0.5)]" />
-                <h3 className="text-2xl font-bold text-white tracking-tight mb-2">Session Ended</h3>
-                <p className="text-white/60 font-medium text-sm text-center max-w-sm">
-                  The host has left and dissolved the room. Returning you to the dashboard...
-                </p>
-              </div>
-            )}
+
           </div>
         </div>
 

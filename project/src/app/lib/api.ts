@@ -41,7 +41,8 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     } catch {
       detail = errorBody || detail;
     }
-    throw new Error(detail);
+    const errorMessage = typeof detail === 'string' ? detail : JSON.stringify(detail);
+    throw new Error(errorMessage);
   }
 
   return response.json();

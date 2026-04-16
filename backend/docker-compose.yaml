@@ -9,8 +9,16 @@ services:
       - "8000:8000"
     env_file:
       - .env
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
     depends_on:
       - redis
+    volumes:
+      - hls_data:/app/storage
+      - hls_output:/app/outputs
     restart: unless-stopped
 
   celery_worker:
@@ -19,8 +27,16 @@ services:
     command: celery -A app.celery_app.celery_app worker --loglevel=info
     env_file:
       - .env
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
     depends_on:
       - redis
+    volumes:
+      - hls_data:/app/storage
+      - hls_output:/app/outputs
     restart: unless-stopped
 
   redis:
@@ -29,3 +45,7 @@ services:
     ports:
       - "6379:6379"
     restart: unless-stopped
+
+volumes:
+  hls_data:
+  hls_output:

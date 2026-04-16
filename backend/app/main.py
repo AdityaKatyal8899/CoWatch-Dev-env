@@ -31,13 +31,25 @@ from app.database import models
 app = FastAPI()
 
 # 🛡️ Global Exception Handlers
+from fastapi.exceptions import RequestValidationError
+import logging
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    logging.error(f"VALIDATION ERROR payload: {exc.body}")
+    logging.error(f"VALIDATION ERROR errors: {exc.errors()}")
+    return JSONResponse(status_code=422, content={"detail": exc.errors()})
+
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # 🔌 Middlewares
+allowed_origins_raw = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000")
+allowed_origins = [origin.strip() for origin in allowed_origins_raw.split(",") if origin.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

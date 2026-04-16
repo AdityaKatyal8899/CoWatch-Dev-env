@@ -4,7 +4,7 @@ from typing import Optional
 
 class VideoBase(BaseModel):
     title: str
-    description: str
+    description: Optional[str] = None
 
 class VideoCreate(VideoBase):
     pass

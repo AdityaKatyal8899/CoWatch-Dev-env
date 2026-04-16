@@ -44,6 +44,17 @@ export function Chat({
     });
   };
 
+  const getThemeColor = (theme?: string) => {
+    const PRESET_THEMES: Record<string, string> = {
+      'default-dark': '#FFFFFF',
+      'neo-purple': '#8B5CF6',
+      'midnight-blue': '#3B82F6',
+      'cyber-green': '#22C55E',
+      'warm-minimal': '#F59E0B'
+    };
+    return PRESET_THEMES[theme || ''] || '#FFFFFF'; // Fallback to white/primary
+  };
+
   return (
     <div className="flex flex-col h-full bg-[#0B0B0F]">
       <div className="flex-1 overflow-hidden relative flex flex-col">
@@ -58,26 +69,36 @@ export function Chat({
           ) : (
             messages.map((msg) => {
               const isOwnMessage = msg.username === currentUsername;
+              const themeColor = getThemeColor(msg.theme);
+              
               return (
                 <div 
                   key={msg.id} 
                   className={`flex flex-col gap-1.5 ${isOwnMessage ? 'items-end' : 'items-start'}`}
                 >
                   <div className="flex items-center gap-2 px-1">
-                    <span className={`text-[10px] font-bold uppercase tracking-widest ${
-                      isOwnMessage ? 'text-[var(--primary)]' : 'text-white/40'
-                    }`}>
+                    <span 
+                      className="text-[10px] font-bold uppercase tracking-widest transition-colors"
+                      style={{ color: isOwnMessage ? 'var(--primary)' : (msg.theme ? themeColor : 'rgba(255, 255, 255, 0.4)') }}
+                    >
                       {msg.username}
                     </span>
                     <span className="text-[9px] font-medium text-white/20">
                       {formatTime(msg.timestamp)}
                     </span>
                   </div>
-                  <div className={`max-w-[85%] px-3 py-2 rounded-xl text-sm leading-relaxed ${
-                    isOwnMessage 
-                      ? 'bg-[var(--primary)] text-[var(--bg)]' 
-                      : 'bg-white/[0.03] border border-white/5 text-white/80'
-                  }`}>
+                  <div 
+                    className={`max-w-[85%] px-3 py-2 rounded-xl text-sm leading-relaxed transition-all duration-300 ${
+                      isOwnMessage 
+                        ? 'bg-[var(--primary)] text-[var(--bg)]' 
+                        : 'bg-white/[0.03] border border-white/5 text-white/80'
+                    }`}
+                    style={!isOwnMessage && msg.theme ? { 
+                      backgroundColor: `${themeColor}10`, // 10% opacity for others' themes
+                      borderColor: `${themeColor}30`,
+                      color: themeColor 
+                    } : {}}
+                  >
                     <p className="break-words">{msg.message}</p>
                   </div>
                 </div>

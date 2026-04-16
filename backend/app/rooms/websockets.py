@@ -24,7 +24,12 @@ async def room_websocket(websocket: WebSocket, room_id: str, user_id: str):
     with SessionLocal() as db:
         room = db.query(models.Room).filter(models.Room.room_id == room_id).first()
         if not room:
-            await websocket.close(code=4000, reason="Room does not exist")
+            await websocket.send_json({
+                "type": "error",
+                "code": "ROOM_NOT_FOUND",
+                "message": "Room no longer exists"
+            })
+            await websocket.close()
             return
         
         # Determine host status using CLEAN UUIDs (no dashes, lowercase)
@@ -83,7 +88,7 @@ async def room_websocket(websocket: WebSocket, room_id: str, user_id: str):
             "type": "participant_join",
             "data": {
                 "id": user_id,
-                "name": db_user.name if db_user else f"Guest_{user_id[:5]}",
+                "name": (db_user.display_name or db_user.name) if db_user else f"Guest_{user_id[:5]}",
                 "profile_picture": getattr(db_user, 'profile_picture', None) if db_user else None,
                 "isHost": is_host_initial,
                 "participant_count": len(active_connections.get(room_id, {}))
@@ -207,9 +212,8 @@ async def room_websocket(websocket: WebSocket, room_id: str, user_id: str):
                     clean_user_id = user_id.replace("-", "").lower()
                     
                     if db_host_id == clean_user_id:
-                        # TERMINATE THE LOOP: Do not delete the room immediately.
-                        # Launch grace period task.
-                        asyncio.create_task(disband_on_timeout(room_id, user_id))
+                        # DISBAND IMMEDIATELY: No grace period.
+                        asyncio.create_task(disband_room(room_id))
                     else:
                         # Broadcast leave
                         await broadcast_to_room(room_id, {
@@ -225,23 +229,17 @@ async def room_websocket(websocket: WebSocket, room_id: str, user_id: str):
         if room_id in active_connections and user_id in active_connections[room_id]:
             del active_connections[room_id][user_id]
 
-# Helper to handle host-disconnect grace period
-async def disband_on_timeout(room_id: str, user_id: str):
-    await asyncio.sleep(5)
-    
-    # Check if host re-connected (they would have a new socket or same uid in the map)
-    # Note: user_id is unique, but if they refresh, the socket in active_connections[room_id][user_id] 
-    # will be the NEW one.
-    if room_id not in active_connections or user_id not in active_connections[room_id]:
-        with SessionLocal() as db:
-            room = db.query(models.Room).filter(models.Room.room_id == room_id).first()
-            if room:
-                print(f"Grace period expired for Room {room_id}. Disbanding session.")
-                await broadcast_to_room(room_id, {"type": "ROOM_ENDED"})
-                db.delete(room)
-                db.commit()
-                if room_id in active_connections:
-                    del active_connections[room_id]
+# Helper to disband room immediately
+async def disband_room(room_id: str):
+    with SessionLocal() as db:
+        room = db.query(models.Room).filter(models.Room.room_id == room_id).first()
+        if room:
+            print(f"Host disconnected or disbanded. Cleaning up Room {room_id}.")
+            await broadcast_to_room(room_id, {"type": "ROOM_ENDED"})
+            db.delete(room)
+            db.commit()
+            if room_id in active_connections:
+                del active_connections[room_id]
 
 async def broadcast_to_room(room_id: str, message: dict, exclude_user: str = None):
     if room_id not in active_connections:

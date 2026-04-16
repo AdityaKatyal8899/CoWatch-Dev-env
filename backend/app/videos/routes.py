@@ -28,7 +28,7 @@ async def upload_video(
     response: Response,
     file: UploadFile = File(...),
     title: str = Form(...),
-    description: str = Form(...),
+    description: Optional[str] = Form(None),
     collection_id: Optional[str] = Form(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)

@@ -315,7 +315,7 @@ export function VideoPlayer({
                 const buffered = getBufferAhead(targetTime);
                 if (buffered === 0 && !isHost) {
                     setIsBuffering(true);
-                    return; // Wait for segments to load
+                    // Remove return to allow native seeking and buffer triggering
                 }
 
                 isSeekingRef.current = true;
@@ -775,14 +775,14 @@ export function VideoPlayer({
 
             <div className="flex items-center gap-2">
               {/* Volume Group */}
-              <div className="hidden sm:flex items-center gap-1 group/volume bg-black/40 rounded-xl p-1 border border-white/5 backdrop-blur-xl">
+              <div className="flex items-center gap-1 group/volume bg-black/40 rounded-xl p-1 border border-white/5 backdrop-blur-xl">
                 <button 
                   onClick={toggleMute} 
                   className="w-9 h-9 shrink-0 rounded-lg hover:bg-white/10 flex items-center justify-center transition-all text-white/60 hover:text-white"
                 >
                   {isMuted || volume === 0 ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
                 </button>
-                <div className="w-0 group-hover/volume:w-24 overflow-hidden transition-all duration-300">
+                <div className="w-0 group-hover/volume:w-16 sm:group-hover/volume:w-24 overflow-hidden transition-all duration-300">
                   <input
                     type="range"
                     min="0"
@@ -790,7 +790,7 @@ export function VideoPlayer({
                     step="0.01"
                     value={volume}
                     onChange={(e) => handleVolumeChange(parseFloat(e.target.value))}
-                    className="w-24 h-1 bg-white/20 rounded-full appearance-none cursor-pointer accent-[var(--primary)]"
+                    className="w-16 sm:w-24 h-1 bg-white/20 rounded-full appearance-none cursor-pointer accent-[var(--primary)]"
                   />
                 </div>
               </div>
