@@ -8,7 +8,6 @@ logger = logging.getLogger(__name__)
 
 def verify_google_token(token: str):
     client_id = os.getenv("GOOGLE_CLIENT_ID")
-    logger.error(f"GOOGLE_CLIENT_ID is: {client_id}")
     
     try:
         idinfo = id_token.verify_oauth2_token(
