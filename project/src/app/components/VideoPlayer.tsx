@@ -19,9 +19,9 @@ interface VideoPlayerProps {
   hostName?: string;
 }
 
-export function VideoPlayer({ 
-  streamUrl, 
-  isHost, 
+export function VideoPlayer({
+  streamUrl,
+  isHost,
   onPlayStateChange,
   onSeek,
   onSyncReport,
@@ -33,7 +33,7 @@ export function VideoPlayer({
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  
+
   // Player state (local UI only)
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -45,12 +45,12 @@ export function VideoPlayer({
   const [isLocked, setIsLocked] = useState(false);
   const [isStreamReady, setIsStreamReady] = useState(false);
   const [isScrubbing, setIsScrubbing] = useState(false);
-  const [vReadyState, setVReadyState] = useState(0); 
+  const [vReadyState, setVReadyState] = useState(0);
   const [bufferDepth, setBufferDepth] = useState(0);
   const [hostAction, setHostAction] = useState<string | null>(null);
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const actionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  
+
   // Refs for sync stabilization
   const lastSeekTimeRef = useRef(0);
   const isSeekingRef = useRef(false);
@@ -67,7 +67,7 @@ export function VideoPlayer({
   const hasInitialSyncRef = useRef(false);
 
   // Constants (CRITICAL CONFIG)
-  const TARGET_OFFSET = 0.4;    // Viewer target offset (Compensated for ~100ms network lag = 500ms real)
+  const TARGET_OFFSET = 0.7;    // Optimized for 1s segments (stay ~0.7 segments behind host)
   const SAFETY_CEILING = 0.2;   // Min safety margin
   const SEEK_THRESHOLD = 1.0;   // Aggressive seek trigger
   const BUFFER_REQUIRED = 2.0;  // Minimum buffer to allow video.play()
@@ -120,7 +120,7 @@ export function VideoPlayer({
         lowLatencyMode: true,
         maxBufferLength: 20,
         maxMaxBufferLength: 40,
-        liveSyncDuration: 6,
+        liveSyncDuration: 2,
         liveMaxLatencyDuration: 10,
         maxBufferHole: 0.5,
         startPosition: syncState?.currentTime || 0,
@@ -130,12 +130,12 @@ export function VideoPlayer({
 
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
         setIsStreamReady(true);
-        
+
         // Auto-play from initial sync if available
         if (lastSyncRef.current?.isPlaying && video.paused) {
           video.play().catch(err => {
             video.muted = true;
-            video.play().catch(() => {});
+            video.play().catch(() => { });
           });
         }
       });
@@ -181,7 +181,7 @@ export function VideoPlayer({
   useEffect(() => {
     if (!syncState) return;
     const video = videoRef.current;
-    
+
     // PART 0: INTERACTION ISOLATION GATE (CRITICAL)
     const timeSinceInteraction = Date.now() - lastInteractionTimeRef.current;
     if (isScrubbing || timeSinceInteraction < 800) {
@@ -189,54 +189,57 @@ export function VideoPlayer({
     }
 
     const hls = hlsRef.current;
-    
+
     // PART 0: EXTRACTION
     const { isPlaying: shouldPlay, currentTime: hostTime, streamStatus, action: msgAction } = syncState as any;
-    if (!video || vReadyState < 1) return;
+    if (!video) return;
+
+    // RULE: Allow the first sync to happen even if readyState is 0, to trigger the correct segment loading
+    if (vReadyState < 1 && hasInitialSyncRef.current) return;
 
     // INJECTION: HOST ACTION NOTIFICATION (VIEWERS ONLY)
     if (!isHost && lastSyncRef.current) {
-        const prev = lastSyncRef.current;
-        let actionMsg: string | null = null;
-        
-        if (prev.isPlaying !== shouldPlay) {
-            actionMsg = shouldPlay ? `${hostName} resumed playback` : `${hostName} paused playback`;
-        } else if (Math.abs(prev.currentTime - hostTime) > 3) {
-            actionMsg = `${hostName} seeked to ${formatTime(hostTime)}`;
-        }
+      const prev = lastSyncRef.current;
+      let actionMsg: string | null = null;
 
-        if (actionMsg) {
-            setHostAction(actionMsg);
-            if (actionTimeoutRef.current) clearTimeout(actionTimeoutRef.current);
-            actionTimeoutRef.current = setTimeout(() => setHostAction(null), 3000);
-        }
+      if (prev.isPlaying !== shouldPlay) {
+        actionMsg = shouldPlay ? `${hostName} resumed playback` : `${hostName} paused playback`;
+      } else if (Math.abs(prev.currentTime - hostTime) > 3) {
+        actionMsg = `${hostName} seeked to ${formatTime(hostTime)}`;
+      }
+
+      if (actionMsg) {
+        setHostAction(actionMsg);
+        if (actionTimeoutRef.current) clearTimeout(actionTimeoutRef.current);
+        actionTimeoutRef.current = setTimeout(() => setHostAction(null), 3000);
+      }
     }
     lastSyncRef.current = { isPlaying: shouldPlay, currentTime: hostTime, streamStatus, startedAt: (syncState as any).startedAt, updatedAt: (syncState as any).updatedAt };
 
     // INJECTION: Late-Joiner Catchup Guard
     if (msgAction === "sync_state" && !isHost) {
-        if (!isRemoteEvent) return; // Guard against stale state
-        isRemoteEvent.current = true; // Lock feedback loop
-        video.currentTime = hostTime - 1.0; // Stay behind host for safety
-        if (shouldPlay) video.play().catch(() => {});
-        setTimeout(() => {
-          if (isRemoteEvent) isRemoteEvent.current = false;
-        }, 500);
-        return;
+      if (!isRemoteEvent) return; // Guard against stale state
+      isRemoteEvent.current = true; // Lock feedback loop
+      video.currentTime = hostTime - 1.0; // Stay behind host for safety
+      if (shouldPlay) video.play().catch(() => { });
+      setTimeout(() => {
+        if (isRemoteEvent) isRemoteEvent.current = false;
+      }, 500);
+      return;
     }
 
     // PART 1: TARGET CALCULATION
     let targetTime = Math.max(0, hostTime - (isHost ? 0 : TARGET_OFFSET));
-    
+
     // STEP 4: Constrain Viewer Seeks to Live Window Boundaries
     if (!isHost) {
-        const windowSize = 18; // 20 segment list size, strictly locking within 18s threshold for starvation safety
-        const liveEdge = hostTime; 
-        const minAllowedTime = Math.max(0, liveEdge - windowSize);
+      const windowSize = 18; // 20 segment list size, strictly locking within 18s threshold for starvation safety
+      const liveEdge = hostTime;
+      const minAllowedTime = Math.max(0, liveEdge - windowSize);
 
-        if (targetTime < minAllowedTime) {
-            targetTime = minAllowedTime;
-        }
+      if (targetTime < minAllowedTime) {
+        targetTime = minAllowedTime;
+      }
     }
 
     // PART 2: HARD PAUSE / MIRROR STATE
@@ -247,94 +250,109 @@ export function VideoPlayer({
       return;
     }
 
+    // PART 3: HOST AUTHORITY GUARD
+    // The host is the source of truth and should never be seeked by round-trip sync messages.
+    if (isHost) return;
+
     // FIX BUFFER EXIT CONDITION
     const buffer = getBufferAhead();
-    if (buffer >= 1.0) {
-        if (video.paused && shouldPlay) {
-            video.play().catch(() => {});
-            setIsPlaying(true);
-            setIsBuffering(false);
-        }
+    // DYNAMIC BUFFER GATE: Relax requirement for the start of the stream or initial join
+    const minRequiredBuffer = (video.currentTime < 2.0 || !hasInitialSyncRef.current) ? 0.2 : 1.0;
+
+    if (buffer >= minRequiredBuffer) {
+      if (video.paused && shouldPlay) {
+        video.play().catch(() => { });
+        setIsPlaying(true);
+        setIsBuffering(false);
+      }
     }
 
     // INJECTION: Anti-Starvation Buffer Guard (Universal)
     const timeDelta = Math.abs(video.currentTime - targetTime);
 
     if (timeDelta > 2.0) {
-        video.pause();
-        video.currentTime = targetTime;
-        
-        const onCanPlay = () => {
-            if (shouldPlay) video.play().catch(() => {});
-            video.removeEventListener('canplay', onCanPlay);
-        };
-        video.addEventListener('canplay', onCanPlay);
-        return;
+      video.pause();
+      video.currentTime = targetTime;
+
+      const onCanPlay = () => {
+        if (shouldPlay) video.play().catch(() => { });
+        video.removeEventListener('canplay', onCanPlay);
+      };
+      video.addEventListener('canplay', onCanPlay);
+      return;
     }
 
     // SAFE SYNC LOGIC (VIEWERS ONLY)
-    if (isHost) return;
+    // Host already returned above at Part 3
 
     // RULE: Viewer MUST STAY BEHIND the host
     if (video.currentTime > hostTime) {
-        video.currentTime = hostTime - TARGET_OFFSET;
-        return;
+      video.currentTime = hostTime - TARGET_OFFSET;
+      return;
     }
-    
+
     const drift = targetTime - video.currentTime;
 
     // 🚫 NEVER SEEK DURING SMALL DRIFT
     if (Math.abs(video.currentTime - targetTime) < 1.0) {
-        if (drift > 0.1 && drift < 1.0) {
-            video.playbackRate = 1.05;
-        } else if (drift < -0.1) {
-            video.playbackRate = 0.95;
-        } else {
-            video.playbackRate = 1.0;
-        }
+      if (drift > 0.1 && drift < 1.0) {
+        video.playbackRate = 1.05;
+      } else if (drift < -0.1) {
+        video.playbackRate = 0.95;
+      } else {
+        video.playbackRate = 1.0;
+      }
     } else {
-        // INJECTION: Anti-Starvation Buffer Guard
-        const timeDelta = Math.abs(video.currentTime - targetTime);
+      // INJECTION: Anti-Starvation Buffer Guard
+      const timeDelta = Math.abs(video.currentTime - targetTime);
 
-        if (timeDelta > 2) {
-            video.pause();
-            video.currentTime = targetTime;
-            
-            const onCanPlay = () => {
-                if (shouldPlay) video.play().catch(() => {});
-                video.removeEventListener('canplay', onCanPlay);
-            };
-            video.addEventListener('canplay', onCanPlay);
-            return;
+      if (timeDelta > 2) {
+        video.pause();
+        video.currentTime = targetTime;
+
+        const onCanPlay = () => {
+          if (shouldPlay) video.play().catch(() => { });
+          video.removeEventListener('canplay', onCanPlay);
+        };
+        video.addEventListener('canplay', onCanPlay);
+        return;
+      }
+
+      // 🔴 HARD SEEK FLOW 
+      if (Math.abs(video.currentTime - targetTime) > 1.2 || !hasInitialSyncRef.current) {
+        if (!isSeekingRef.current) {
+          // 3. Buffer-Starvation Guard
+          const buffered = getBufferAhead(targetTime);
+          if (buffered === 0 && !isHost) {
+            setIsBuffering(true);
+            // Remove return to allow native seeking and buffer triggering
+          }
+
+          isSeekingRef.current = true;
+          video.currentTime = targetTime;
+
+          // FORCED AUTO-START (Kickstart playback for joiners)
+          if (shouldPlay && !isHost) {
+            video.play().catch(() => {
+              video.muted = true;
+              video.play().catch(() => { });
+            });
+          }
+
+          // 1. Initial State Sync (ONLY ONCE ON JOIN)
+          if (!hasInitialSyncRef.current) {
+            hasInitialSyncRef.current = true;
+            isRemoteEvent?.current && (isRemoteEvent.current = true);
+            setTimeout(() => {
+              isRemoteEvent?.current && (isRemoteEvent.current = false);
+            }, 500);
+          }
+
+          setTimeout(() => {
+            isSeekingRef.current = false;
+          }, 800);
         }
-
-        // 🔴 HARD SEEK FLOW 
-        if (Math.abs(video.currentTime - targetTime) > 1.2 || !hasInitialSyncRef.current) {
-            if (!isSeekingRef.current) {
-                // 3. Buffer-Starvation Guard
-                const buffered = getBufferAhead(targetTime);
-                if (buffered === 0 && !isHost) {
-                    setIsBuffering(true);
-                    // Remove return to allow native seeking and buffer triggering
-                }
-
-                isSeekingRef.current = true;
-                video.currentTime = targetTime;
-                
-                // 1. Initial State Sync (ONLY ONCE ON JOIN)
-                if (!hasInitialSyncRef.current) {
-                    hasInitialSyncRef.current = true;
-                    isRemoteEvent?.current && (isRemoteEvent.current = true);
-                    setTimeout(() => {
-                        isRemoteEvent?.current && (isRemoteEvent.current = false);
-                    }, 500);
-                }
-
-                setTimeout(() => {
-                    isSeekingRef.current = false;
-                }, 800);
-            }
-        }
+      }
     }
 
   }, [syncState, isHost, seekTrigger, isScrubbing, vReadyState, getBufferAhead]);
@@ -344,7 +362,7 @@ export function VideoPlayer({
   // ==========================================
   useEffect(() => {
     if (!isHost || !isPlaying) return;
-    
+
     const interval = setInterval(() => {
       const video = videoRef.current;
       // Host pulse logic: Only broadcast if not scrubbing (peeking)
@@ -402,27 +420,27 @@ export function VideoPlayer({
 
     // TASK: REAL-TIME BUFFER STATE BINDING
     const handleBufferingStart = () => {
-        setIsBuffering(true);
-        if (videoRef.current) setVReadyState(videoRef.current.readyState);
+      setIsBuffering(true);
+      if (videoRef.current) setVReadyState(videoRef.current.readyState);
     };
     const handleBufferingEnd = () => {
-        setIsBuffering(false);
-        if (videoRef.current) setVReadyState(videoRef.current.readyState);
+      setIsBuffering(false);
+      if (videoRef.current) setVReadyState(videoRef.current.readyState);
     };
     const handleReadyChange = () => {
-        if (videoRef.current) {
-            setVReadyState(videoRef.current.readyState);
-            setBufferDepth(getBufferAhead());
-        }
+      if (videoRef.current) {
+        setVReadyState(videoRef.current.readyState);
+        setBufferDepth(getBufferAhead());
+      }
     };
     const handleProgress = () => {
-        setBufferDepth(getBufferAhead());
+      setBufferDepth(getBufferAhead());
     };
 
     video.addEventListener('timeupdate', handleTimeUpdate);
     video.addEventListener('durationchange', handleDurationChange);
     video.addEventListener('loadedmetadata', handleReadyChange);
-    
+
     // Binding native HTML5 video events to UI state
     video.addEventListener('progress', handleProgress);
     video.addEventListener('waiting', handleBufferingStart);
@@ -456,7 +474,7 @@ export function VideoPlayer({
       actionCounter.current = 1;
       lastActionTime.current = now;
     }
-    
+
     // Refresh interaction timestamp for isolation gate
     lastInteractionTimeRef.current = now;
 
@@ -486,7 +504,7 @@ export function VideoPlayer({
       actionCounter.current = 1;
       lastActionTime.current = now;
     }
-    
+
     // Refresh interaction timestamp for isolation gate
     lastInteractionTimeRef.current = now;
 
@@ -494,21 +512,21 @@ export function VideoPlayer({
     if (now - lastSeekTimeRef.current < 800) return;
 
     const newTime = Math.max(0, Math.min(time, video.duration || Infinity));
-    
+
     // 1. Initiate Isolation
     isSeekingRef.current = true;
     lastInteractionTimeRef.current = now;
     lastSeekTimeRef.current = now;
-    setIsScrubbing(false); 
-    
+    setIsScrubbing(false);
+
     // 4. Debounced Seek (300ms logic)
     setTimeout(() => {
-        onSeek?.(newTime);
+      onSeek?.(newTime);
     }, 300);
-    
+
     // 2. Set Time directly
     video.currentTime = newTime;
-    
+
     // 3. Reliable completion listener
     const onSeeked = () => {
       setTimeout(() => {
@@ -518,7 +536,7 @@ export function VideoPlayer({
       }, 300);
       video.removeEventListener('seeked', onSeeked);
     };
-    
+
     video.addEventListener('seeked', onSeeked);
   }, [isHost, onSeek, isLocked, isPlaying, isRemoteEvent]);
 
@@ -528,18 +546,18 @@ export function VideoPlayer({
 
     // RULE: Auto-pause on scrub start to synchronize the "Peek" state across all viewers
     if (isPlaying && !isScrubbing) {
-        handlePlayPause();
+      handlePlayPause();
     }
 
     setIsScrubbing(true);
     lastInteractionTimeRef.current = Date.now();
-    
+
     const newTime = Math.max(0, Math.min(time, video.duration || Infinity));
-    
+
     // Broadcast throttled to prevent WebSocket Storms
     if (Date.now() - lastEmitRef.current > 500) {
-        onSeek?.(newTime);
-        lastEmitRef.current = Date.now();
+      onSeek?.(newTime);
+      lastEmitRef.current = Date.now();
     }
 
     // 2. Peek Time natively (paused visually)
@@ -631,7 +649,7 @@ export function VideoPlayer({
   const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   return (
-    <div 
+    <div
       ref={containerRef}
       className="relative w-full h-full bg-black rounded-2xl overflow-hidden group shadow-2xl transition-all duration-500"
       onMouseMove={resetControlsTimer}
@@ -664,7 +682,7 @@ export function VideoPlayer({
       )}
 
       {/* Controls Overlay */}
-      <div 
+      <div
         className={cn(
           "absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent transition-all duration-500",
           showControls || isLocked ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
@@ -702,19 +720,19 @@ export function VideoPlayer({
         {/* Center Play/Seek Controls (Host Only) */}
         {isHost && !isLocked && (
           <div className="absolute inset-0 flex items-center justify-center gap-6 sm:gap-12 pointer-events-none">
-            <button 
+            <button
               onClick={(e) => { e.stopPropagation(); stepSeek(-10); }}
               className="p-4 sm:p-5 bg-black/20 hover:bg-white/10 rounded-full border border-white/5 backdrop-blur-xl transition-all group active:scale-90 pointer-events-auto shadow-2xl"
             >
               <RotateCcw className="w-5 h-5 sm:w-8 sm:h-8 text-white/70 group-hover:text-white" />
             </button>
-            <button 
+            <button
               onClick={(e) => { e.stopPropagation(); handlePlayPause(); }}
               className="w-16 h-16 sm:w-24 sm:h-24 bg-white text-black rounded-full flex items-center justify-center shadow-[0_0_50px_rgba(255,255,255,0.2)] hover:scale-105 active:scale-95 transition-all pointer-events-auto"
             >
               {isPlaying ? <Pause className="w-8 h-8 sm:w-12 sm:h-12" fill="black" /> : <Play className="w-8 h-8 sm:w-12 sm:h-12 ml-1" fill="black" />}
             </button>
-            <button 
+            <button
               onClick={(e) => { e.stopPropagation(); stepSeek(10); }}
               className="p-4 sm:p-5 bg-black/20 hover:bg-white/10 rounded-full border border-white/5 backdrop-blur-xl transition-all group active:scale-90 pointer-events-auto shadow-2xl"
             >
@@ -727,7 +745,7 @@ export function VideoPlayer({
           {/* Progress Bar Area */}
           <div className={`relative group/progress transition-all duration-300 ${isLocked ? 'opacity-30 pointer-events-none' : ''}`}>
             <div className="h-1.5 bg-white/20 rounded-full overflow-hidden backdrop-blur-sm">
-              <div 
+              <div
                 className="h-full bg-[var(--primary)] transition-all duration-100 relative"
                 style={{ width: `${progressPercent}%` }}
               >
@@ -754,11 +772,10 @@ export function VideoPlayer({
               <button
                 onClick={handlePlayPause}
                 disabled={!isHost || isLocked}
-                className={`w-9 h-9 sm:w-10 sm:h-10 shrink-0 rounded-xl flex items-center justify-center transition-all ${
-                  isHost && !isLocked
-                    ? 'bg-white/10 hover:bg-[var(--primary)] hover:text-black cursor-pointer' 
+                className={`w-9 h-9 sm:w-10 sm:h-10 shrink-0 rounded-xl flex items-center justify-center transition-all ${isHost && !isLocked
+                    ? 'bg-white/10 hover:bg-[var(--primary)] hover:text-black cursor-pointer'
                     : 'bg-white/5 opacity-50 cursor-not-allowed'
-                }`}
+                  }`}
               >
                 {isPlaying ? (
                   <Pause className="w-3.5 h-3.5" fill="currentColor" />
@@ -776,8 +793,8 @@ export function VideoPlayer({
             <div className="flex items-center gap-2">
               {/* Volume Group */}
               <div className="flex items-center gap-1 group/volume bg-black/40 rounded-xl p-1 border border-white/5 backdrop-blur-xl">
-                <button 
-                  onClick={toggleMute} 
+                <button
+                  onClick={toggleMute}
                   className="w-9 h-9 shrink-0 rounded-lg hover:bg-white/10 flex items-center justify-center transition-all text-white/60 hover:text-white"
                 >
                   {isMuted || volume === 0 ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
@@ -797,14 +814,13 @@ export function VideoPlayer({
 
               {/* Host Specific: Lock Control */}
               {isHost && (
-                <button 
+                <button
                   onClick={(e) => { e.stopPropagation(); setIsLocked(!isLocked); }}
                   title={isLocked ? "Unlock Controls" : "Lock Controls"}
-                  className={`w-9 h-9 sm:w-10 sm:h-10 shrink-0 rounded-xl flex items-center justify-center transition-all border ${
-                    isLocked 
-                      ? 'bg-[var(--primary)] border-[var(--primary)]/40 text-black shadow-[0_0_20px_var(--primary)]' 
+                  className={`w-9 h-9 sm:w-10 sm:h-10 shrink-0 rounded-xl flex items-center justify-center transition-all border ${isLocked
+                      ? 'bg-[var(--primary)] border-[var(--primary)]/40 text-black shadow-[0_0_20px_var(--primary)]'
                       : 'bg-black/40 border-white/10 text-white/40 hover:text-white hover:bg-white/10'
-                  }`}
+                    }`}
                 >
                   {isLocked ? <Lock className="w-4 h-4" /> : <Unlock className="w-4 h-4" />}
                 </button>

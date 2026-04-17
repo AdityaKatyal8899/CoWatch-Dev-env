@@ -193,7 +193,7 @@ export default function Room() {
           break;
         case 'request_sync':
           // INJECTION 2: Host Side - Emit targeted sync_state via stable Ref
-          if (isHostRef.current && syncState.streamStatus === 'live') {
+          if (isHostRef.current) {
             ws?.sendHostControl('sync_state', { 
               currentTime: syncState.currentTime,
               isPlaying: syncState.isPlaying
