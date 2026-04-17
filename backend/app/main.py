@@ -76,7 +76,18 @@ os.makedirs(HLS_OUTPUT_DIR, exist_ok=True)
 os.makedirs(os.path.join("storage", "videos"), exist_ok=True)
 
 # Initialize SQLAlchemy DB Schema
-models.Base.metadata.create_all(bind=engine)
+try:
+    print(f"🔍 Connecting to database...")
+    models.Base.metadata.create_all(bind=engine)
+    db_host = engine.url.host
+    is_supabase = "supabase.co" in (db_host or "")
+    db_type = "Supabase (Cloud)" if is_supabase else "PostgreSQL (Local)"
+    print(f"✅ Database connected successfully: {db_type}")
+    print(f"📡 Host: {db_host}")
+except Exception as e:
+    print(f"❌ DATABASE CONNECTION ERROR: {e}")
+    print(f"💡 Tip: Check your .env file and ensure SSL settings are correct for Supabase.")
+
 
 app.mount("/output/videos", StaticFiles(directory=os.path.join("storage", "videos")), name="videos")
 app.mount("/output", StaticFiles(directory=HLS_OUTPUT_DIR), name="output")
