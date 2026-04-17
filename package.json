@@ -1,8 +1,0 @@
-{
-  "name": "cowatch-root",
-  "version": "1.0.0",
-  "scripts": {
-    "build": "cd project && npm install --legacy-peer-deps && npm run build",
-    "install": "cd project && npm install --legacy-peer-deps"
-  }
-}
