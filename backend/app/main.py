@@ -28,7 +28,13 @@ import mimetypes
 from app.database.config import engine
 from app.database import models
 
+from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
+
 app = FastAPI()
+
+# 🛡️ Handle Proxy Headers (Important for Nginx HTTPS)
+app.add_middleware(ProxyHeadersMiddleware, trusted_hosts="*")
+
 
 # 🛡️ Global Exception Handlers
 from fastapi.exceptions import RequestValidationError
