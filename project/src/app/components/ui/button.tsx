@@ -44,7 +44,7 @@ function Button({
   children,
   disabled,
   ...props
-}: React.ComponentProps<"button"> &
+}: React.ButtonHTMLAttributes<HTMLButtonElement> &
   VariantProps<typeof buttonVariants> & {
     asChild?: boolean;
     loading?: boolean;

@@ -15,7 +15,7 @@ interface VideoPlayerProps {
   onSyncReport?: (currentTime: number) => void;
   syncState?: SyncState;
   seekTrigger?: number;
-  isRemoteEvent?: React.RefObject<boolean>;
+  isRemoteEvent?: React.MutableRefObject<boolean>;
   hostName?: string;
 }
 
