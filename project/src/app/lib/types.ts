@@ -1,3 +1,4 @@
+
 export interface User {
   id: string;
   email: string;
@@ -30,7 +31,10 @@ export interface Room {
   participants: User[];
   host_name?: string;
   description?: string;
+  video_description?: string;
   thumbnail_url?: string;
+  video?: Video;
+  duration?: number;
 }
 
 export interface Video {
@@ -74,7 +78,7 @@ export interface SyncState {
 }
 
 export interface WebSocketMessage {
-  type: 'room_state' | 'chat' | 'play' | 'pause' | 'seek' | 'sync_report' | 'sync' | 'participant_join' | 'participant_leave' | 'ROOM_ENDED';
+  type: 'room_state' | 'chat' | 'play' | 'pause' | 'seek' | 'sync_report' | 'sync' | 'participant_join' | 'participant_leave' | 'ROOM_ENDED' | 'host_disconnected' | 'request_sync' | 'error';
   data?: any;
   [key: string]: any; // Allow arbitrary keys for the WS payload
 }

@@ -115,7 +115,7 @@ async def room_websocket(websocket: WebSocket, room_id: str, user_id: str):
                 
 
 
-                if is_host and msg_type in ["play", "pause", "seek"]:
+                if is_host and msg_type in ["play", "pause", "seek", "sync_state"]:
                     msg_time = float(message.get("timestamp", room.offset))
 
                     
@@ -141,6 +141,13 @@ async def room_websocket(websocket: WebSocket, room_id: str, user_id: str):
                         room.offset = msg_time
                         if room.is_playing:
                              room.started_at = datetime.now(timezone.utc) - timedelta(seconds=msg_time)
+                    elif msg_type == "sync_state":
+                        room.is_playing = message.get("isPlaying", room.is_playing)
+                        room.offset = msg_time
+                        if room.is_playing:
+                             room.started_at = datetime.now(timezone.utc) - timedelta(seconds=msg_time)
+                        else:
+                             room.started_at = None
                     
                     db.commit()
 

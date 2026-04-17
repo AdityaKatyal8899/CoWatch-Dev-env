@@ -107,7 +107,7 @@ export class RealWebSocket {
     return () => this.handlers.delete(handler);
   }
 
-  sendHostControl(action: 'play' | 'pause' | 'seek', data?: any) {
+  sendHostControl(action: 'play' | 'pause' | 'seek' | 'sync_state', data?: any) {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
 
     const payload = {
