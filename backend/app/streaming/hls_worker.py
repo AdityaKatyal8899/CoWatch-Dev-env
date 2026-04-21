@@ -202,6 +202,8 @@ def process_video_to_hls(video_id: str, input_path: str):
         "-hls_time", "2",                 # Consistent segment length
         "-hls_list_size", "0",            # 0 means "Include ALL segments" (Critical for VOD)
         "-hls_playlist_type", "vod",      # Explicitly marks the file as VOD (Critical for seekers)
+        "-start_number", "0",              # Forces segments to start at seg_000.ts
+        "-hls_flags", "independent_segments", # Improves seeking and segment alignment
         "-avoid_negative_ts", "make_zero",
         "-hls_segment_filename", os.path.join(output_dir, "seg_%03d.ts"),
         stream_playlist
