@@ -1,4 +1,4 @@
-import { LogOut, Crown, Eye } from 'lucide-react';
+import { LogOut, Crown, Eye, Link } from 'lucide-react';
 import { Play } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -23,8 +23,8 @@ export function TopBar({ roomId, roomName, isHost, onLeave }: TopBarProps) {
           <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-gradient-to-br from-[var(--primary)] to-purple-600 shadow-lg shadow-[var(--primary)]/20">
             <Play className="w-4 h-4 text-white ml-0.5" fill="currentColor" />
           </div>
-          <div>
-            <h1 className="text-[13px] font-semibold text-white tracking-tight">{roomName}</h1>
+          <div className="min-w-0">
+            <h1 className="text-[13px] font-semibold text-white tracking-tight truncate max-w-[120px] sm:max-w-[300px]">{roomName}</h1>
             <p className="text-[10px] text-white/20 font-medium uppercase tracking-widest">Live Room</p>
           </div>
         </div>
@@ -39,30 +39,33 @@ export function TopBar({ roomId, roomName, isHost, onLeave }: TopBarProps) {
         {isHost ? (
           <>
             <Crown className="w-3 h-3" />
-            <span className="text-[10px] font-bold uppercase tracking-widest">Presenter</span>
+            <span className="hidden sm:inline text-[10px] font-bold uppercase tracking-widest">Presenter</span>
           </>
         ) : (
           <>
             <Eye className="w-3 h-3" />
-            <span className="text-[10px] font-bold uppercase tracking-widest">Viewer</span>
+            <span className="hidden sm:inline text-[10px] font-bold uppercase tracking-widest">Viewer</span>
           </>
         )}
       </div>
 
       {/* Right: Actions */}
-      <div className="flex items-center gap-2 md:gap-3">
+      <div className="flex items-center gap-1.5 sm:gap-3">
         <button
           onClick={copyRoomId}
-          className="px-4 py-[1px] bg-white/3 border border-white/10 rounded-[8px] text-[11px] font-semibold text-white/60 hover:text-white hover:bg-white/10 transition-all flex items-center justify-center"
+          title="Copy Link"
+          className="p-2 sm:px-4 sm:py-[1px] bg-white/3 border border-white/10 rounded-[8px] text-[11px] font-semibold text-white/60 hover:text-white hover:bg-white/10 transition-all flex items-center justify-center shrink-0"
         >
-          Copy Link
+          <span className="hidden sm:inline">Copy Link</span>
+          <Link className="w-3.5 h-3.5 sm:hidden" />
         </button>
         <button
           onClick={onLeave}
-          className="px-3 py-[6px] bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-[8px] text-red-500 text-[11px] font-semibold transition-all flex items-center gap-2 justify-center"
+          title="Exit"
+          className="p-2 sm:px-3 sm:py-[6px] bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-[8px] text-red-500 text-[11px] font-semibold transition-all flex items-center gap-2 justify-center shrink-0"
         >
           <LogOut className="w-3.5 h-3.5" />
-          Exit
+          <span className="hidden sm:inline">Exit</span>
         </button>
       </div>
     </div>

@@ -728,9 +728,9 @@ export function VideoPlayer({
             </button>
             <button
               onClick={(e) => { e.stopPropagation(); handlePlayPause(); }}
-              className="w-16 h-16 sm:w-24 sm:h-24 bg-white text-black rounded-full flex items-center justify-center shadow-[0_0_50px_rgba(255,255,255,0.2)] hover:scale-105 active:scale-95 transition-all pointer-events-auto"
+              className="w-14 h-14 sm:w-20 sm:h-20 bg-white text-black rounded-full flex items-center justify-center shadow-[0_0_40px_rgba(255,255,255,0.2)] hover:scale-105 active:scale-95 transition-all pointer-events-auto"
             >
-              {isPlaying ? <Pause className="w-8 h-8 sm:w-12 sm:h-12" fill="black" /> : <Play className="w-8 h-8 sm:w-12 sm:h-12 ml-1" fill="black" />}
+              {isPlaying ? <Pause className="w-6 h-6 sm:w-10 sm:h-10" fill="black" /> : <Play className="w-6 h-6 sm:w-10 sm:h-10 ml-1" fill="black" />}
             </button>
             <button
               onClick={(e) => { e.stopPropagation(); stepSeek(10); }}
@@ -772,7 +772,7 @@ export function VideoPlayer({
               <button
                 onClick={handlePlayPause}
                 disabled={!isHost || isLocked}
-                className={`w-9 h-9 sm:w-10 sm:h-10 shrink-0 rounded-xl flex items-center justify-center transition-all ${isHost && !isLocked
+                className={`w-8 h-8 sm:w-10 sm:h-10 shrink-0 rounded-xl flex items-center justify-center transition-all ${isHost && !isLocked
                     ? 'bg-white/10 hover:bg-[var(--primary)] hover:text-black cursor-pointer'
                     : 'bg-white/5 opacity-50 cursor-not-allowed'
                   }`}
@@ -795,9 +795,9 @@ export function VideoPlayer({
               <div className="flex items-center gap-1 group/volume bg-black/40 rounded-xl p-1 border border-white/5 backdrop-blur-xl">
                 <button
                   onClick={toggleMute}
-                  className="w-9 h-9 shrink-0 rounded-lg hover:bg-white/10 flex items-center justify-center transition-all text-white/60 hover:text-white"
+                  className="w-8 h-8 shrink-0 rounded-lg hover:bg-white/10 flex items-center justify-center transition-all text-white/60 hover:text-white"
                 >
-                  {isMuted || volume === 0 ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+                  {isMuted || volume === 0 ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
                 </button>
                 <div className="w-0 group-hover/volume:w-16 sm:group-hover/volume:w-24 overflow-hidden transition-all duration-300">
                   <input
