@@ -108,6 +108,37 @@ export default function Room() {
     if (!authLoading) initRoom();
   }, [roomId, router, authLoading]);
 
+  // POLL FOR VIDEO PROCESSING STATUS
+  useEffect(() => {
+    if (!video || video.processing_status === 'ready') return;
+
+    const pollStatus = setInterval(async () => {
+      try {
+        const roomData = await api.getRoom(roomId);
+        if (roomData) {
+          const videoData = roomData.video || {
+            video_id: roomData.video_id,
+            title: roomData.title,
+            description: roomData.description || roomData.video_description,
+            stream_url: roomData.stream_url,
+            duration: roomData.duration,
+            thumbnail_url: roomData.thumbnail_url,
+            processing_status: roomData.processing_status || (roomData.video as any)?.processing_status
+          };
+          
+          if ((videoData as any).processing_status === 'ready') {
+            setVideo(videoData as any);
+            toast.success('Video is ready! Enjoy your watch party.');
+          }
+        }
+      } catch (error) {
+        console.error('[Room] Polling Error:', error);
+      }
+    }, 3000);
+
+    return () => clearInterval(pollStatus);
+  }, [roomId, video?.processing_status]);
+
   // TRACK UNMOUNTING STATUS
   useEffect(() => {
     return () => {
