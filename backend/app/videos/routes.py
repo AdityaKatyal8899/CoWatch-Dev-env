@@ -22,7 +22,7 @@ VIDEOS_DIR = os.path.join(STORAGE_DIR, "videos")
 os.makedirs(VIDEOS_DIR, exist_ok=True)
 
 @router.post("/upload")
-@limiter.limit("3/minute;10/hour")
+@limiter.limit("10/minute;50/hour")
 async def upload_video(
     request: Request,
     response: Response,
@@ -43,14 +43,17 @@ async def upload_video(
     
     input_path = os.path.join(video_dir, "original.mp4")
     
-    content = await file.read()
-    file_size_bytes = len(content)
-    
-    if current_user.storage_used + file_size_bytes > current_user.storage_limit:
-        raise HTTPException(status_code=413, detail="Storage limit exceeded. Upgrade your plan or delete existing streams.")
-        
+    # 🚀 Optimized: Stream file to disk instead of reading into RAM
+    file_size_bytes = 0
     async with aiofiles.open(input_path, 'wb') as out_file:
-        await out_file.write(content)
+        while content := await file.read(1024 * 1024): # 1MB chunks
+            file_size_bytes += len(content)
+            if current_user.storage_used + file_size_bytes > current_user.storage_limit:
+                 # Cleanup and abort if limit hit mid-upload
+                 await out_file.close()
+                 os.remove(input_path)
+                 raise HTTPException(status_code=413, detail="Storage limit exceeded.")
+            await out_file.write(content)
         
     # Generate local URL for the eventual stream.m3u8
     stream_url = f"/output/videos/{video_id}/stream.m3u8"

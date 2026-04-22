@@ -148,7 +148,7 @@ export default function Upload() {
             <>
               <div className="mb-10 text-center">
                 <h1 className="text-4xl font-black text-white mb-2 tracking-tight">Upload <span className="text-[var(--primary)]">Content</span></h1>
-                <p className="text-[var(--muted)] font-medium">Standard MP4, MKV or AVI. Up to 2GB.</p>
+                <p className="text-[var(--muted)] font-medium">Standard MP4, MKV or AVI. Up to 5GB.</p>
               </div>
 
               <div className="max-w-2xl mx-auto">
