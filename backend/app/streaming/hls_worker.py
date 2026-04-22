@@ -4,13 +4,13 @@ import json
 import time
 import shutil
 import concurrent.futures
+import threading
 from app.services.s3_service import upload_file, get_s3_client, BUCKET
 from app.database.config import SessionLocal
 from app.database.models import Video
 from app.celery_app import celery_app
 
 def update_video_status(video_id: str, status: str):
-
     db = SessionLocal()
     try:
         video = db.query(Video).filter(Video.video_id == video_id).first()
@@ -21,7 +21,6 @@ def update_video_status(video_id: str, status: str):
         db.close()
 
 def update_video_metadata(video_id: str, duration: float, thumbnail_url: str):
-
     db = SessionLocal()
     try:
         video = db.query(Video).filter(Video.video_id == video_id).first()
@@ -48,10 +47,6 @@ def fetch_initial_hls_segments(video_id: str):
     try:
         s3.download_file(BUCKET, m3u8_key, local_m3u8_path)
     except Exception as exc:
-        pass
-
-        pass
-
         return
         
     # Read playlist to find ALL segment names
@@ -60,7 +55,6 @@ def fetch_initial_hls_segments(video_id: str):
         
     segments = [line.strip() for line in lines if line.strip().endswith(".ts")]
     
-
     for segment in segments:
         segment_key = f"videos/{video_id}/{segment}"
         local_segment_path = os.path.join(local_dir, segment)
@@ -68,7 +62,6 @@ def fetch_initial_hls_segments(video_id: str):
         if not os.path.exists(local_segment_path):
             try:
                 s3.download_file(BUCKET, segment_key, local_segment_path)
-
             except Exception as exc:
                 pass
 
@@ -107,146 +100,140 @@ def is_hls_compatible(input_path: str) -> tuple[bool, float]:
     return (vid_codec == "h264" and audio_codec == "aac"), (end - start)
 
 
+def s3_sync_worker(output_dir: str, video_id: str, stop_event: threading.Event):
+    """
+    Background thread that monitors the output directory and uploads 
+    new segments to S3 in real-time while FFmpeg is still running.
+    """
+    uploaded_files = set()
+    # We use a smaller pool here to avoid overwhelming the network
+    executor = concurrent.futures.ThreadPoolExecutor(max_workers=8)
+    
+    while not stop_event.is_set() or any(f not in uploaded_files for f in os.listdir(output_dir) if f.endswith(".ts")):
+        try:
+            files = os.listdir(output_dir)
+            for filename in files:
+                file_path = os.path.join(output_dir, filename)
+                
+                # Check if it's a file we care about
+                is_media = filename.endswith(".ts") or filename.endswith(".m3u8") or filename.endswith(".jpg")
+                
+                if is_media and os.path.isfile(file_path):
+                    # We always re-upload .m3u8 as it evolves
+                    if filename not in uploaded_files or filename.endswith(".m3u8"):
+                        s3_key = f"videos/{video_id}/{filename}"
+                        content_type = "application/x-mpegURL" if filename.endswith(".m3u8") else "video/MP2T" if filename.endswith(".ts") else "image/jpeg"
+                        executor.submit(upload_file, file_path, s3_key, content_type)
+                        
+                        if not filename.endswith(".m3u8"):
+                            uploaded_files.add(filename)
+        except Exception:
+            pass
+            
+        time.sleep(2)
+        # If FFmpeg is done and all .ts files are uploaded, we can exit
+        if stop_event.is_set():
+            current_files = [f for f in os.listdir(output_dir) if f.endswith(".ts")]
+            if all(f in uploaded_files for f in current_files):
+                break
+
+    executor.shutdown(wait=True)
+
+
 @celery_app.task
 def process_video_to_hls(video_id: str, input_path: str):
-
+    """
+    Highly optimized HLS processing:
+    1. Metadata capture happens immediately.
+    2. FFmpeg starts with 'ultrafast' preset.
+    3. Background thread starts uploading segments to S3 instantly.
+    4. Video is marked 'ready' as soon as first 2 segments exist.
+    """
     total_start = time.perf_counter()
-
     output_dir = os.path.dirname(input_path)
     stream_playlist = os.path.join(output_dir, "stream.m3u8")
 
-    # Update status to processing
     update_video_status(video_id, "processing")
 
-    # 1. Capture Metadata (Duration and Thumbnail)
-
-    
-    # Duration
-    probe_duration_cmd = [
-        "ffprobe", "-v", "error", "-show_entries", "format=duration",
-        "-of", "default=noprint_wrappers=1:nokey=1", input_path
-    ]
+    # 1. Capture Metadata
+    probe_duration_cmd = ["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", input_path]
     exact_duration = 0.0
     try:
         dur_res = subprocess.run(probe_duration_cmd, capture_output=True, text=True)
         exact_duration = float(dur_res.stdout.strip())
-    except Exception as exc:
-        pass
+    except: pass
 
-        pass
-
-        pass
-
-
-    # Thumbnail (Capture at 2 seconds)
     thumbnail_path = os.path.join(output_dir, "thumbnail.jpg")
-    thumbnail_cmd = [
-        "ffmpeg", "-y", "-i", input_path,
-        "-ss", "00:00:02.000", "-vframes", "1",
-        thumbnail_path
-    ]
-    thumbnail_url = None
+    thumbnail_cmd = ["ffmpeg", "-y", "-i", input_path, "-ss", "00:00:02.000", "-vframes", "1", thumbnail_path]
+    thumbnail_url = f"/output/videos/{video_id}/thumbnail.jpg"
     try:
         subprocess.run(thumbnail_cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        # Upload Thumbnail to S3
-        thumbnail_s3_key = f"videos/{video_id}/thumbnail.jpg"
-        upload_file(thumbnail_path, thumbnail_s3_key, content_type="image/jpeg")
-        # In this app, we serve thumbnails from the same origin as HLS
-        thumbnail_url = f"/output/videos/{video_id}/thumbnail.jpg"
-    except Exception as exc:
-        pass
+        upload_file(thumbnail_path, f"videos/{video_id}/thumbnail.jpg", "image/jpeg")
+    except: pass
 
-        pass
-
-        pass
-
-
-    # Update Metadata in DB
     update_video_metadata(video_id, exact_duration, thumbnail_url)
 
-    # 🔍 Compatibility check timing
-    compatible, probe_time = is_hls_compatible(input_path)
-
-    if compatible:
-
-        codec_args = ["-c", "copy"]
-    else:
-
-        codec_args = ["-c:v", "libx264", "-c:a", "aac"]
-
-    # 🎬 FFmpeg execution
-    # 🧹 Delete stale HLS output before generation
+    # 2. Cleanup old files
     for f_name in os.listdir(output_dir):
         if f_name.endswith(".ts") or f_name.endswith(".m3u8"):
-            try:
-                os.remove(os.path.join(output_dir, f_name))
-            except:
-                pass
+            try: os.remove(os.path.join(output_dir, f_name))
+            except: pass
 
-    remainder = exact_duration % 4.0
-    # If the trailing remainder is less than 1.0 second, cut it out at the source!
-    trim_duration = exact_duration - remainder if (0 < remainder < 1.0) else exact_duration
-
+    # 3. Prepare FFmpeg Args
+    # Using 'ultrafast' for speed and 'threads 0' for parallel CPU usage
     args = [
-        "ffmpeg",
-        "-y",
-        "-i", input_path
-    ]
-
-    if trim_duration and trim_duration > 0:
-        args.extend(["-t", str(trim_duration)])
-
-    args.extend(codec_args)
-    args.extend([
-        "-force_key_frames", "expr:gte(t,n_forced*1)",
-        "-hls_time", "2",                 # Consistent segment length
-        "-hls_list_size", "0",            # 0 means "Include ALL segments" (Critical for VOD)
-        "-hls_playlist_type", "vod",      # Explicitly marks the file as VOD (Critical for seekers)
-        "-start_number", "0",              # Forces segments to start at seg_000.ts
-        "-hls_flags", "independent_segments", # Improves seeking and segment alignment
+        "ffmpeg", "-y", "-i", input_path,
+        "-c:v", "libx264", "-preset", "ultrafast", "-tune", "zerolatency",
+        "-c:a", "aac", "-b:a", "128k",
+        "-force_key_frames", "expr:gte(t,n_forced*2)",
+        "-hls_time", "4",
+        "-hls_list_size", "0",
+        "-hls_playlist_type", "vod",
+        "-start_number", "0",
+        "-hls_flags", "independent_segments",
+        "-threads", "0",
         "-avoid_negative_ts", "make_zero",
         "-hls_segment_filename", os.path.join(output_dir, "seg_%03d.ts"),
         stream_playlist
-    ])
+    ]
+
+    # 4. Parallel S3 Sync Thread
+    stop_event = threading.Event()
+    sync_thread = threading.Thread(target=s3_sync_worker, args=(output_dir, video_id, stop_event))
+    sync_thread.start()
 
     try:
-        subprocess.run(args, check=True)
+        # Start FFmpeg in background
+        process = subprocess.Popen(args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         
-        # ✅ IMMEDIATE PLAYBACK ENABLED
-        # Mark as ready now so users can watch from local disk while S3 syncs
-        update_video_status(video_id, "ready")
+        # ⚡ PARALLEL SERVING: Enable playback as soon as first 2 segments exist
+        ready_marked = False
+        while process.poll() is None:
+            if not ready_marked:
+                if os.path.exists(stream_playlist):
+                    segments = [f for f in os.listdir(output_dir) if f.endswith(".ts")]
+                    if len(segments) >= 2:
+                        update_video_status(video_id, "ready")
+                        ready_marked = True
+            time.sleep(2)
 
+        process.wait()
+        
+        # Ensure it's marked ready if it was too fast
+        if not ready_marked:
+            update_video_status(video_id, "ready")
 
-        # ☁️ Parallel Upload to S3
+        # 5. Finalize S3 Sync
+        stop_event.set()
+        sync_thread.join()
 
-        files_to_upload = []
-        for filename in os.listdir(output_dir):
-            local_file_path = os.path.join(output_dir, filename)
-            if os.path.isfile(local_file_path):
-                s3_key = f"videos/{video_id}/{filename}"
-                content_type = "application/x-mpegURL" if filename.endswith(".m3u8") else "video/MP2T" if filename.endswith(".ts") else "video/mp4"
-                if filename.endswith(".jpg"):
-                    content_type = "image/jpeg"
-                files_to_upload.append((local_file_path, s3_key, content_type))
+        # 6. Cleanup
+        if os.path.exists(input_path):
+            os.remove(input_path)
 
-        # Use ThreadPoolExecutor for concurrent uploads
-        with concurrent.futures.ThreadPoolExecutor(max_workers=15) as executor:
-            future_to_file = {executor.submit(upload_file, f[0], f[1], f[2]): f[1] for f in files_to_upload}
-            for future in concurrent.futures.as_completed(future_to_file):
-                file_key = future_to_file[future]
-                try:
-                    future.result()
-                except Exception as exc:
-                    pass
-
-
-                
-        # Clean up the original mp4 after ALL uploads are done (for safety)
-        original_video_path = os.path.join(output_dir, "original.mp4")
-        if os.path.exists(original_video_path):
-            os.remove(original_video_path)
-
-
-
-    except subprocess.CalledProcessError as e:
+    except Exception as e:
         update_video_status(video_id, "failed")
+        stop_event.set()
+        if sync_thread.is_alive():
+            sync_thread.join()
+
