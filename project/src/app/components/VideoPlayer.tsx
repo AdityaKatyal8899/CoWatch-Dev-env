@@ -624,17 +624,19 @@ export function VideoPlayer({
           handleVolumeChange(volume - 0.1);
           break;
         case 'KeyM':
-          if (e.ctrlKey) {
-            e.preventDefault();
-            toggleMute();
-          }
+          e.preventDefault();
+          toggleMute();
+          break;
+        case 'KeyF':
+          e.preventDefault();
+          toggleFullscreen();
           break;
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isHost, isLocked, handlePlayPause, stepSeek, volume, handleVolumeChange, toggleMute]);
+  }, [isHost, isLocked, handlePlayPause, stepSeek, volume, handleVolumeChange, toggleMute, toggleFullscreen]);
 
   const toggleFullscreen = useCallback(() => {
     const container = containerRef.current;
@@ -688,7 +690,7 @@ export function VideoPlayer({
       <div
         className={cn(
           "absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent transition-all duration-500",
-          showControls || isLocked ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+          showControls ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
         )}
       >
         {/* Host Action Notification Overlay */}
