@@ -55,8 +55,8 @@ async def upload_video(
                  raise HTTPException(status_code=413, detail="Storage limit exceeded.")
             await out_file.write(content)
         
-    # Generate local URL for the eventual stream.m3u8
-    stream_url = f"/output/videos/{video_id}/stream.m3u8"
+    # Serve the original MP4 directly for immediate playback
+    stream_url = f"/output/videos/{video_id}/original.mp4"
         
     # Persist to SQLAlchemy
     new_video = models.Video(
@@ -65,7 +65,7 @@ async def upload_video(
         title=title,
         description=description,
         stream_url=stream_url,
-        processing_status='pending',
+        processing_status='ready',
         file_size=file_size_bytes
     )
     
@@ -101,7 +101,7 @@ async def upload_video(
 
         
     # Trigger Celery task
-    process_video_to_hls.delay(video_id, input_path)
+    # process_video_to_hls.delay(video_id, input_path)
 
     return {
         "video_id": video_id,

@@ -401,27 +401,7 @@ export default function Room() {
 
 
 
-            {/* Preparation & Loading Overlay (only if processing) */}
-            {isVideoProcessing && (
-              <div className="absolute inset-0 z-50 bg-[#0B0B0F] flex flex-col items-center justify-center p-12 text-center">
-                <div className="relative mb-10">
-                   <div className="absolute inset-0 bg-[var(--primary)]/10 blur-[120px] rounded-full" />
-                   <div className="relative w-16 h-16 rounded-3xl bg-white/[0.02] border border-white/5 flex items-center justify-center animate-pulse">
-                      <Play className="w-8 h-8 text-white/10" fill="currentColor" />
-                   </div>
-                </div>
-                
-                <div className="space-y-4 max-w-sm">
-                   <h3 className="heading-section">
-                     {isVideoProcessing ? "Optimizing content..." : "Waiting for playback"}
-                   </h3>
-                   <p className="text-body text-center">
-                     {isVideoProcessing ? "Generating adaptive stream segments for high-fidelity playback." :
-                      "Standby. The host will initiate the shared experience shortly."}
-                   </p>
-                </div>
-              </div>
-            )}
+
 
 
           </div>

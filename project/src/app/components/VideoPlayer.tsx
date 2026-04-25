@@ -114,7 +114,10 @@ export function VideoPlayer({
     initializingRef.current = true;
     const fullSourceUrl = api.getStreamUrl(streamUrl);
 
-    if (Hls.isSupported()) {
+    if (streamUrl.endsWith('.mp4')) {
+      video.src = fullSourceUrl;
+      setIsStreamReady(true);
+    } else if (Hls.isSupported()) {
       const hls = new Hls({
         enableWorker: true,
         lowLatencyMode: true,
