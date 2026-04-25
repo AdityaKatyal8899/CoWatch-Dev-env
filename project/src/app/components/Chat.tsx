@@ -56,8 +56,8 @@ export function Chat({
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#0B0B0F]">
-      <div className="flex-1 overflow-hidden relative flex flex-col">
+    <div className="flex flex-col h-full bg-[#0B0B0F] min-h-0">
+      <div className="flex-1 overflow-hidden relative flex flex-col min-h-0">
         {/* Messages Area */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin">
           {messages.length === 0 ? (
