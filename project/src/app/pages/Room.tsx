@@ -358,7 +358,7 @@ export default function Room() {
       </AnimatePresence>
 
       {/* Main Container */}
-      <div className="flex-1 flex flex-col lg:flex-row overflow-x-hidden overflow-y-auto lg:overflow-hidden relative">
+      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden relative min-h-0">
         
         {/* Stream Area */}
         <div className="w-full lg:flex-1 flex flex-col min-w-0 lg:h-full shrink-0">
@@ -428,7 +428,7 @@ export default function Room() {
         </div>
 
         {/* Sidebar (Chat & Tabs) */}
-        <div className="w-full lg:w-[380px] bg-[#0B0B0F] border-t lg:border-t-0 lg:border-l border-white/5 flex flex-col lg:h-full shrink-0 min-h-[500px] lg:min-h-0">
+        <div className="w-full lg:w-[380px] bg-[#0B0B0F] border-t lg:border-t-0 lg:border-l border-white/5 flex flex-col flex-1 lg:flex-none lg:h-full shrink-0 min-h-0">
           {/* Tabs Header */}
           <div className="flex border-b border-white/5 p-1.5 gap-1.5">
             <button
