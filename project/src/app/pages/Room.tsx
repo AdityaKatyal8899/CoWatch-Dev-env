@@ -2,11 +2,10 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { MessageSquare, Users, Menu, X, Play, Clock, Share2, AlertCircle } from 'lucide-react';
+
 import { TopBar } from '../components/TopBar';
 import { VideoPlayer } from '../components/VideoPlayer';
 import { Chat } from '../components/Chat';
-import { Participants } from '../components/Participants';
 import { InvitePanel } from '../components/InvitePanel';
 import { api } from '../lib/api';
 import { createWebSocket, RealWebSocket } from '../lib/websocket';

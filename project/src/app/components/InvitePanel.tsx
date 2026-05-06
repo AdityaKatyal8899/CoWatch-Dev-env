@@ -1,6 +1,6 @@
 "use client";
 
-import { Share2, Copy, Check, QrCode, User as UserIcon, Calendar, Info } from 'lucide-react';
+import { Copy, Check, QrCode, Info } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { Room } from '../lib/types';

@@ -1,5 +1,7 @@
+"use client";
+
 import { useState, useEffect, useRef } from 'react';
-import { Send, MessageSquare, Share2 } from 'lucide-react';
+import { Send } from 'lucide-react';
 import type { ChatMessage, Room } from '../lib/types';
 import { InvitePanel } from './InvitePanel';
 
