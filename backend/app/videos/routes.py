@@ -101,7 +101,7 @@ async def upload_video(
 
         
     # Trigger Celery task
-    # process_video_to_hls.delay(video_id, input_path)
+    process_video_to_hls.delay(video_id, input_path)
 
     return {
         "video_id": video_id,
