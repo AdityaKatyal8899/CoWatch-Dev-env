@@ -15,7 +15,7 @@ import { toast } from 'sonner';
 import { Loader } from '../components/ui/Loader';
 import { ConfirmModal } from '../components/ui/modal';
 import { cn } from '../lib/utils';
-import { motion, AnimatePresence } from 'motion/react';
+
 
 export default function Room() {
   const params = useParams();
@@ -331,12 +331,10 @@ export default function Room() {
       />
 
       {/* SESSION ENDED OVERLAY */}
-      <AnimatePresence>
+      <>
         {isDisbanding && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 backdrop-blur-xl"
+          <div 
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 backdrop-blur-xl transition-opacity duration-300"
           >
             <div className="text-center max-w-sm px-8">
               <div className="inline-flex items-center justify-center w-16 h-16 rounded-3xl bg-red-500/10 mb-8 border border-red-500/20">
@@ -352,9 +350,9 @@ export default function Room() {
                 </span>
               </div>
             </div>
-          </motion.div>
+          </div>
         )}
-      </AnimatePresence>
+      </>
 
       {/* Main Container */}
       <div className="flex-1 flex flex-col lg:flex-row overflow-hidden relative min-h-0">

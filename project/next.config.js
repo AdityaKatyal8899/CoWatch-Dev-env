@@ -10,6 +10,7 @@ const nextConfig = {
   experimental: {
     optimizePackageImports: [],
   },
+  swcMinify: false,
 };
 
 

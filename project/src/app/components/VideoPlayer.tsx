@@ -7,7 +7,7 @@ import type { SyncState } from '../lib/types';
 import { api } from '../lib/api';
 import { cn } from '../lib/utils';
 import { Loader } from './ui/Loader';
-import { motion, AnimatePresence } from 'motion/react';
+
 
 interface VideoPlayerProps {
   streamUrl: string;

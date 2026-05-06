@@ -1,6 +1,5 @@
 "use client";
 
-import { motion } from "motion/react";
 import { cn } from "./utils";
 
 interface LoaderProps {
@@ -20,19 +19,16 @@ export function Loader({ className, size = "md", label, fullscreen }: LoaderProp
   const loaderContent = (
     <div className={cn("flex flex-col items-center justify-center gap-6", className)}>
       <div className="relative">
-        <motion.div
+        <div
           className={cn(
-            "rounded-full border-t-[var(--primary)] border-r-[var(--primary)] border-b-white/5 border-l-white/5",
+            "rounded-full border-t-[var(--primary)] border-r-[var(--primary)] border-b-white/5 border-l-white/5 animate-spin",
             sizeClasses[size]
           )}
-          animate={{ rotate: 360 }}
-          transition={{
-            duration: 1,
-            repeat: Infinity,
-            ease: "linear",
-          }}
           style={{
             boxShadow: size === "lg" ? "0 0 40px var(--primary)" : "none",
+            animationDuration: "1s",
+            animationTimingFunction: "linear",
+            animationIterationCount: "infinite",
           }}
         />
         {size === "lg" && (
@@ -42,10 +38,8 @@ export function Loader({ className, size = "md", label, fullscreen }: LoaderProp
         )}
       </div>
       {label && (
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex flex-col items-center gap-2"
+        <div
+          className="flex flex-col items-center gap-2 animate-in fade-in slide-in-from-bottom-2"
         >
           <p className={cn(
             "text-white font-black uppercase tracking-[0.3em] italic",
@@ -58,7 +52,7 @@ export function Loader({ className, size = "md", label, fullscreen }: LoaderProp
              <div className="w-1 h-1 bg-[var(--primary)] rounded-full animate-bounce [animation-delay:-0.15s]" />
              <div className="w-1 h-1 bg-[var(--primary)] rounded-full animate-bounce" />
           </div>
-        </motion.div>
+        </div>
       )}
     </div>
   );
