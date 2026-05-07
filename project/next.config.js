@@ -7,10 +7,6 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  experimental: {
-    optimizePackageImports: [],
-  },
-  swcMinify: false,
 };
 
 
