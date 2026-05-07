@@ -1,15 +1,22 @@
 "use client";
 
-import { 
-  LogOut, Crown, Eye, Link, Play, 
-  Pause, Volume2, VolumeX, Maximize, 
-  Settings, Lock, Unlock, RotateCcw, RotateCw, 
-  Send, Copy, Check, QrCode, Info, X 
-} from 'lucide-react';
-
-export {
-  LogOut, Crown, Eye, Link, Play, 
-  Pause, Volume2, VolumeX, Maximize, 
-  Settings, Lock, Unlock, RotateCcw, RotateCw, 
-  Send, Copy, Check, QrCode, Info, X
-};
+export { default as LogOut } from 'lucide-react/dist/esm/icons/log-out';
+export { default as Crown } from 'lucide-react/dist/esm/icons/crown';
+export { default as Eye } from 'lucide-react/dist/esm/icons/eye';
+export { default as Link } from 'lucide-react/dist/esm/icons/link';
+export { default as Play } from 'lucide-react/dist/esm/icons/play';
+export { default as Pause } from 'lucide-react/dist/esm/icons/pause';
+export { default as Volume2 } from 'lucide-react/dist/esm/icons/volume-2';
+export { default as VolumeX } from 'lucide-react/dist/esm/icons/volume-x';
+export { default as Maximize } from 'lucide-react/dist/esm/icons/maximize';
+export { default as Settings } from 'lucide-react/dist/esm/icons/settings';
+export { default as Lock } from 'lucide-react/dist/esm/icons/lock';
+export { default as Unlock } from 'lucide-react/dist/esm/icons/unlock';
+export { default as RotateCcw } from 'lucide-react/dist/esm/icons/rotate-ccw';
+export { default as RotateCw } from 'lucide-react/dist/esm/icons/rotate-cw';
+export { default as Send } from 'lucide-react/dist/esm/icons/send';
+export { default as Copy } from 'lucide-react/dist/esm/icons/copy';
+export { default as Check } from 'lucide-react/dist/esm/icons/check';
+export { default as QrCode } from 'lucide-react/dist/esm/icons/qr-code';
+export { default as Info } from 'lucide-react/dist/esm/icons/info';
+export { default as X } from 'lucide-react/dist/esm/icons/x';
