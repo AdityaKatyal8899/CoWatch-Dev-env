@@ -3,17 +3,19 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 
-import { TopBar } from '../components/TopBar';
-import { VideoPlayer } from '../components/VideoPlayer';
-import { Chat } from '../components/Chat';
-import { InvitePanel } from '../components/InvitePanel';
+import dynamic from 'next/dynamic';
 import { api } from '../lib/api';
+
+const TopBar = dynamic(() => import('../components/TopBar').then(mod => ({ default: mod.TopBar })), { ssr: false });
+const VideoPlayer = dynamic(() => import('../components/VideoPlayer').then(mod => ({ default: mod.VideoPlayer })), { ssr: false });
+const Chat = dynamic(() => import('../components/Chat').then(mod => ({ default: mod.Chat })), { ssr: false });
+const InvitePanel = dynamic(() => import('../components/InvitePanel').then(mod => ({ default: mod.InvitePanel })), { ssr: false });
 import { createWebSocket, RealWebSocket } from '../lib/websocket';
 import type { Room as RoomType, User, Video, ChatMessage, SyncState } from '../lib/types';
 import { useAuth } from '../lib/auth';
 import { toast } from 'sonner';
 import { Loader } from '../components/ui/Loader';
-import { ConfirmModal } from '../components/ui/modal';
+const ConfirmModal = dynamic(() => import('../components/ui/modal').then(mod => ({ default: mod.ConfirmModal })), { ssr: false });
 import { cn } from '../lib/utils';
 
 
