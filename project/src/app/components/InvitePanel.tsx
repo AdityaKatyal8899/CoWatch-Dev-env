@@ -1,6 +1,6 @@
 "use client";
 
-import { Copy, Check, QrCode, Info } from 'lucide-react';
+import { Copy, Check, QrCode, Info } from './icons';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { Room } from '../lib/types';

@@ -1,6 +1,6 @@
 "use client";
 
-import { LogOut, Crown, Eye, Link, Play } from 'lucide-react';
+import { LogOut, Crown, Eye, Link, Play } from './icons';
 import { toast } from 'sonner';
 
 interface TopBarProps {
