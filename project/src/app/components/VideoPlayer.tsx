@@ -599,6 +599,19 @@ export function VideoPlayer({
     }
   }, [isMuted, volume]);
 
+  const toggleFullscreen = useCallback(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    if (!document.fullscreenElement) {
+      container.requestFullscreen().catch(err => {
+
+      });
+    } else {
+      document.exitFullscreen();
+    }
+  }, []);
+
   // Keyboard Shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -640,18 +653,6 @@ export function VideoPlayer({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isHost, isLocked, handlePlayPause, stepSeek, volume, handleVolumeChange, toggleMute, toggleFullscreen]);
 
-  const toggleFullscreen = useCallback(() => {
-    const container = containerRef.current;
-    if (!container) return;
-
-    if (!document.fullscreenElement) {
-      container.requestFullscreen().catch(err => {
-
-      });
-    } else {
-      document.exitFullscreen();
-    }
-  }, []);
 
   const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
 
