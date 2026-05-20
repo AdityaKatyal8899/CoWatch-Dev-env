@@ -31,6 +31,19 @@ def update_video_metadata(video_id: str, duration: float, thumbnail_url: str):
     finally:
         db.close()
 
+def update_stream_url(video_id: str, stream_url: str):
+    db = SessionLocal()
+    try:
+        video = db.query(Video).filter(Video.video_id == video_id).first()
+        if video:
+            video.stream_url = stream_url
+            db.commit()
+    except Exception as e:
+        db.rollback()
+        raise e
+    finally:
+        db.close()
+
 def fetch_initial_hls_segments(video_id: str):
     """
     Downloads the entire HLS playlist and ALL segments from S3 into the local drive.
@@ -100,7 +113,7 @@ def is_hls_compatible(input_path: str) -> tuple[bool, float]:
     return (vid_codec == "h264" and audio_codec == "aac"), (end - start)
 
 
-def s3_sync_worker(output_dir: str, video_id: str, stop_event: threading.Event):
+def s3_sync_worker(output_dir: str, video_id: str, stop_event: threading.Event, error_container: list):
     """
     Background thread that monitors the output directory and uploads 
     new segments to S3 in real-time while FFmpeg is still running.
@@ -108,36 +121,44 @@ def s3_sync_worker(output_dir: str, video_id: str, stop_event: threading.Event):
     uploaded_files = set()
     # We use a smaller pool here to avoid overwhelming the network
     executor = concurrent.futures.ThreadPoolExecutor(max_workers=8)
+    futures = []
     
-    while not stop_event.is_set() or any(f not in uploaded_files for f in os.listdir(output_dir) if f.endswith(".ts")):
+    try:
+        while not stop_event.is_set() or any(f not in uploaded_files for f in os.listdir(output_dir) if f.endswith(".ts")):
+            try:
+                files = os.listdir(output_dir)
+                for filename in files:
+                    file_path = os.path.join(output_dir, filename)
+                    
+                    # Check if it's a file we care about
+                    is_media = filename.endswith(".ts") or filename.endswith(".m3u8") or filename.endswith(".jpg")
+                    
+                    if is_media and os.path.isfile(file_path):
+                        # We always re-upload .m3u8 as it evolves
+                        if filename not in uploaded_files or filename.endswith(".m3u8"):
+                            s3_key = f"videos/{video_id}/{filename}"
+                            content_type = "application/x-mpegURL" if filename.endswith(".m3u8") else "video/MP2T" if filename.endswith(".ts") else "image/jpeg"
+                            future = executor.submit(upload_file, file_path, s3_key, content_type)
+                            futures.append(future)
+                            
+                            if not filename.endswith(".m3u8"):
+                                uploaded_files.add(filename)
+            except Exception:
+                pass
+                
+            time.sleep(2)
+            # If FFmpeg is done and all .ts files are uploaded, we can exit
+            if stop_event.is_set():
+                current_files = [f for f in os.listdir(output_dir) if f.endswith(".ts")]
+                if all(f in uploaded_files for f in current_files):
+                    break
+    finally:
+        executor.shutdown(wait=True)
         try:
-            files = os.listdir(output_dir)
-            for filename in files:
-                file_path = os.path.join(output_dir, filename)
-                
-                # Check if it's a file we care about
-                is_media = filename.endswith(".ts") or filename.endswith(".m3u8") or filename.endswith(".jpg")
-                
-                if is_media and os.path.isfile(file_path):
-                    # We always re-upload .m3u8 as it evolves
-                    if filename not in uploaded_files or filename.endswith(".m3u8"):
-                        s3_key = f"videos/{video_id}/{filename}"
-                        content_type = "application/x-mpegURL" if filename.endswith(".m3u8") else "video/MP2T" if filename.endswith(".ts") else "image/jpeg"
-                        executor.submit(upload_file, file_path, s3_key, content_type)
-                        
-                        if not filename.endswith(".m3u8"):
-                            uploaded_files.add(filename)
-        except Exception:
-            pass
-            
-        time.sleep(2)
-        # If FFmpeg is done and all .ts files are uploaded, we can exit
-        if stop_event.is_set():
-            current_files = [f for f in os.listdir(output_dir) if f.endswith(".ts")]
-            if all(f in uploaded_files for f in current_files):
-                break
-
-    executor.shutdown(wait=True)
+            for future in futures:
+                future.result()
+        except Exception as e:
+            error_container.append(e)
 
 
 @celery_app.task
@@ -145,9 +166,10 @@ def process_video_to_hls(video_id: str, input_path: str):
     """
     Highly optimized HLS processing:
     1. Metadata capture happens immediately.
-    2. FFmpeg starts with 'ultrafast' preset.
-    3. Background thread starts uploading segments to S3 instantly.
-    4. Video is marked 'ready' as soon as first 2 segments exist.
+    2. FFmpeg processes the video.
+    3. Background thread uploads segments to S3.
+    4. Database stream_url and status are updated only upon successful completion of all steps.
+    5. Clean up original file only after database successfully updated.
     """
     total_start = time.perf_counter()
     output_dir = os.path.dirname(input_path)
@@ -180,7 +202,6 @@ def process_video_to_hls(video_id: str, input_path: str):
             except: pass
 
     # 3. Prepare FFmpeg Args
-    # Using 'ultrafast' for speed and 'threads 0' for parallel CPU usage
     args = [
         "ffmpeg", "-y", "-i", input_path,
         "-c:v", "libx264", "-preset", "ultrafast", "-tune", "zerolatency",
@@ -198,36 +219,35 @@ def process_video_to_hls(video_id: str, input_path: str):
     ]
 
     # 4. Parallel S3 Sync Thread
+    error_container = []
     stop_event = threading.Event()
-    sync_thread = threading.Thread(target=s3_sync_worker, args=(output_dir, video_id, stop_event))
+    sync_thread = threading.Thread(target=s3_sync_worker, args=(output_dir, video_id, stop_event, error_container))
     sync_thread.start()
 
     try:
-        # Start FFmpeg in background
+        # Start FFmpeg and wait for completion
         process = subprocess.Popen(args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        
-        # ⚡ PARALLEL SERVING: Enable playback as soon as first 2 segments exist
-        ready_marked = False
-        while process.poll() is None:
-            if not ready_marked:
-                if os.path.exists(stream_playlist):
-                    segments = [f for f in os.listdir(output_dir) if f.endswith(".ts")]
-                    if len(segments) >= 2:
-                        update_video_status(video_id, "ready")
-                        ready_marked = True
-            time.sleep(2)
-
         process.wait()
         
-        # Ensure it's marked ready if it was too fast
-        if not ready_marked:
-            update_video_status(video_id, "ready")
+        if process.returncode != 0:
+            raise Exception(f"FFmpeg failed with exit code {process.returncode}")
+
+        if not os.path.exists(stream_playlist):
+            raise Exception("FFmpeg completed but stream.m3u8 playlist was not generated")
 
         # 5. Finalize S3 Sync
         stop_event.set()
         sync_thread.join()
 
-        # 6. Cleanup
+        # Check S3 upload errors
+        if error_container:
+            raise error_container[0]
+
+        # Update database: stream_url first, then status to ready
+        update_stream_url(video_id, f"/output/videos/{video_id}/stream.m3u8")
+        update_video_status(video_id, "ready")
+
+        # 6. Cleanup original file only after database successfully updated
         if os.path.exists(input_path):
             os.remove(input_path)
 
@@ -236,4 +256,5 @@ def process_video_to_hls(video_id: str, input_path: str):
         stop_event.set()
         if sync_thread.is_alive():
             sync_thread.join()
+        raise e
 

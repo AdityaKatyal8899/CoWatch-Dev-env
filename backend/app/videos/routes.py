@@ -55,17 +55,14 @@ async def upload_video(
                  raise HTTPException(status_code=413, detail="Storage limit exceeded.")
             await out_file.write(content)
         
-    # Serve the original MP4 directly for immediate playback
-    stream_url = f"/output/videos/{video_id}/original.mp4"
-        
     # Persist to SQLAlchemy
     new_video = models.Video(
         video_id=video_id,
         user_id=current_user.id,
         title=title,
         description=description,
-        stream_url=stream_url,
-        processing_status='ready',
+        stream_url=None,
+        processing_status='processing',
         file_size=file_size_bytes
     )
     
