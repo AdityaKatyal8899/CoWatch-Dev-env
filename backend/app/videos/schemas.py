@@ -11,7 +11,7 @@ class VideoCreate(VideoBase):
 
 class VideoResponse(VideoBase):
     video_id: str
-    stream_url: str
+    stream_url: Optional[str] = None
     processing_status: str
     file_size: int
     duration: Optional[float] = None
