@@ -31,8 +31,6 @@ CoWatch is built using a modern, scalable technology stack:
 - **Message Broker:** Redis for Celery coordination.
 - **Database:** PostgreSQL (via SQLAlchemy) for user, room, and metadata management.
 
-> *Note:* Video segments are currently processed and saved onto local storage, S3 integration is planned for the future.
-
 ---
 
 ## 🚀 Getting Started
