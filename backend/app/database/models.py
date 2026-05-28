@@ -34,8 +34,27 @@ class Video(Base):
     title = Column(String, nullable=False)
     description = Column(String)
     s3_key = Column(String, nullable=True)
-    stream_url = Column(String, nullable=True)
+    _stream_url = Column("stream_url", String, nullable=True)
     processing_status = Column(String, default="pending") # pending, processing, ready, failed
+
+    @property
+    def stream_url(self):
+        if not self._stream_url:
+            return None
+        if self._stream_url.startswith("/output/videos/"):
+            import os
+            cdn_url = os.getenv("CDN_URL", "").strip()
+            if not cdn_url.startswith(("http://", "https://")):
+                cdn_url = "https://" + cdn_url
+            parts = self._stream_url.split("/")
+            if len(parts) >= 5:
+                video_id = parts[3]
+                return f"{cdn_url.rstrip('/')}/videos/{video_id}/stream.m3u8"
+        return self._stream_url
+
+    @stream_url.setter
+    def stream_url(self, value):
+        self._stream_url = value
     file_size = Column(BigInteger)
     duration = Column(Float)
     thumbnail_url = Column(String)
@@ -52,8 +71,27 @@ class Room(Base):
     title = Column(String, nullable=True)
     host_id = Column(String, nullable=True) # Changed from UUID to String for guest support
     video_id = Column(Integer, ForeignKey("videos.id", ondelete="SET NULL"))
-    stream_url = Column(String, nullable=True) # Cached stream URL
+    _stream_url = Column("stream_url", String, nullable=True) # Cached stream URL
     scheduled_time = Column(DateTime(timezone=True))
+
+    @property
+    def stream_url(self):
+        if not self._stream_url:
+            return None
+        if self._stream_url.startswith("/output/videos/"):
+            import os
+            cdn_url = os.getenv("CDN_URL", "").strip()
+            if not cdn_url.startswith(("http://", "https://")):
+                cdn_url = "https://" + cdn_url
+            parts = self._stream_url.split("/")
+            if len(parts) >= 5:
+                video_id = parts[3]
+                return f"{cdn_url.rstrip('/')}/videos/{video_id}/stream.m3u8"
+        return self._stream_url
+
+    @stream_url.setter
+    def stream_url(self, value):
+        self._stream_url = value
     stream_status = Column(String, default="waiting") # waiting, live, paused, ended
     countdown_start = Column(DateTime(timezone=True))
     is_playing = Column(Boolean, default=False)

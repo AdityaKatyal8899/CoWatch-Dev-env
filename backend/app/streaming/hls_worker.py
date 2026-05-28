@@ -244,7 +244,11 @@ def process_video_to_hls(video_id: str, input_path: str):
             raise error_container[0]
 
         # Update database: stream_url first, then status to ready
-        update_stream_url(video_id, f"/output/videos/{video_id}/stream.m3u8")
+        cdn_url = os.getenv("CDN_URL", "").strip()
+        if not cdn_url.startswith(("http://", "https://")):
+            cdn_url = "https://" + cdn_url
+        new_stream_url = f"{cdn_url.rstrip('/')}/videos/{video_id}/stream.m3u8"
+        update_stream_url(video_id, new_stream_url)
         update_video_status(video_id, "ready")
 
         # 6. Cleanup original file only after database successfully updated
