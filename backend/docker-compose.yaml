@@ -46,6 +46,15 @@ services:
       - "6379:6379"
     restart: unless-stopped
 
+  livekit_worker:
+    image: livekit/livekit-server:latest
+    container_name: cowatch_livekit
+    ports:
+      - "7880:7880"
+      - "7881:7881"
+      - "7882:7882/udp"
+    restart: unless-stopped
+
 volumes:
   hls_data:
   hls_output:

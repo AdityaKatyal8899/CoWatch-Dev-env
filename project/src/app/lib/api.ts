@@ -186,6 +186,13 @@ export const api = {
     });
   },
 
+  async getLiveKitToken(room: string, username: string, userId?: string): Promise<{ token: string; url: string }> {
+    return request('/livekit/token', {
+      method: 'POST',
+      body: JSON.stringify({ room, username, user_id: userId }),
+    });
+  },
+
   /**
    * Constructs the full URL for a stream asset by prepending the backend origin.
    */
