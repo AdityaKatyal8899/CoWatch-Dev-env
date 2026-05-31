@@ -13,6 +13,8 @@ services:
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
       - DB_HOST=host.docker.internal
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       - redis
     volumes:
@@ -32,6 +34,8 @@ services:
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
       - DB_HOST=host.docker.internal
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       - redis
     volumes:
@@ -46,13 +50,11 @@ services:
       - "6379:6379"
     restart: unless-stopped
 
-  livekit_worker:
+  livekit:
     image: livekit/livekit-server:latest
     container_name: cowatch_livekit
-    ports:
-      - "7880:7880"
-      - "7881:7881"
-      - "7882:7882/udp"
+    command: --dev --keys "devkey: secret"
+    network_mode: host
     restart: unless-stopped
 
 volumes:
