@@ -36,4 +36,4 @@ class LiveKitService:
 
 
 #Docker command to start livekit server
-#docker run --rm -p 7880:7880 -p 7881:7881 -p 7882:7882/udp -e LIVEKIT_KEYS="devkey: secret" livekit/livekit-server:latest --dev --node-ip 127.0.0.1
+#docker run --rm -p 7880:7880 -p 7881:7881 -p 7882:7882/udp -e LIVEKIT_KEYS: "${LIVEKIT_API_KEY}: ${LIVEKIT_API_SECRET}" livekit/livekit-server:latest --dev --node-ip 127.0.0.1
