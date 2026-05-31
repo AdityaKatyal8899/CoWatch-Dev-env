@@ -85,7 +85,10 @@ export class RealWebSocket {
       // Backend sync message
       this.handlers.forEach(handler => handler({
         type: 'sync',
-        data: { currentTime: message.timestamp }
+        data: { 
+          currentTime: message.data?.currentTime,
+          participant_count: message.data?.participant_count
+        }
       }));
     } else if (message.type === 'chat') {
       this.handlers.forEach(handler => handler({

@@ -202,25 +202,55 @@ export default function Room() {
       switch (message.type) {
         case 'room_state':
           const data = message.data as SyncState & { participant_count?: number };
-          setSyncState({
+          const isValidRoomStateTime = data.currentTime !== undefined && 
+                                       data.currentTime !== null && 
+                                       !isNaN(Number(data.currentTime)) && 
+                                       isFinite(Number(data.currentTime));
+          
+          if (!isValidRoomStateTime) {
+            console.warn(`[Room] Ignored invalid room_state currentTime:`, data.currentTime);
+          }
+
+          setSyncState(prev => ({
             streamStatus: data.streamStatus || 'waiting',
             isPlaying: data.isPlaying,
-            currentTime: data.currentTime,
+            currentTime: isValidRoomStateTime ? Number(data.currentTime) : prev.currentTime,
             startedAt: data.startedAt,
             updatedAt: data.updatedAt,
-          });
+          }));
 
           if (data.participant_count !== undefined) {
             setParticipantCount(data.participant_count);
           }
           break;
         case 'seek':
-          setSyncState(prev => ({ ...prev, currentTime: message.data.currentTime }));
-          setSeekTrigger(Date.now());
+          const seekTime = message.data?.currentTime;
+          const isValidSeekTime = seekTime !== undefined && 
+                                  seekTime !== null && 
+                                  !isNaN(Number(seekTime)) && 
+                                  isFinite(Number(seekTime));
+          
+          if (!isValidSeekTime) {
+            console.warn(`[Room] Ignored invalid seek currentTime:`, seekTime);
+          } else {
+            setSyncState(prev => ({ ...prev, currentTime: Number(seekTime) }));
+            setSeekTrigger(Date.now());
+          }
           break;
         case 'sync':
-          setSyncState(prev => ({ ...prev, currentTime: message.data.currentTime }));
-          if (message.data.participant_count !== undefined) {
+          const syncTime = message.data?.currentTime;
+          const isValidSyncTime = syncTime !== undefined && 
+                                  syncTime !== null && 
+                                  !isNaN(Number(syncTime)) && 
+                                  isFinite(Number(syncTime));
+          
+          if (!isValidSyncTime) {
+            console.warn(`[Room] Ignored invalid sync currentTime:`, syncTime);
+          } else {
+            setSyncState(prev => ({ ...prev, currentTime: Number(syncTime) }));
+          }
+          
+          if (message.data?.participant_count !== undefined) {
             setParticipantCount(message.data.participant_count);
           }
           break;
