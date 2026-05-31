@@ -365,6 +365,8 @@ export default function Room() {
           currentUser={currentUser} 
           hostId={room.host_id}
           isHost={isHost}
+          roomId={room.room_id}
+          roomParticipants={room.participants}
         />
 
         {/* Stream Area */}
@@ -393,7 +395,7 @@ export default function Room() {
             </div>
           </div>
 
-          <div className="w-full aspect-video lg:flex-1 lg:aspect-auto p-0 lg:p-6 overflow-hidden relative bg-black shrink-0">
+          <div id="video-player-container" className="w-full aspect-video lg:flex-1 lg:aspect-auto p-0 lg:p-6 overflow-hidden relative bg-black shrink-0">
             <VideoPlayer
               streamUrl={video.stream_url}
               isHost={isHost}
