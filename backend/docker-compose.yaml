@@ -58,6 +58,7 @@ services:
       - .env
     environment:
       - REDIS_HOST=
+      - "LIVEKIT_KEYS=${LIVEKIT_API_KEY}: ${LIVEKIT_API_SECRET}"
     network_mode: host
     restart: unless-stopped
 
