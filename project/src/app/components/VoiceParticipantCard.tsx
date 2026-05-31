@@ -33,17 +33,17 @@ export function VoiceParticipantCard({ participant, themeColor }: VoiceParticipa
   return (
     <div
       className={cn(
-        "flex items-center transition-all duration-300 select-none",
+        "flex transition-all duration-300 select-none items-center",
         // Desktop: Stack vertically (avatar top, name bottom), centered
         // Mobile: Align horizontally (avatar left, name right)
-        "flex-row lg:flex-col gap-2.5 lg:gap-1.5 p-1 lg:p-1.5 justify-start lg:justify-center lg:text-center w-full"
+        "flex-row lg:flex-col gap-3 lg:gap-2 p-1.5 w-full lg:justify-center lg:text-center"
       )}
     >
       {/* Speaking Indicator around Avatar */}
       <SpeakingIndicator isSpeaking={participant.isSpeaking} themeColor={themeColor}>
         <div
           className={cn(
-            "w-9 h-9 lg:w-11 lg:h-11 rounded-full flex items-center justify-center text-xs lg:text-sm font-bold transition-all duration-300 border shadow-inner shrink-0 overflow-hidden",
+            "w-10 h-10 lg:w-12 lg:h-12 rounded-full flex items-center justify-center text-xs lg:text-sm font-bold transition-all duration-300 border shadow-inner shrink-0 overflow-hidden relative",
             participant.isSpeaking
               ? "bg-white/10 text-white"
               : "bg-white/5 text-white/50 border-white/10"
@@ -63,11 +63,11 @@ export function VoiceParticipantCard({ participant, themeColor }: VoiceParticipa
       </SpeakingIndicator>
 
       {/* Participant Details */}
-      <div className="flex flex-row lg:flex-col items-center gap-1.5 min-w-0 text-left lg:text-center">
+      <div className="flex flex-row lg:flex-col items-center gap-1.5 min-w-0 text-left lg:text-center justify-start lg:justify-center">
         <span 
           className={cn(
-            "text-[9px] lg:text-[10px] font-semibold tracking-wide truncate max-w-[125px] lg:max-w-[80px]",
-            participant.isLocal ? "text-[var(--primary)] font-bold" : "text-white/85"
+            "text-xs lg:text-[11px] font-semibold tracking-wide truncate max-w-[130px] lg:max-w-[85px]",
+            participant.isLocal ? "text-[var(--primary)] font-bold animate-pulse" : "text-white/90"
           )}
         >
           {participant.name}
@@ -76,7 +76,7 @@ export function VoiceParticipantCard({ participant, themeColor }: VoiceParticipa
         {/* Host Crown Badge */}
         {participant.isHost && (
           <span title="Host / Presenter" className="inline-flex shrink-0">
-            <Crown className="w-3 h-3 text-amber-500" fill="currentColor" />
+            <Crown className="w-3.5 h-3.5 text-amber-500" fill="currentColor" />
           </span>
         )}
       </div>

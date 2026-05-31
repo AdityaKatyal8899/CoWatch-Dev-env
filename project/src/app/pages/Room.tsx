@@ -370,8 +370,8 @@ export default function Room() {
         />
 
         {/* Stream Area */}
-        <div className="w-full lg:flex-1 flex flex-col min-w-0 lg:h-full shrink-0">
-          <div className="px-4 lg:px-6 py-3 bg-[#0B0B0F] border-b border-white/5 flex items-center justify-between">
+        <div className="w-full lg:flex-1 flex flex-col min-w-0 lg:h-full shrink-0 order-1 lg:order-none">
+          <div className="px-4 lg:px-6 py-3 bg-[#0B0B0F] border-b border-white/5 flex items-center justify-between order-2 lg:order-none">
             <div className="flex items-center gap-4">
                <div className="flex items-center gap-2 px-3 py-1 bg-white/[0.03] border border-white/5 rounded-full">
                  <div className="w-1.5 h-1.5 bg-[#9333EA] rounded-full animate-pulse" />
@@ -395,7 +395,7 @@ export default function Room() {
             </div>
           </div>
 
-          <div id="video-player-container" className="w-full aspect-video lg:flex-1 lg:aspect-auto p-0 lg:p-6 overflow-hidden relative bg-black shrink-0">
+          <div id="video-player-container" className="w-full aspect-video lg:flex-1 lg:aspect-auto p-0 lg:p-6 overflow-hidden relative bg-black shrink-0 order-1 lg:order-none">
             <VideoPlayer
               streamUrl={video.stream_url}
               isHost={isHost}
@@ -417,7 +417,7 @@ export default function Room() {
         </div>
 
         {/* Sidebar (Chat & Tabs) */}
-        <div className="w-full lg:w-[380px] bg-[#0B0B0F] border-t lg:border-t-0 lg:border-l border-white/5 flex flex-col flex-1 lg:flex-none lg:h-full shrink-0 min-h-0">
+        <div className="w-full lg:w-[380px] bg-[#0B0B0F] border-t lg:border-t-0 lg:border-l border-white/5 flex flex-col flex-1 lg:flex-none lg:h-full shrink-0 min-h-0 order-3 lg:order-none">
           {/* Tabs Header */}
           <div className="flex border-b border-white/5 p-1.5 gap-1.5">
             <button
