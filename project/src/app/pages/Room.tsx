@@ -10,6 +10,7 @@ const TopBar = dynamic(() => import('../components/TopBar').then(mod => ({ defau
 const VideoPlayer = dynamic(() => import('../components/VideoPlayer').then(mod => ({ default: mod.VideoPlayer })), { ssr: false });
 const Chat = dynamic(() => import('../components/Chat').then(mod => ({ default: mod.Chat })), { ssr: false });
 const InvitePanel = dynamic(() => import('../components/InvitePanel').then(mod => ({ default: mod.InvitePanel })), { ssr: false });
+const VoiceSidebar = dynamic(() => import('../components/VoiceSidebar').then(mod => ({ default: mod.VoiceSidebar })), { ssr: false });
 import { createWebSocket, RealWebSocket } from '../lib/websocket';
 import type { Room as RoomType, User, Video, ChatMessage, SyncState } from '../lib/types';
 import { useAuth } from '../lib/auth';
@@ -359,6 +360,13 @@ export default function Room() {
       {/* Main Container */}
       <div className="flex-1 flex flex-col lg:flex-row overflow-hidden relative min-h-0">
         
+        {/* Voice Chat Sidebar */}
+        <VoiceSidebar 
+          currentUser={currentUser} 
+          hostId={room.host_id}
+          isHost={isHost}
+        />
+
         {/* Stream Area */}
         <div className="w-full lg:flex-1 flex flex-col min-w-0 lg:h-full shrink-0">
           <div className="px-4 lg:px-6 py-3 bg-[#0B0B0F] border-b border-white/5 flex items-center justify-between">

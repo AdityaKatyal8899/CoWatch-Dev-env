@@ -35,6 +35,7 @@ export interface Room {
   thumbnail_url?: string;
   video?: Video;
   duration?: number;
+  processing_status?: 'pending' | 'processing' | 'ready' | 'failed';
 }
 
 export interface Video {
