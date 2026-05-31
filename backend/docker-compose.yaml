@@ -53,7 +53,7 @@ services:
   livekit:
     image: livekit/livekit-server:latest
     container_name: cowatch_livekit
-    command: ["--dev", "--node-ip", "${INS_IP}"]
+    command: ["--dev", "--bind", "0.0.0.0", "--node-ip", "${INS_IP}"]
     env_file:
       - .env
     environment:
