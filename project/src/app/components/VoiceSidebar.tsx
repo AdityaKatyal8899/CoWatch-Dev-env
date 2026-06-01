@@ -69,7 +69,7 @@ export function VoiceSidebar({ currentUser, hostId, isHost, roomId, roomParticip
     const local = room.localParticipant;
     if (local) {
       const matchedUser = roomParticipants.find(
-        (u) => u.id.replace("-", "").toLowerCase() === local.identity.replace("-", "").toLowerCase()
+        (u) => u.id.replace(/-/g, "").toLowerCase() === local.identity.replace(/-/g, "").toLowerCase()
       ) || currentUser;
       list.push({
         id: local.identity,
@@ -85,9 +85,9 @@ export function VoiceSidebar({ currentUser, hostId, isHost, roomId, roomParticip
 
     // 2. Remote Participants Cards
     room.remoteParticipants.forEach((p) => {
-      const isP_Host = hostId ? p.identity.replace("-", "").toLowerCase() === hostId.replace("-", "").toLowerCase() : false;
+      const isP_Host = hostId ? p.identity.replace(/-/g, "").toLowerCase() === hostId.replace(/-/g, "").toLowerCase() : false;
       const matchedUser = roomParticipants.find(
-        (u) => u.id.replace("-", "").toLowerCase() === p.identity.replace("-", "").toLowerCase()
+        (u) => u.id.replace(/-/g, "").toLowerCase() === p.identity.replace(/-/g, "").toLowerCase()
       );
       list.push({
         id: p.identity,
@@ -106,7 +106,7 @@ export function VoiceSidebar({ currentUser, hostId, isHost, roomId, roomParticip
   // Helper to map participant ID to their selected CoWatch theme color
   const getParticipantThemeColor = (participantId: string) => {
     const pUser = roomParticipants.find(
-      (u) => u.id.replace("-", "").toLowerCase() === participantId.replace("-", "").toLowerCase()
+      (u) => u.id.replace(/-/g, "").toLowerCase() === participantId.replace(/-/g, "").toLowerCase()
     );
     const themeName = pUser?.theme || "default-dark";
 

@@ -234,9 +234,43 @@ export default function Room() {
           }
           break;
         case 'participant_join':
+          if (message.data.participant_count) {
+            setParticipantCount(message.data.participant_count);
+          }
+          if (message.data.id) {
+            const newParticipant: User = {
+              id: message.data.id,
+              name: message.data.name,
+              profile_picture: message.data.profile_picture || undefined,
+              email: '',
+              genres: [],
+              theme: 'default-dark',
+              storage_used: 0,
+              storage_limit: 0,
+              created_at: new Date().toISOString()
+            };
+            setRoom((prev) => {
+              if (!prev) return null;
+              if (prev.participants.some((p) => p.id === newParticipant.id)) return prev;
+              return {
+                ...prev,
+                participants: [...prev.participants, newParticipant]
+              };
+            });
+          }
+          break;
         case 'participant_leave':
           if (message.data.participant_count) {
             setParticipantCount(message.data.participant_count);
+          }
+          if (message.data.id) {
+            setRoom((prev) => {
+              if (!prev) return null;
+              return {
+                ...prev,
+                participants: prev.participants.filter((p) => p.id !== message.data.id)
+              };
+            });
           }
           break;
       }
