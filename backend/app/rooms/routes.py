@@ -169,6 +169,44 @@ async def get_room(room_id: str, db: Session = Depends(get_db)):
         room.description = room.video.description if room.video else "No description available"
         room.server_time = datetime.now(timezone.utc).timestamp()
         
+        # Populate active participants dynamically from websockets active connections
+        from .websockets import active_connections
+        active_uids = list(active_connections.get(room_id, {}).keys())
+        
+        participants_list = []
+        if active_uids:
+            for uid in active_uids:
+                try:
+                    val_uuid = uuid.UUID(uid)
+                    db_user = db.query(models.User).filter(models.User.id == val_uuid).first()
+                    if db_user:
+                        is_user_host = False
+                        if room.host_id:
+                            is_user_host = (str(room.host_id).replace("-", "").lower() == str(db_user.id).replace("-", "").lower())
+                        
+                        participants_list.append({
+                            "id": str(db_user.id),
+                            "name": db_user.name,
+                            "display_name": db_user.display_name,
+                            "profile_picture": db_user.profile_picture,
+                            "theme": db_user.theme or "default-dark",
+                            "is_host": is_user_host
+                        })
+                except Exception:
+                    is_guest_host = False
+                    if room.host_id:
+                        is_guest_host = (str(room.host_id).replace("-", "").lower() == uid.replace("-", "").lower())
+                    
+                    participants_list.append({
+                        "id": uid,
+                        "name": f"Guest_{uid[:5]}" if len(uid) > 5 else uid,
+                        "display_name": uid,
+                        "profile_picture": None,
+                        "theme": "default-dark",
+                        "is_host": is_guest_host
+                    })
+        
+        room.participants = participants_list
         return room
     
     raise HTTPException(status_code=404, detail="Room not found")

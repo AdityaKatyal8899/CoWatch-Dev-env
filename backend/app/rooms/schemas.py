@@ -5,9 +5,12 @@ from uuid import UUID
 from app.videos.schemas import VideoResponse
 
 class ParticipantSchema(BaseModel):
-    user_id: str
+    id: str
     name: str
-    is_host: bool
+    display_name: Optional[str] = None
+    profile_picture: Optional[str] = None
+    theme: str = "default-dark"
+    is_host: bool = False
 
 class RoomSchema(BaseModel):
     model_config = ConfigDict(from_attributes=True)
