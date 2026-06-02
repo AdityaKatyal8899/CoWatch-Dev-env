@@ -169,62 +169,68 @@ def process_video_to_hls(video_id: str, input_path: str):
     2. FFmpeg processes the video.
     3. Background thread uploads segments to S3.
     4. Database stream_url and status are updated only upon successful completion of all steps.
-    5. Clean up original file only after database successfully updated.
+    5. Clean up local processing directory.
     """
-    total_start = time.perf_counter()
     output_dir = os.path.dirname(input_path)
     stream_playlist = os.path.join(output_dir, "stream.m3u8")
-
-    update_video_status(video_id, "processing")
-
-    # 1. Capture Metadata
-    probe_duration_cmd = ["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", input_path]
-    exact_duration = 0.0
-    try:
-        dur_res = subprocess.run(probe_duration_cmd, capture_output=True, text=True)
-        exact_duration = float(dur_res.stdout.strip())
-    except: pass
-
     thumbnail_path = os.path.join(output_dir, "thumbnail.jpg")
-    thumbnail_cmd = ["ffmpeg", "-y", "-i", input_path, "-ss", "00:00:02.000", "-vframes", "1", thumbnail_path]
-    thumbnail_url = f"/output/videos/{video_id}/thumbnail.jpg"
-    try:
-        subprocess.run(thumbnail_cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        upload_file(thumbnail_path, f"videos/{video_id}/thumbnail.jpg", "image/jpeg")
-    except: pass
-
-    update_video_metadata(video_id, exact_duration, thumbnail_url)
-
-    # 2. Cleanup old files
-    for f_name in os.listdir(output_dir):
-        if f_name.endswith(".ts") or f_name.endswith(".m3u8"):
-            try: os.remove(os.path.join(output_dir, f_name))
-            except: pass
-
-    # 3. Prepare FFmpeg Args
-    args = [
-        "ffmpeg", "-y", "-i", input_path,
-        "-c:v", "libx264", "-preset", "ultrafast", "-tune", "zerolatency",
-        "-c:a", "aac", "-b:a", "128k",
-        "-force_key_frames", "expr:gte(t,n_forced*2)",
-        "-hls_time", "4",
-        "-hls_list_size", "0",
-        "-hls_playlist_type", "vod",
-        "-start_number", "0",
-        "-hls_flags", "independent_segments",
-        "-threads", "0",
-        "-avoid_negative_ts", "make_zero",
-        "-hls_segment_filename", os.path.join(output_dir, "seg_%03d.ts"),
-        stream_playlist
-    ]
-
-    # 4. Parallel S3 Sync Thread
-    error_container = []
+    
+    # Initialize variables for cleanup in finally block
+    sync_thread = None
     stop_event = threading.Event()
-    sync_thread = threading.Thread(target=s3_sync_worker, args=(output_dir, video_id, stop_event, error_container))
-    sync_thread.start()
-
+    error_container = []
+    
     try:
+        update_video_status(video_id, "processing")
+
+        # 1. Capture Metadata
+        probe_duration_cmd = ["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", input_path]
+        exact_duration = 0.0
+        try:
+            dur_res = subprocess.run(probe_duration_cmd, capture_output=True, text=True)
+            exact_duration = float(dur_res.stdout.strip())
+        except:
+            pass
+
+        thumbnail_cmd = ["ffmpeg", "-y", "-i", input_path, "-ss", "00:00:02.000", "-vframes", "1", thumbnail_path]
+        thumbnail_url = f"/output/videos/{video_id}/thumbnail.jpg"
+        try:
+            subprocess.run(thumbnail_cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            upload_file(thumbnail_path, f"videos/{video_id}/thumbnail.jpg", "image/jpeg")
+        except:
+            pass
+
+        update_video_metadata(video_id, exact_duration, thumbnail_url)
+
+        # 2. Cleanup old files
+        for f_name in os.listdir(output_dir):
+            if f_name.endswith(".ts") or f_name.endswith(".m3u8"):
+                try:
+                    os.remove(os.path.join(output_dir, f_name))
+                except:
+                    pass
+
+        # 3. Prepare FFmpeg Args
+        args = [
+            "ffmpeg", "-y", "-i", input_path,
+            "-c:v", "libx264", "-preset", "ultrafast", "-tune", "zerolatency",
+            "-c:a", "aac", "-b:a", "128k",
+            "-force_key_frames", "expr:gte(t,n_forced*2)",
+            "-hls_time", "4",
+            "-hls_list_size", "0",
+            "-hls_playlist_type", "vod",
+            "-start_number", "0",
+            "-hls_flags", "independent_segments",
+            "-threads", "0",
+            "-avoid_negative_ts", "make_zero",
+            "-hls_segment_filename", os.path.join(output_dir, "seg_%03d.ts"),
+            stream_playlist
+        ]
+
+        # 4. Parallel S3 Sync Thread
+        sync_thread = threading.Thread(target=s3_sync_worker, args=(output_dir, video_id, stop_event, error_container))
+        sync_thread.start()
+
         # Start FFmpeg and wait for completion
         process = subprocess.Popen(args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         process.wait()
@@ -251,14 +257,72 @@ def process_video_to_hls(video_id: str, input_path: str):
         update_stream_url(video_id, new_stream_url)
         update_video_status(video_id, "ready")
 
-        # 6. Cleanup original file only after database successfully updated
-        if os.path.exists(input_path):
-            os.remove(input_path)
-
     except Exception as e:
         update_video_status(video_id, "failed")
-        stop_event.set()
-        if sync_thread.is_alive():
-            sync_thread.join()
         raise e
+    finally:
+        # Guarantee sync thread terminates
+        stop_event.set()
+        if sync_thread and sync_thread.is_alive():
+            sync_thread.join()
+        
+        # Recursively remove the local processing directory
+        if os.path.exists(output_dir):
+            try:
+                shutil.rmtree(output_dir)
+            except Exception as exc:
+                pass
+
+
+from celery.signals import worker_ready
+
+@worker_ready.connect
+def cleanup_orphaned_directories(sender, **kwargs):
+    """
+    On celery worker startup, scan local storage/videos/ directory
+    for subdirectories and clean up orphaned/expired temporary assets older than 24 hours.
+    """
+    videos_dir = os.path.join("storage", "videos")
+    if not os.path.exists(videos_dir):
+        return
+
+    now = time.time()
+    db = SessionLocal()
+    try:
+        for dir_name in os.listdir(videos_dir):
+            dir_path = os.path.join(videos_dir, dir_name)
+            if not os.path.isdir(dir_path):
+                continue
+
+            try:
+                mtime = os.path.getmtime(dir_path)
+                age_hours = (now - mtime) / 3600.0
+                
+                # Check if it's older than 24 hours
+                if age_hours < 24:
+                    continue
+                
+                # Query database for this video_id
+                video = db.query(Video).filter(Video.video_id == dir_name).first()
+                
+                should_delete = False
+                if not video:
+                    # Video does not exist in DB, orphaned
+                    should_delete = True
+                elif video.processing_status in ("ready", "failed"):
+                    # Transcoding already finished/failed, these are stale local files
+                    should_delete = True
+                else:
+                    # Video is in "processing" or "pending" status, but folder is older than 24 hours.
+                    # This means it's expired/abandoned.
+                    should_delete = True
+
+                if should_delete:
+                    print(f"[Startup Cleanup] Found stale/orphaned directory: {dir_path} (age: {age_hours:.1f} hours). Deleting...", flush=True)
+                    shutil.rmtree(dir_path)
+            except Exception as e:
+                pass
+    finally:
+        db.close()
+
 
