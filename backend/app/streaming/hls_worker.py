@@ -5,6 +5,7 @@ import time
 import shutil
 import concurrent.futures
 import threading
+import re
 from app.services.s3_service import upload_file, get_s3_client, BUCKET
 from app.database.config import SessionLocal
 from app.database.models import Video
@@ -113,63 +114,117 @@ def is_hls_compatible(input_path: str) -> tuple[bool, float]:
     return (vid_codec == "h264" and audio_codec == "aac"), (end - start)
 
 
-def s3_sync_worker(output_dir: str, video_id: str, stop_event: threading.Event, error_container: list):
+def upload_file_with_retry(local_path: str, s3_key: str, content_type: str, max_retries: int = 5) -> bool:
+    backoff = 1.0
+    for attempt in range(1, max_retries + 1):
+        try:
+            print(f"[Upload] Uploading {local_path} to S3 (Attempt {attempt})...", flush=True)
+            upload_file(local_path, s3_key, content_type)
+            print(f"[Upload] Successfully uploaded {local_path} to S3.", flush=True)
+            return True
+        except Exception as e:
+            print(f"[Upload Error] Attempt {attempt} failed for {local_path}: {e}", flush=True)
+            if attempt == max_retries:
+                raise e
+            time.sleep(backoff)
+            backoff *= 2.0
+    return False
+
+
+def s3_sync_worker(output_dir: str, video_id: str, stop_event: threading.Event, error_container: list, window_size: int = 10):
     """
-    Background thread that monitors the output directory and uploads 
-    new segments to S3 in real-time while FFmpeg is still running.
+    Background thread that monitors the output directory and uploads
+    new segments to S3 in windows of size 10 in real-time, then deletes them immediately.
     """
     uploaded_files = set()
-    # We use a smaller pool here to avoid overwhelming the network
     executor = concurrent.futures.ThreadPoolExecutor(max_workers=8)
-    futures = []
+    seg_pattern = re.compile(r"^seg_(\d+)\.ts$")
     
     try:
         while not stop_event.is_set() or any(f not in uploaded_files for f in os.listdir(output_dir) if f.endswith(".ts")):
-            try:
-                files = os.listdir(output_dir)
-                for filename in files:
-                    file_path = os.path.join(output_dir, filename)
-                    
-                    # Check if it's a file we care about
-                    is_media = filename.endswith(".ts") or filename.endswith(".m3u8") or filename.endswith(".jpg")
-                    
-                    if is_media and os.path.isfile(file_path):
-                        # We always re-upload .m3u8 as it evolves
-                        if filename not in uploaded_files or filename.endswith(".m3u8"):
-                            s3_key = f"videos/{video_id}/{filename}"
-                            content_type = "application/x-mpegURL" if filename.endswith(".m3u8") else "video/MP2T" if filename.endswith(".ts") else "image/jpeg"
-                            future = executor.submit(upload_file, file_path, s3_key, content_type)
-                            futures.append(future)
-                            
-                            if not filename.endswith(".m3u8"):
-                                uploaded_files.add(filename)
-            except Exception:
-                pass
+            if error_container:
+                break
                 
-            time.sleep(2)
-            # If FFmpeg is done and all .ts files are uploaded, we can exit
-            if stop_event.is_set():
-                current_files = [f for f in os.listdir(output_dir) if f.endswith(".ts")]
-                if all(f in uploaded_files for f in current_files):
-                    break
+            try:
+                all_files = os.listdir(output_dir)
+                ts_segments = []
+                for f in all_files:
+                    match = seg_pattern.match(f)
+                    if match:
+                        ts_segments.append((int(match.group(1)), f))
+                
+                if not ts_segments:
+                    time.sleep(1)
+                    continue
+                
+                ts_segments.sort(key=lambda x: x[0])
+                max_index = ts_segments[-1][0]
+                
+                uploadable = []
+                for idx, fname in ts_segments:
+                    if fname in uploaded_files:
+                        continue
+                    # A segment is uploadable if a higher index segment exists (guaranteeing it's fully written)
+                    # or if the stop_event is set (FFmpeg terminated)
+                    if idx < max_index or stop_event.is_set():
+                        uploadable.append(fname)
+                
+                if len(uploadable) >= window_size or (stop_event.is_set() and len(uploadable) > 0):
+                    batch = uploadable[:window_size]
+                    print(f"[Sync Worker] Processing batch of {len(batch)} segments: {batch}", flush=True)
+                    
+                    futures = {}
+                    for filename in batch:
+                        file_path = os.path.join(output_dir, filename)
+                        s3_key = f"videos/{video_id}/{filename}"
+                        content_type = "video/MP2T"
+                        future = executor.submit(upload_file_with_retry, file_path, s3_key, content_type)
+                        futures[future] = filename
+                    
+                    failed_uploads = []
+                    for future, filename in futures.items():
+                        try:
+                            future.result()
+                        except Exception as e:
+                            failed_uploads.append((filename, e))
+                            
+                    if failed_uploads:
+                        raise Exception(f"Batch upload failed for: {[f[0] for f in failed_uploads]}. Errors: {[str(f[1]) for f in failed_uploads]}")
+                    
+                    # Delete local copies immediately upon successful upload
+                    for filename in batch:
+                        file_path = os.path.join(output_dir, filename)
+                        if os.path.exists(file_path):
+                            try:
+                                os.remove(file_path)
+                                print(f"[Cleanup] Deleted local segment: {filename}", flush=True)
+                            except Exception as exc:
+                                print(f"[Cleanup Error] Failed to delete local segment {filename}: {exc}", flush=True)
+                        uploaded_files.add(filename)
+                        
+                    # Periodically upload updated manifest
+                    m3u8_path = os.path.join(output_dir, "stream.m3u8")
+                    if os.path.exists(m3u8_path):
+                        print(f"[Sync Worker] Uploading current stream.m3u8 manifest...", flush=True)
+                        upload_file_with_retry(m3u8_path, f"videos/{video_id}/stream.m3u8", "application/x-mpegURL")
+                else:
+                    time.sleep(1)
+            except Exception as e:
+                error_container.append(e)
+                break
     finally:
         executor.shutdown(wait=True)
-        try:
-            for future in futures:
-                future.result()
-        except Exception as e:
-            error_container.append(e)
 
 
 @celery_app.task
 def process_video_to_hls(video_id: str, input_path: str):
     """
-    Highly optimized HLS processing:
+    Highly optimized HLS processing with streaming-window uploads:
     1. Metadata capture happens immediately.
-    2. FFmpeg processes the video.
-    3. Background thread uploads segments to S3.
-    4. Database stream_url and status are updated only upon successful completion of all steps.
-    5. Clean up local processing directory.
+    2. FFmpeg HLS generation starts.
+    3. Background thread uploads segments in windows of 10 and deletes them immediately.
+    4. Database stream_url and status are updated upon successful completion.
+    5. Clean up local processing directory completely.
     """
     output_dir = os.path.dirname(input_path)
     stream_playlist = os.path.join(output_dir, "stream.m3u8")
@@ -189,16 +244,16 @@ def process_video_to_hls(video_id: str, input_path: str):
         try:
             dur_res = subprocess.run(probe_duration_cmd, capture_output=True, text=True)
             exact_duration = float(dur_res.stdout.strip())
-        except:
-            pass
+        except Exception as e:
+            print(f"[Metadata Error] Failed to capture duration: {e}", flush=True)
 
         thumbnail_cmd = ["ffmpeg", "-y", "-i", input_path, "-ss", "00:00:02.000", "-vframes", "1", thumbnail_path]
         thumbnail_url = f"/output/videos/{video_id}/thumbnail.jpg"
         try:
             subprocess.run(thumbnail_cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            upload_file(thumbnail_path, f"videos/{video_id}/thumbnail.jpg", "image/jpeg")
-        except:
-            pass
+            upload_file_with_retry(thumbnail_path, f"videos/{video_id}/thumbnail.jpg", "image/jpeg")
+        except Exception as e:
+            print(f"[Metadata Error] Failed to generate/upload thumbnail: {e}", flush=True)
 
         update_video_metadata(video_id, exact_duration, thumbnail_url)
 
@@ -207,8 +262,8 @@ def process_video_to_hls(video_id: str, input_path: str):
             if f_name.endswith(".ts") or f_name.endswith(".m3u8"):
                 try:
                     os.remove(os.path.join(output_dir, f_name))
-                except:
-                    pass
+                except Exception as e:
+                    print(f"[Cleanup Error] Failed to remove old file {f_name}: {e}", flush=True)
 
         # 3. Prepare FFmpeg Args
         args = [
@@ -228,18 +283,26 @@ def process_video_to_hls(video_id: str, input_path: str):
         ]
 
         # 4. Parallel S3 Sync Thread
-        sync_thread = threading.Thread(target=s3_sync_worker, args=(output_dir, video_id, stop_event, error_container))
+        sync_thread = threading.Thread(
+            target=s3_sync_worker, 
+            args=(output_dir, video_id, stop_event, error_container),
+            kwargs={"window_size": 10}
+        )
         sync_thread.start()
 
-        # Start FFmpeg and wait for completion
+        # Start FFmpeg and monitor process and upload errors
         process = subprocess.Popen(args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        process.wait()
+        
+        while process.poll() is None:
+            if error_container:
+                print(f"[Task Error] S3 Sync Thread failed with error: {error_container[0]}. Terminating FFmpeg...", flush=True)
+                process.terminate()
+                process.wait()
+                raise error_container[0]
+            time.sleep(1)
         
         if process.returncode != 0:
             raise Exception(f"FFmpeg failed with exit code {process.returncode}")
-
-        if not os.path.exists(stream_playlist):
-            raise Exception("FFmpeg completed but stream.m3u8 playlist was not generated")
 
         # 5. Finalize S3 Sync
         stop_event.set()
@@ -248,6 +311,13 @@ def process_video_to_hls(video_id: str, input_path: str):
         # Check S3 upload errors
         if error_container:
             raise error_container[0]
+
+        # 6. Final Manifest Upload
+        if os.path.exists(stream_playlist):
+            print(f"[Finalizing] Uploading final stream.m3u8 playlist...", flush=True)
+            upload_file_with_retry(stream_playlist, f"videos/{video_id}/stream.m3u8", "application/x-mpegURL")
+        else:
+            raise Exception("FFmpeg completed but stream.m3u8 playlist was not generated")
 
         # Update database: stream_url first, then status to ready
         cdn_url = os.getenv("CDN_URL", "").strip()
@@ -269,9 +339,11 @@ def process_video_to_hls(video_id: str, input_path: str):
         # Recursively remove the local processing directory
         if os.path.exists(output_dir):
             try:
+                print(f"[Cleanup] Deleting local processing directory: {output_dir}", flush=True)
                 shutil.rmtree(output_dir)
+                print(f"[Cleanup] Successfully deleted local processing directory.", flush=True)
             except Exception as exc:
-                pass
+                print(f"[Cleanup Error] Failed to delete directory {output_dir}: {exc}", flush=True)
 
 
 from celery.signals import worker_ready
