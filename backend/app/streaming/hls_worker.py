@@ -234,6 +234,7 @@ def process_video_to_hls(video_id: str, input_path: str):
     sync_thread = None
     stop_event = threading.Event()
     error_container = []
+    success = False
     
     try:
         update_video_status(video_id, "processing")
@@ -305,6 +306,7 @@ def process_video_to_hls(video_id: str, input_path: str):
             raise Exception(f"FFmpeg failed with exit code {process.returncode}")
 
         # 5. Finalize S3 Sync
+        update_video_status(video_id, "uploading")
         stop_event.set()
         sync_thread.join()
 
@@ -325,7 +327,7 @@ def process_video_to_hls(video_id: str, input_path: str):
             cdn_url = "https://" + cdn_url
         new_stream_url = f"{cdn_url.rstrip('/')}/videos/{video_id}/stream.m3u8"
         update_stream_url(video_id, new_stream_url)
-        update_video_status(video_id, "ready")
+        success = True
 
     except Exception as e:
         update_video_status(video_id, "failed")
@@ -337,13 +339,22 @@ def process_video_to_hls(video_id: str, input_path: str):
             sync_thread.join()
         
         # Recursively remove the local processing directory
+        cleanup_succeeded = False
         if os.path.exists(output_dir):
             try:
                 print(f"[Cleanup] Deleting local processing directory: {output_dir}", flush=True)
                 shutil.rmtree(output_dir)
                 print(f"[Cleanup] Successfully deleted local processing directory.", flush=True)
+                cleanup_succeeded = True
             except Exception as exc:
                 print(f"[Cleanup Error] Failed to delete directory {output_dir}: {exc}", flush=True)
+        else:
+            cleanup_succeeded = True
+
+        if success and cleanup_succeeded:
+            update_video_status(video_id, "ready")
+        elif success:
+            update_video_status(video_id, "failed")
 
 
 from celery.signals import worker_ready

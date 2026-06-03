@@ -62,7 +62,7 @@ async def upload_video(
         title=title,
         description=description,
         stream_url=None,
-        processing_status='processing',
+        processing_status='pending',
         file_size=file_size_bytes
     )
     
@@ -141,20 +141,19 @@ async def get_video(
 @router.get("/{video_id}/status")
 async def get_video_status(
     video_id: str, 
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    db: Session = Depends(get_db)
 ):
     """
-    Return processing status of a video owned by the user.
+    Return processing status of a video. Publicly accessible.
     """
-    video = db.query(models.Video).filter(
-        models.Video.video_id == video_id,
-        models.Video.user_id == current_user.id
-    ).first()
+    video = db.query(models.Video).filter(models.Video.video_id == video_id).first()
     
     if not video:
-        raise HTTPException(status_code=404, detail="Video not found or not authorized")
-    return {"status": video.processing_status}
+        raise HTTPException(status_code=404, detail="Video not found")
+    return {
+        "video_id": video.video_id,
+        "status": video.processing_status
+    }
 
 @router.delete("/{video_id}")
 async def delete_video(
