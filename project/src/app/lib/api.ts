@@ -93,6 +93,10 @@ export const api = {
     return request(`/videos/${id}`);
   },
 
+  async getVideoStatus(id: string): Promise<{ video_id: string; status: string }> {
+    return request(`/videos/${id}/status`);
+  },
+
   async uploadVideo(file: File, title: string, description: string = '', collectionId?: string): Promise<Video> {
     const formData = new FormData();
     formData.append('file', file);
