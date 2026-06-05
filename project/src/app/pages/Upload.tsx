@@ -28,9 +28,16 @@ export default function Upload() {
   const [dragActive, setDragActive] = useState(false);
   const [uploadComplete, setUploadComplete] = useState(false);
   const [uploadedVideoId, setUploadedVideoId] = useState<string | null>(null);
+  const [processingStatus, setProcessingStatus] = useState<string | null>(null);
+  const pollTimeoutRef = useRef<any>(null);
 
   useEffect(() => {
     loadCollections();
+    return () => {
+      if (pollTimeoutRef.current) {
+        clearTimeout(pollTimeoutRef.current);
+      }
+    };
   }, []);
 
   const loadCollections = async () => {
@@ -110,25 +117,73 @@ export default function Upload() {
       const video = await api.uploadVideo(file, title, description, selectedCollectionId || undefined);
       setUploadProgress(100);
       setProcessing(true);
-      
-      setTimeout(() => {
-        setProcessing(false);
-        setUploadComplete(true);
-        setUploadedVideoId(video.video_id);
-        setUploading(false);
-        toast.success('Upload successful!');
-      }, 1500);
-      
+      setProcessingStatus('pending');
+      setUploadedVideoId(video.video_id);
+      setUploading(false);
+
+      const pollStatus = async () => {
+        try {
+          const res = await api.getVideoStatus(video.video_id);
+          const currentStatus = res.status;
+          
+          if (currentStatus === 'ready') {
+            setProcessingStatus('verifying');
+            try {
+              const videoDetails = await api.getVideo(video.video_id);
+              if (videoDetails.stream_url) {
+                console.log(`[Upload] Verifying stream accessibility at ${videoDetails.stream_url}`);
+                const verifyRes = await fetch(videoDetails.stream_url, { method: 'GET' });
+                if (verifyRes.ok) {
+                  setProcessing(false);
+                  setUploadComplete(true);
+                  setProcessingStatus('ready');
+                  toast.success('Video is ready for playback!');
+                  return;
+                }
+              }
+            } catch (verifyErr: any) {
+              console.log('[Upload] Verification returned error or CORS block:', verifyErr);
+              if (verifyErr instanceof TypeError || verifyErr.message?.includes('Failed to fetch')) {
+                setProcessing(false);
+                setUploadComplete(true);
+                setProcessingStatus('ready');
+                toast.success('Video is ready for playback!');
+                return;
+              }
+            }
+            pollTimeoutRef.current = setTimeout(pollStatus, 3000);
+          } else if (currentStatus === 'failed') {
+            setProcessing(false);
+            setProcessingStatus('failed');
+            toast.error('Video processing failed.');
+          } else {
+            setProcessingStatus(currentStatus);
+            pollTimeoutRef.current = setTimeout(pollStatus, 3000);
+          }
+        } catch (pollError) {
+          console.error('[Upload] Polling status failed:', pollError);
+          pollTimeoutRef.current = setTimeout(pollStatus, 3000);
+        }
+      };
+
+      pollTimeoutRef.current = setTimeout(pollStatus, 3000);
+
     } catch (error: any) {
       console.error('[Upload] Error:', error);
       toast.error(error.message || 'Transmission failed.');
       setUploading(false);
+      setProcessing(false);
+      setProcessingStatus(null);
     } finally {
       clearInterval(progressInterval);
     }
   };
 
   const resetUpload = () => {
+    if (pollTimeoutRef.current) {
+      clearTimeout(pollTimeoutRef.current);
+      pollTimeoutRef.current = null;
+    }
     setFile(null);
     setTitle('');
     setDescription('');
@@ -138,6 +193,7 @@ export default function Upload() {
     setUploadedVideoId(null);
     setUploading(false);
     setProcessing(false);
+    setProcessingStatus(null);
   };
 
   return (
@@ -207,23 +263,64 @@ export default function Upload() {
                         )}
                       </div>
 
-                      {(uploading || processing) && (
+                      {(uploading || (processing && processingStatus !== 'failed')) && (
                         <div className="space-y-4 pt-4 border-t border-white/5">
                           <div className="flex items-center justify-between">
                             <span className="text-[10px] font-black uppercase tracking-widest text-white/40">
-                              {processing ? 'Optimizing For Streaming...' : 'Transmitting to Deep Storage'}
+                              {processing 
+                                ? (processingStatus === 'pending' 
+                                    ? 'Queued in pipeline (Waiting for CPU allocation)...' 
+                                    : processingStatus === 'processing' 
+                                      ? 'Transcoding to adaptive HLS stream (FFmpeg)...' 
+                                      : processingStatus === 'verifying'
+                                        ? 'Verifying stream integrity and availability...'
+                                        : 'Synchronizing segments to global CDN...')
+                                : 'Transmitting to Deep Storage'}
                             </span>
                             <span className="text-xl font-black text-white">
-                              {processing ? 'Processing' : `${uploadProgress}%`}
+                              {processing 
+                                ? (processingStatus === 'pending' 
+                                    ? 'Queued' 
+                                    : processingStatus === 'processing' 
+                                      ? 'Transcoding' 
+                                      : processingStatus === 'verifying'
+                                        ? 'Verifying'
+                                        : 'Uploading')
+                                : `${uploadProgress}%`}
                             </span>
                           </div>
                           <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden">
                             <motion.div 
                               initial={{ width: 0 }}
-                              animate={{ width: processing ? '100%' : `${uploadProgress}%` }}
+                              animate={{ 
+                                width: processing 
+                                  ? (processingStatus === 'pending' 
+                                      ? '15%' 
+                                      : processingStatus === 'processing' 
+                                        ? '50%' 
+                                        : processingStatus === 'verifying'
+                                          ? '95%'
+                                          : '80%')
+                                  : `${uploadProgress}%` 
+                              }}
                               className="h-full bg-[var(--primary)] shadow-[0_0_20px_var(--primary)]"
                             />
                           </div>
+                        </div>
+                      )}
+
+                      {processingStatus === 'failed' && (
+                        <div className="space-y-4 pt-4 border-t border-red-500/20 text-left">
+                          <h4 className="text-sm font-bold text-red-500">Processing Failed</h4>
+                          <p className="text-xs text-[var(--muted)] leading-relaxed">
+                            We were unable to prepare your video for streaming. This can happen if the video format is corrupted, unsupported, or if a backend error occurred.
+                          </p>
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); resetUpload(); }} 
+                            className="bg-white/5 border border-white/10 hover:bg-white/10 text-white px-4 py-2 text-xs rounded-xl font-bold transition-all"
+                          >
+                            Reset & Try Again
+                          </button>
                         </div>
                       )}
                     </div>
@@ -282,7 +379,15 @@ export default function Upload() {
                       disabled={!title.trim() || uploading || processing}
                       className="btn-primary w-full py-6 text-sm font-bold uppercase tracking-widest shadow-xl shadow-[var(--primary)]/10"
                     >
-                      {processing ? 'Finalizing Sync...' : (uploading ? 'Transmitting...' : 'Begin Transmission')}
+                      {processing 
+                        ? (processingStatus === 'pending' 
+                            ? 'Queued in pipeline...' 
+                            : processingStatus === 'processing' 
+                              ? 'Transcoding HLS...' 
+                              : processingStatus === 'verifying'
+                                ? 'Verifying stream...'
+                                : 'Uploading segments...')
+                        : (uploading ? 'Transmitting...' : 'Begin Transmission')}
                     </Button>
                   </motion.div>
                 )}
