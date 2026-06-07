@@ -5,9 +5,9 @@ from dotenv import load_dotenv
 load_dotenv()
 
 class Settings:
-    LIVEKIT_URL: str = os.getenv("LIVEKIT_URL", "ws://localhost:7880")
-    LIVEKIT_API_KEY: str = os.getenv("LIVEKIT_API_KEY", "devkey")
-    LIVEKIT_API_SECRET: str = os.getenv("LIVEKIT_API_SECRET", "secret")
+    LIVEKIT_URL: str = os.getenv("LIVEKIT_URL", "ws://localhost:7880").strip().strip('"').strip("'")
+    LIVEKIT_API_KEY: str = os.getenv("LIVEKIT_API_KEY", "devkey").strip().strip('"').strip("'")
+    LIVEKIT_API_SECRET: str = os.getenv("LIVEKIT_API_SECRET", "secret").strip().strip('"').strip("'")
 
     def validate(self) -> None:
         if not self.LIVEKIT_API_KEY or not self.LIVEKIT_API_SECRET:
