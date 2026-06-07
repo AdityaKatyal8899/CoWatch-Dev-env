@@ -772,38 +772,22 @@ export function VideoPlayer({
           {/* Control Buttons Bottom Bar */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              {/* Mini Play/Pause (Always visible but disabled if locked) */}
-              <button
-                onClick={handlePlayPause}
-                disabled={!isHost || isLocked}
-                className={`w-8 h-8 sm:w-10 sm:h-10 shrink-0 rounded-xl flex items-center justify-center transition-all ${isHost && !isLocked
-                    ? 'bg-white/10 hover:bg-[var(--primary)] hover:text-black cursor-pointer'
-                    : 'bg-white/5 opacity-50 cursor-not-allowed'
-                  }`}
-              >
-                {isPlaying ? (
-                  <Pause className="w-3.5 h-3.5" fill="currentColor" />
-                ) : (
-                  <Play className="w-3.5 h-3.5 ml-0.5" fill="currentColor" />
-                )}
-              </button>
-
               {/* Time Indicator */}
-              <div className="text-white/80 text-[10px] sm:text-[11px] font-black uppercase tracking-[0.15em] bg-black/40 px-3 py-2 rounded-xl border border-white/5 backdrop-blur-xl shadow-inner-lg">
+              <div className="text-white/80 text-[9px] sm:text-[10px] font-black uppercase tracking-[0.15em] bg-black/40 px-2.5 py-1.5 rounded-lg border border-white/5 backdrop-blur-xl shadow-inner-lg">
                 {formatTime(currentTime)} <span className="text-white/20 mx-0.5">/</span> {formatTime(duration)}
               </div>
             </div>
 
             <div className="flex items-center gap-2">
               {/* Volume Group */}
-              <div className="flex items-center gap-1 group/volume bg-black/40 rounded-xl p-1 border border-white/5 backdrop-blur-xl">
+              <div className="flex items-center gap-0.5 group/volume bg-black/40 rounded-lg p-0.5 border border-white/5 backdrop-blur-xl">
                 <button
                   onClick={toggleMute}
-                  className="w-8 h-8 shrink-0 rounded-lg hover:bg-white/10 flex items-center justify-center transition-all text-white/60 hover:text-white"
+                  className="w-7 h-7 shrink-0 rounded-md hover:bg-white/10 flex items-center justify-center transition-all text-white/60 hover:text-white"
                 >
-                  {isMuted || volume === 0 ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
+                  {isMuted || volume === 0 ? <VolumeX className="w-3 h-3" /> : <Volume2 className="w-3 h-3" />}
                 </button>
-                <div className="w-0 group-hover/volume:w-16 sm:group-hover/volume:w-24 overflow-hidden transition-all duration-300">
+                <div className="w-0 group-hover/volume:w-16 sm:group-hover/volume:w-20 overflow-hidden transition-all duration-300">
                   <input
                     type="range"
                     min="0"
@@ -811,7 +795,7 @@ export function VideoPlayer({
                     step="0.01"
                     value={volume}
                     onChange={(e) => handleVolumeChange(parseFloat(e.target.value))}
-                    className="w-16 sm:w-24 h-1 bg-white/20 rounded-full appearance-none cursor-pointer accent-[var(--primary)]"
+                    className="w-16 sm:w-20 h-1 bg-white/20 rounded-full appearance-none cursor-pointer accent-[var(--primary)]"
                   />
                 </div>
               </div>
@@ -821,21 +805,21 @@ export function VideoPlayer({
                 <button
                   onClick={(e) => { e.stopPropagation(); setIsLocked(!isLocked); }}
                   title={isLocked ? "Unlock Controls" : "Lock Controls"}
-                  className={`w-9 h-9 sm:w-10 sm:h-10 shrink-0 rounded-xl flex items-center justify-center transition-all border ${isLocked
-                      ? 'bg-[var(--primary)] border-[var(--primary)]/40 text-black shadow-[0_0_20px_var(--primary)]'
+                  className={`w-7 h-7 shrink-0 rounded-lg flex items-center justify-center transition-all border ${isLocked
+                      ? 'bg-[var(--primary)] border-[var(--primary)]/40 text-black shadow-[0_0_15px_var(--primary)]'
                       : 'bg-black/40 border-white/10 text-white/40 hover:text-white hover:bg-white/10'
                     }`}
                 >
-                  {isLocked ? <Lock className="w-4 h-4" /> : <Unlock className="w-4 h-4" />}
+                  {isLocked ? <Lock className="w-3 h-3" /> : <Unlock className="w-3 h-3" />}
                 </button>
               )}
 
               {/* Fullscreen */}
               <button
                 onClick={toggleFullscreen}
-                className="w-9 h-9 sm:w-10 sm:h-10 shrink-0 rounded-xl bg-black/40 border border-white/10 text-white/60 hover:text-[var(--primary)] hover:border-[var(--primary)] flex items-center justify-center transition-all"
+                className="w-7 h-7 shrink-0 rounded-lg bg-black/40 border border-white/10 text-white/60 hover:text-[var(--primary)] hover:border-[var(--primary)] flex items-center justify-center transition-all"
               >
-                <Maximize className="w-4 h-4" />
+                <Maximize className="w-3 h-3" />
               </button>
             </div>
           </div>
