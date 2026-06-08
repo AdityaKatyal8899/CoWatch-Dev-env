@@ -27,6 +27,23 @@ rooms: Dict[str, Any] = {}
 
 active_connections: Dict[str, Dict[str, WebSocket]] = {}
 
+import re
+
+def extract_youtube_id(url: str) -> Optional[str]:
+    if not url:
+        return None
+    patterns = [
+        r'(?:https?:\/\/)?(?:www\.)?youtube\.com\/watch\?v=([a-zA-Z0-9_-]{11})',
+        r'(?:https?:\/\/)?(?:www\.)?youtu\.be\/([a-zA-Z0-9_-]{11})',
+        r'(?:https?:\/\/)?(?:www\.)?youtube\.com\/embed\/([a-zA-Z0-9_-]{11})',
+        r'(?:https?:\/\/)?(?:www\.)?youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})'
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, url)
+        if match:
+            return match.group(1)
+    return None
+
 @router.post("/rooms/create", response_model=RoomCreatedResponse)
 @limiter.limit("10/minute")
 async def create_room(request: Request, response: Response, req: CreateRoomRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
@@ -36,9 +53,21 @@ async def create_room(request: Request, response: Response, req: CreateRoomReque
     stream_url = req.stream_url
     room_title = req.title or "New Watch Party"
     video_db_id = None
+    media_type = "hls"
+    video_url = None
+    youtube_id = None
+
+    # Check if either stream_url or video_url is a YouTube URL
+    test_url = req.video_url or req.stream_url
+    extracted_id = extract_youtube_id(test_url)
+    if extracted_id:
+        media_type = "youtube"
+        youtube_id = extracted_id
+        video_url = test_url
+        stream_url = test_url
     
-    # Resolve stream_url and real DB ID from video_id (UUID string) if provided
-    if req.video_id:
+    # Resolve stream_url and real DB ID from video_id (UUID string) if provided (and not YouTube)
+    elif req.video_id:
         video = db.query(models.Video).filter(models.Video.video_id == req.video_id).first()
         if video:
             video_db_id = video.id
@@ -75,7 +104,10 @@ async def create_room(request: Request, response: Response, req: CreateRoomReque
         stream_url=stream_url,
         stream_status=initial_status,
         is_playing=False,
-        offset=0.0
+        offset=0.0,
+        media_type=media_type,
+        video_url=video_url,
+        youtube_video_id=youtube_id
     )
     db.add(new_room)
     db.commit()

@@ -62,6 +62,9 @@ async def room_websocket(websocket: WebSocket, room_id: str, user_id: str):
             "updatedAt": room.updated_at.isoformat() if room.updated_at else None,
             "title": room.title,
             "stream_url": room.stream_url,
+            "media_type": room.media_type,
+            "video_url": room.video_url,
+            "youtube_video_id": room.youtube_video_id,
             "participant_count": len(active_connections.get(room_id, {})) + 1 
         }
 

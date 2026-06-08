@@ -8,6 +8,7 @@ import { api } from '../lib/api';
 
 const TopBar = dynamic(() => import('../components/TopBar').then(mod => ({ default: mod.TopBar })), { ssr: false });
 const VideoPlayer = dynamic(() => import('../components/VideoPlayer').then(mod => ({ default: mod.VideoPlayer })), { ssr: false });
+const YouTubePlayer = dynamic(() => import('../components/YouTubePlayer').then(mod => ({ default: mod.YouTubePlayer })), { ssr: false });
 const Chat = dynamic(() => import('../components/Chat').then(mod => ({ default: mod.Chat })), { ssr: false });
 const InvitePanel = dynamic(() => import('../components/InvitePanel').then(mod => ({ default: mod.InvitePanel })), { ssr: false });
 const VoiceSidebar = dynamic(() => import('../components/VoiceSidebar').then(mod => ({ default: mod.VoiceSidebar })), { ssr: false });
@@ -89,12 +90,13 @@ export default function Room() {
 
         // Map data supporting both nested video object and flat room metadata
         const videoData = roomData.video || {
-          video_id: roomData.video_id,
+          video_id: roomData.youtube_video_id || roomData.video_id,
           title: roomData.title,
           description: roomData.description || roomData.video_description,
           stream_url: roomData.stream_url,
           duration: roomData.duration,
-          thumbnail_url: roomData.thumbnail_url
+          thumbnail_url: roomData.thumbnail_url,
+          processing_status: roomData.media_type === 'youtube' ? 'ready' : 'ready'
         };
         
         setVideo(videoData as any);
@@ -169,9 +171,9 @@ export default function Room() {
   // ==========================================
   useEffect(() => {
     // Strict Guard: Prevent re-initialization on re-renders
-    if (!roomId || !currentUser?.id || wsRef.current) return;
+    if (!roomId || !currentUser?.id || !room?.host_id || wsRef.current) return;
 
-    const websocket = createWebSocket(roomId, currentUser.id, !!currentUser.isHost);
+    const websocket = createWebSocket(roomId, currentUser.id, currentUser.id === room.host_id);
     setWs(websocket);
     wsRef.current = websocket;
 
@@ -296,7 +298,7 @@ export default function Room() {
         setWs(null);
       }
     };
-  }, [currentUser?.id, roomId]);
+  }, [currentUser?.id, roomId, room?.host_id]);
 
 
   const isHost = useMemo(() => {
@@ -430,23 +432,31 @@ export default function Room() {
           </div>
 
           <div id="video-player-container" className="w-full aspect-video lg:flex-1 lg:aspect-auto p-0 lg:p-6 overflow-hidden relative bg-black shrink-0 order-1 lg:order-none">
-            <VideoPlayer
-              streamUrl={video.stream_url}
-              isHost={isHost}
-              onPlayStateChange={handlePlayStateChange}
-              onSeek={handleSeek}
-              onSyncReport={handleSyncReport}
-              syncState={syncState}
-              seekTrigger={seekTrigger}
-              isRemoteEvent={isProcessingRemoteEvent}
-              hostName={room.host_name}
-            />
-
-
-
-
-
-
+            {room.media_type === 'youtube' ? (
+              <YouTubePlayer
+                videoId={room.youtube_video_id || ""}
+                isHost={isHost}
+                onPlayStateChange={handlePlayStateChange}
+                onSeek={handleSeek}
+                onSyncReport={handleSyncReport}
+                syncState={syncState}
+                seekTrigger={seekTrigger}
+                isRemoteEvent={isProcessingRemoteEvent}
+                hostName={room.host_name}
+              />
+            ) : (
+              <VideoPlayer
+                streamUrl={video.stream_url}
+                isHost={isHost}
+                onPlayStateChange={handlePlayStateChange}
+                onSeek={handleSeek}
+                onSyncReport={handleSyncReport}
+                syncState={syncState}
+                seekTrigger={seekTrigger}
+                isRemoteEvent={isProcessingRemoteEvent}
+                hostName={room.host_name}
+              />
+            )}
           </div>
         </div>
 

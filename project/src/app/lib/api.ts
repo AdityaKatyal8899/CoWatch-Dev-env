@@ -154,13 +154,14 @@ export const api = {
   },
 
   // Room endpoints
-  async createRoom(name: string, videoId: string, hostId: string): Promise<any> {
+  async createRoom(name: string, videoId?: string, hostId?: string, videoUrl?: string): Promise<any> {
     return request('/rooms/create', {
       method: 'POST',
       body: JSON.stringify({
         title: name,
-        video_id: videoId,
-        host_id: hostId
+        video_id: videoId || undefined,
+        host_id: hostId,
+        video_url: videoUrl || undefined
       }),
     });
   },
