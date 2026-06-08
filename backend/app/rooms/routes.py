@@ -166,7 +166,8 @@ async def get_active_rooms(db: Session = Depends(get_db)):
 @router.get("/rooms/{room_id}/qr")
 async def get_room_qr(room_id: str):
     import os
-    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
+    frontend_url_raw = os.getenv("FRONTEND_URL", "http://localhost:3000")
+    frontend_url = [u.strip() for u in frontend_url_raw.split(",") if u.strip()][0]
     join_url = f"{frontend_url}/room/{room_id}"
     
     qr = qrcode.QRCode(
