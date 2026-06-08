@@ -127,31 +127,11 @@ export default function Upload() {
           const currentStatus = res.status;
           
           if (currentStatus === 'ready') {
-            setProcessingStatus('verifying');
-            try {
-              const videoDetails = await api.getVideo(video.video_id);
-              if (videoDetails.stream_url) {
-                console.log(`[Upload] Verifying stream accessibility at ${videoDetails.stream_url}`);
-                const verifyRes = await fetch(videoDetails.stream_url, { method: 'GET' });
-                if (verifyRes.ok) {
-                  setProcessing(false);
-                  setUploadComplete(true);
-                  setProcessingStatus('ready');
-                  toast.success('Video is ready for playback!');
-                  return;
-                }
-              }
-            } catch (verifyErr: any) {
-              console.log('[Upload] Verification returned error or CORS block:', verifyErr);
-              if (verifyErr instanceof TypeError || verifyErr.message?.includes('Failed to fetch')) {
-                setProcessing(false);
-                setUploadComplete(true);
-                setProcessingStatus('ready');
-                toast.success('Video is ready for playback!');
-                return;
-              }
-            }
-            pollTimeoutRef.current = setTimeout(pollStatus, 3000);
+            setProcessing(false);
+            setUploadComplete(true);
+            setProcessingStatus('ready');
+            toast.success('Video is ready for playback!');
+            return;
           } else if (currentStatus === 'failed') {
             setProcessing(false);
             setProcessingStatus('failed');
