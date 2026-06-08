@@ -131,14 +131,19 @@ def upload_file_with_retry(local_path: str, s3_key: str, content_type: str, max_
     return False
 
 
-def s3_sync_worker(output_dir: str, video_id: str, stop_event: threading.Event, error_container: list, window_size: int = 10):
+def s3_sync_worker(output_dir: str, video_id: str, stop_event: threading.Event, error_container: list, window_size: int = 10, duration: float = 0.0):
     """
     Background thread that monitors the output directory and uploads
     new segments to S3 in windows of size 10 in real-time, then deletes them immediately.
     """
+    import math
     uploaded_files = set()
     executor = concurrent.futures.ThreadPoolExecutor(max_workers=8)
     seg_pattern = re.compile(r"^seg_(\d+)\.ts$")
+    
+    expected_segments = max(1, math.ceil(duration / 4.0))
+    pre_play_threshold = max(1, math.ceil(expected_segments * 0.30))
+    pre_play_triggered = False
     
     try:
         while not stop_event.is_set() or any(f not in uploaded_files for f in os.listdir(output_dir) if f.endswith(".ts")):
@@ -207,6 +212,17 @@ def s3_sync_worker(output_dir: str, video_id: str, stop_event: threading.Event, 
                     if os.path.exists(m3u8_path):
                         print(f"[Sync Worker] Uploading current stream.m3u8 manifest...", flush=True)
                         upload_file_with_retry(m3u8_path, f"videos/{video_id}/stream.m3u8", "application/x-mpegURL")
+                        
+                    # Pre-play threshold check (30% segments uploaded)
+                    if not pre_play_triggered and len(uploaded_files) >= pre_play_threshold:
+                        print(f"[Sync Worker] 30% HLS segments pre-play threshold reached ({len(uploaded_files)}/{pre_play_threshold}). Marking video ready.", flush=True)
+                        cdn_url = os.getenv("CDN_URL", "").strip()
+                        if not cdn_url.startswith(("http://", "https://")):
+                            cdn_url = "https://" + cdn_url
+                        new_stream_url = f"{cdn_url.rstrip('/')}/videos/{video_id}/stream.m3u8"
+                        update_stream_url(video_id, new_stream_url)
+                        update_video_status(video_id, "ready")
+                        pre_play_triggered = True
                 else:
                     time.sleep(1)
             except Exception as e:
@@ -249,7 +265,10 @@ def process_video_to_hls(video_id: str, input_path: str):
             print(f"[Metadata Error] Failed to capture duration: {e}", flush=True)
 
         thumbnail_cmd = ["ffmpeg", "-y", "-i", input_path, "-ss", "00:00:02.000", "-vframes", "1", thumbnail_path]
-        thumbnail_url = f"/output/videos/{video_id}/thumbnail.jpg"
+        cdn_url = os.getenv("CDN_URL", "").strip()
+        if not cdn_url.startswith(("http://", "https://")):
+            cdn_url = "https://" + cdn_url
+        thumbnail_url = f"{cdn_url.rstrip('/')}/videos/{video_id}/thumbnail.jpg"
         try:
             subprocess.run(thumbnail_cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             upload_file_with_retry(thumbnail_path, f"videos/{video_id}/thumbnail.jpg", "image/jpeg")
@@ -287,7 +306,7 @@ def process_video_to_hls(video_id: str, input_path: str):
         sync_thread = threading.Thread(
             target=s3_sync_worker, 
             args=(output_dir, video_id, stop_event, error_container),
-            kwargs={"window_size": 10}
+            kwargs={"window_size": 10, "duration": exact_duration}
         )
         sync_thread.start()
 

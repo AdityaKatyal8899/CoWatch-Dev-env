@@ -26,14 +26,8 @@ export function VoiceControls({
   onOpenSettings,
   onLeave,
 }: VoiceControlsProps) {
-  const [mounted, setMounted] = useState(false);
   const [showVolume, setShowVolume] = useState(false);
   const volumeRef = useRef<HTMLDivElement>(null);
-
-  // Enable client-only portal mounting
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   // Close volume popover when clicking outside
   useEffect(() => {
@@ -45,11 +39,6 @@ export function VoiceControls({
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
-
-  if (!mounted) return null;
-
-  const playerContainer = document.getElementById("video-player-container");
-  if (!playerContainer) return null;
 
   // Custom Deafen Icon with a strike-through
   const DeafenIcon = ({ active }: { active: boolean }) => (
@@ -63,16 +52,11 @@ export function VoiceControls({
     </div>
   );
 
-  // Render the floating pill controls inside a React Portal (mounted in the player container)
-  return createPortal(
+  return (
     <div 
       className={cn(
-        "absolute z-40 flex items-center gap-1.5 p-1.5",
-        "bg-[#0B0B0F]/95 backdrop-blur-md border border-white/10 rounded-full shadow-[0_8px_32px_rgba(0,0,0,0.5)]",
-        "transition-all duration-300 select-none",
-        // Desktop: Float over bottom-left of player, above playback controls (bottom-28)
-        // Mobile: Float near bottom-left, above playback controls (bottom-24)
-        "bottom-24 left-4 lg:bottom-28 lg:left-6"
+        "relative w-full flex items-center justify-between gap-1 p-2",
+        "bg-[#0F0F14] border border-white/5 rounded-2xl shadow-lg select-none"
       )}
     >
       {/* Mute/Unmute Button */}
@@ -184,7 +168,6 @@ export function VoiceControls({
       >
         <PhoneOff className="w-3.5 h-3.5" />
       </button>
-    </div>,
-    playerContainer
+    </div>
   );
 }

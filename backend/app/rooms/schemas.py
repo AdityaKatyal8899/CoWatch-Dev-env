@@ -34,11 +34,15 @@ class RoomSchema(BaseModel):
     description: Optional[str] = None
     host_name: Optional[str] = None
     thumbnail_url: Optional[str] = None
+    media_type: str = "hls"
+    video_url: Optional[str] = None
+    youtube_video_id: Optional[str] = None
 
 class CreateRoomRequest(BaseModel):
     video_id: Optional[str] = None
     title: Optional[str] = None
     stream_url: Optional[str] = None
+    video_url: Optional[str] = None
     host_id: Optional[str] = None
 
 class RoomCreatedResponse(BaseModel):

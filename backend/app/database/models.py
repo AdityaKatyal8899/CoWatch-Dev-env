@@ -73,6 +73,9 @@ class Room(Base):
     video_id = Column(Integer, ForeignKey("videos.id", ondelete="SET NULL"))
     _stream_url = Column("stream_url", String, nullable=True) # Cached stream URL
     scheduled_time = Column(DateTime(timezone=True))
+    media_type = Column(String, default="hls")
+    video_url = Column(String, nullable=True)
+    youtube_video_id = Column(String, nullable=True)
 
     @property
     def stream_url(self):
