@@ -488,41 +488,43 @@ export function VoiceSidebar({ currentUser, hostId, isHost, roomId, roomParticip
             </button>
           </div>
         ) : (
-          /* Connected State: Responsive Grid/Row Participant list */
-          <div className="flex-1 overflow-y-auto scrollbar-thin p-4">
-            <div 
-              // Desktop: Responsive 3-column grid layout
-              // Mobile: Vertical stack row layout
-              className="grid grid-cols-1 lg:grid-cols-3 gap-3 lg:gap-4"
-            >
-              {participantsList.map((participant) => {
-                const themeColor = getParticipantThemeColor(participant.id);
-                return (
-                  <VoiceParticipantCard
-                    key={participant.id}
-                    participant={participant}
-                    themeColor={themeColor}
-                  />
-                );
-              })}
+          /* Connected State: Responsive Grid/Row Participant list and Controls Footer */
+          <>
+            <div className="flex-1 overflow-y-auto scrollbar-thin p-4">
+              <div 
+                // Desktop: Responsive 3-column grid layout
+                // Mobile: Vertical stack row layout
+                className="grid grid-cols-1 gap-3"
+              >
+                {participantsList.map((participant) => {
+                  const themeColor = getParticipantThemeColor(participant.id);
+                  return (
+                    <VoiceParticipantCard
+                      key={participant.id}
+                      participant={participant}
+                      themeColor={themeColor}
+                    />
+                  );
+                })}
+              </div>
             </div>
-          </div>
+
+            {/* Symmetrical Inline Voice Controls Footer at the bottom of the Sidebar drawer */}
+            <div className="p-4 border-t border-white/5 bg-[#0B0B0F]">
+              <VoiceControls
+                isMuted={isLocalMuted}
+                onToggleMute={handleToggleMute}
+                isDeafened={isLocalDeafened}
+                onToggleDeafen={handleToggleDeafen}
+                volume={volume}
+                onChangeVolume={(v) => setVolume(v)}
+                onOpenSettings={() => setIsSettingsOpen(true)}
+                onLeave={handleLeaveVoice}
+              />
+            </div>
+          </>
         )}
       </div>
-
-      {/* Floating controls (Only if connected) */}
-      {isConnected && (
-        <VoiceControls
-          isMuted={isLocalMuted}
-          onToggleMute={handleToggleMute}
-          isDeafened={isLocalDeafened}
-          onToggleDeafen={handleToggleDeafen}
-          volume={volume}
-          onChangeVolume={(v) => setVolume(v)}
-          onOpenSettings={() => setIsSettingsOpen(true)}
-          onLeave={handleLeaveVoice}
-        />
-      )}
 
       {/* Settings Modal overlay */}
       <VoiceSettingsModal
