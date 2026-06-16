@@ -119,7 +119,14 @@ async def room_websocket(websocket: WebSocket, room_id: str, user_id: str):
 
 
                 if is_host and msg_type in ["play", "pause", "seek", "sync_state"]:
-                    msg_time = float(message.get("timestamp", room.offset))
+                    msg_time_raw = message.get("timestamp")
+                    if msg_time_raw is None:
+                        msg_time = float(room.offset) if room.offset is not None else 0.0
+                    else:
+                        try:
+                            msg_time = float(msg_time_raw)
+                        except (ValueError, TypeError):
+                            msg_time = float(room.offset) if room.offset is not None else 0.0
 
                     
                     if msg_type == "play":
