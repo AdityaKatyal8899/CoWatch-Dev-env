@@ -197,8 +197,14 @@ export function VideoPlayer({
     const hls = hlsRef.current;
 
     // PART 0: EXTRACTION
-    const { isPlaying: shouldPlay, currentTime: hostTime, streamStatus, action: msgAction } = syncState as any;
+    const { isPlaying: shouldPlay, currentTime: rawHostTime, streamStatus, action: msgAction } = syncState as any;
     if (!video) return;
+
+    if (rawHostTime === undefined || rawHostTime === null || !Number.isFinite(Number(rawHostTime))) {
+      console.warn("[VideoPlayer] syncState ignored due to non-finite/missing currentTime:", rawHostTime);
+      return;
+    }
+    const hostTime = Number(rawHostTime);
 
     // RULE: Allow the first sync to happen even if readyState is 0, to trigger the correct segment loading
     if (vReadyState < 1 && hasInitialSyncRef.current) return;
@@ -517,7 +523,9 @@ export function VideoPlayer({
     // RULE: Max 1 seek per 800ms (Stabilization Mode)
     if (now - lastSeekTimeRef.current < 800) return;
 
-    const newTime = Math.max(0, Math.min(time, video.duration || Infinity));
+    const duration = (video.duration && Number.isFinite(video.duration)) ? video.duration : Infinity;
+    const computedTime = Math.max(0, Math.min(time, duration));
+    const newTime = Number.isFinite(computedTime) ? computedTime : 0;
 
     // 1. Initiate Isolation
     isSeekingRef.current = true;
@@ -558,7 +566,9 @@ export function VideoPlayer({
     setIsScrubbing(true);
     lastInteractionTimeRef.current = Date.now();
 
-    const newTime = Math.max(0, Math.min(time, video.duration || Infinity));
+    const duration = (video.duration && Number.isFinite(video.duration)) ? video.duration : Infinity;
+    const computedTime = Math.max(0, Math.min(time, duration));
+    const newTime = Number.isFinite(computedTime) ? computedTime : 0;
 
     // Broadcast throttled to prevent WebSocket Storms
     if (Date.now() - lastEmitRef.current > 500) {

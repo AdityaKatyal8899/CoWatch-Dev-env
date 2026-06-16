@@ -327,7 +327,7 @@ export default function Dashboard() {
                         </h3>
                         <div className="flex items-center gap-3 mt-1 underline-offset-4">
                           <span className="text-[10px] font-bold text-[var(--primary)] uppercase tracking-widest">{formatDuration(video.duration || 0)}</span>
-                          <span className="text-[10px] font-medium text-white/20 uppercase tracking-widest">{formatBytes(video.file_size)} GB</span>
+                          <span className="text-[10px] font-medium text-white/20 uppercase tracking-widest">{formatBytes(video.file_size)} </span>
                         </div>
                       </div>
                       

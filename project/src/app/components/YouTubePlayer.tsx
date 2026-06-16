@@ -183,7 +183,12 @@ export function YouTubePlayer({
       return;
     }
 
-    const { isPlaying: shouldPlay, currentTime: hostTime } = syncState;
+    const { isPlaying: shouldPlay, currentTime: rawHostTime } = syncState;
+    if (rawHostTime === undefined || rawHostTime === null || !Number.isFinite(Number(rawHostTime))) {
+      console.warn("[YouTubePlayer] syncState ignored due to non-finite/missing currentTime:", rawHostTime);
+      return;
+    }
+    const hostTime = Number(rawHostTime);
     console.log("[YouTubePlayer] syncState useEffect running:", { isHost, shouldPlay, hostTime, hasInitialSync: hasInitialSyncRef.current });
 
     if (!isHost && lastSyncRef.current) {
