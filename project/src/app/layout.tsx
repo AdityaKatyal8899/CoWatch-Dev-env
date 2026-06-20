@@ -13,6 +13,9 @@ const inter = Inter({ subsets: ['latin'] });
 export const metadata: Metadata = {
   title: 'CoWatch - Watch Videos Together',
   description: 'Synchronized video playback for friends and family.',
+  icons: {
+    icon: '/icon.ico',
+  },
 };
 
 import { ThemeProvider } from './components/ThemeProvider';

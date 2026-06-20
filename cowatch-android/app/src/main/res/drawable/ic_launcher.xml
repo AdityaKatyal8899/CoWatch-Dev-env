@@ -1,0 +1,89 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="512dp"
+    android:height="512dp"
+    android:viewportWidth="512"
+    android:viewportHeight="512">
+
+    <!-- Background Layer (Rounded Square) -->
+    <path
+        android:pathData="M96,0 H416 A96,96 0 0 1 512,96 V416 A96,96 0 0 1 416,512 H96 A96,96 0 0 1 0,416 V96 A96,96 0 0 1 96,0 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="0"
+                android:startY="0"
+                android:endX="512"
+                android:endY="512"
+                android:type="linear">
+                <item android:offset="0.0" android:color="#1A1829" />
+                <item android:offset="1.0" android:color="#0B0914" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Outer Sync Ring 1 (Vibrant Cyan) -->
+    <path
+        android:pathData="M256,60 C364.25,60 452,147.75 452,256 C452,364.25 364.25,452 256,452 C147.75,452 60,364.25 60,256 C60,147.75 147.75,60 256,60 Z"
+        android:strokeWidth="10"
+        android:strokeLineCap="round">
+        <aapt:attr name="android:strokeColor">
+            <gradient
+                android:startX="60"
+                android:startY="256"
+                android:endX="452"
+                android:endY="256"
+                android:type="linear">
+                <item android:offset="0.0" android:color="#00F2FE" />
+                <item android:offset="1.0" android:color="#4FACFE" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Inner Sync Ring 2 (Neon Purple/Pink) -->
+    <path
+        android:pathData="M256,110 C336.63,110 402,175.37 402,256 C402,336.63 336.63,402 256,402 C175.37,402 110,336.63 110,256 C110,175.37 175.37,110 256,110 Z"
+        android:strokeWidth="6"
+        android:strokeLineCap="round">
+        <aapt:attr name="android:strokeColor">
+            <gradient
+                android:startX="110"
+                android:startY="256"
+                android:endX="402"
+                android:endY="256"
+                android:type="linear">
+                <item android:offset="0.0" android:color="#F355DA" />
+                <item android:offset="1.0" android:color="#7000FF" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Center Play Icon (Glowing Gradient) -->
+    <path
+        android:pathData="M200,170 V342 C200,352.5 212,359 221,353.5 L356,267.5 C364,262.5 364,250.5 356,245.5 L221,159.5 C212,154 200,160.5 200,170 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="200"
+                android:startY="256"
+                android:endX="360"
+                android:endY="256"
+                android:type="linear">
+                <item android:offset="0.0" android:color="#00F2FE" />
+                <item android:offset="0.5" android:color="#7000FF" />
+                <item android:offset="1.0" android:color="#F355DA" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Small Overlay Sync Dots (Representing participants) -->
+    <group>
+        <!-- Top Dot -->
+        <path
+            android:pathData="M256,60 A10,10 0 1,1 256,40 A10,10 0 1,1 256,60 Z"
+            android:fillColor="#00F2FE" />
+        <!-- Bottom Dot -->
+        <path
+            android:pathData="M256,472 A10,10 0 1,1 256,452 A10,10 0 1,1 256,472 Z"
+            android:fillColor="#F355DA" />
+    </group>
+
+</vector>
