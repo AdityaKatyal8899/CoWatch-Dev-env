@@ -53,14 +53,7 @@ def generate_upload_url(user_id: str, file_type: str) -> Dict:
     s3 = get_s3_client()
     
     # Debug Environment Sanity
-    from datetime import datetime
-
-
-
-
-
-
-    
+    from datetime import datetime    
     upload_url = s3.generate_presigned_url(
         "put_object",
         Params={
@@ -70,9 +63,6 @@ def generate_upload_url(user_id: str, file_type: str) -> Dict:
         },
         ExpiresIn=300, # 5 minutes
     )
-
-
-
 
     return {
         "upload_url": upload_url,

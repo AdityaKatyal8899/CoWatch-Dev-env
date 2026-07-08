@@ -296,7 +296,7 @@ def process_video_to_hls(video_id: str, input_path: str):
             "-hls_playlist_type", "vod",
             "-start_number", "0",
             "-hls_flags", "independent_segments",
-            "-threads", "0",
+            "-threads", "2",
             "-avoid_negative_ts", "make_zero",
             "-hls_segment_filename", os.path.join(output_dir, "seg_%03d.ts"),
             stream_playlist
