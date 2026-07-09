@@ -210,45 +210,55 @@ export default function Upload() {
               </div>
 
               <div className="max-w-2xl mx-auto">
-                {/* Drag & Drop Area */}
-                {!isAndroidApp && (
-                  <motion.div 
-                    whileHover={!uploading && !file ? { scale: 1.01, borderColor: 'var(--primary)' } : {}}
-                    className={`glass-card rounded-3xl border-2 border-dashed transition-all p-12 text-center mb-10 ${
-                      dragActive ? 'border-[var(--primary)] bg-[var(--primary)]/5 scale-[1.01]' : 'border-white/5 bg-white/[0.02]'
-                    } ${uploading || processing ? 'pointer-events-none opacity-80' : 'cursor-pointer'}`}
-                    onDragEnter={handleDrag}
-                    onDragLeave={handleDrag}
-                    onDragOver={handleDrag}
-                    onDrop={handleDrop}
-                    onClick={() => !uploading && !file && fileInputRef.current?.click()}
-                  >
-                    <input
-                      type="file"
-                      ref={fileInputRef}
-                      onChange={handleFileInput}
-                      className="hidden"
-                      accept="video/*"
-                    />
+                {/* Drag & Drop Area / Select Card */}
+                <motion.div 
+                  whileHover={!uploading && !file ? { scale: 1.01, borderColor: 'var(--primary)' } : {}}
+                  className={`glass-card rounded-3xl border-2 border-dashed transition-all p-12 text-center mb-10 ${
+                    dragActive ? 'border-[var(--primary)] bg-[var(--primary)]/5 scale-[1.01]' : 'border-white/5 bg-white/[0.02]'
+                  } ${uploading || processing ? 'pointer-events-none opacity-80' : 'cursor-pointer'}`}
+                  onDragEnter={isAndroidApp ? undefined : handleDrag}
+                  onDragLeave={isAndroidApp ? undefined : handleDrag}
+                  onDragOver={isAndroidApp ? undefined : handleDrag}
+                  onDrop={isAndroidApp ? undefined : handleDrop}
+                  onClick={() => {
+                    if (uploading || processing) return;
+                    if (isAndroidApp) {
+                      handleAndroidUpload();
+                    } else if (!file) {
+                      fileInputRef.current?.click();
+                    }
+                  }}
+                >
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileInput}
+                    className="hidden"
+                    accept="video/*"
+                  />
 
-                    {!file ? (
-                      <>
-                        <div className="mb-8">
-                          <div className="w-24 h-24 rounded-3xl bg-white/5 flex items-center justify-center mx-auto transition-all duration-500">
-                            <CloudUpload className={`w-10 h-10 transition-colors ${dragActive ? 'text-[var(--primary)]' : 'text-white/20'}`} />
-                          </div>
+                  {!file ? (
+                    <>
+                      <div className="mb-8">
+                        <div className="w-24 h-24 rounded-3xl bg-white/5 flex items-center justify-center mx-auto transition-all duration-500">
+                          <CloudUpload className={`w-10 h-10 transition-colors ${dragActive ? 'text-[var(--primary)]' : 'text-white/20'}`} />
                         </div>
-                        <h2 className="text-2xl font-bold text-white mb-2">
-                          {dragActive ? 'Release to upload' : 'Select a recording'}
-                        </h2>
-                        <p className="text-[var(--muted)] mb-8 max-w-xs mx-auto text-sm font-medium">
-                          Drag and drop your file here or click to browse.
-                        </p>
-                        <button className="btn-primary px-8 py-3 rounded-xl mx-auto w-fit flex items-center gap-2">
-                          <Search className="w-4 h-4" />
-                          Browse Storage
-                        </button>
-                      </>
+                      </div>
+                      <h2 className="text-2xl font-bold text-white mb-2">
+                        {isAndroidApp 
+                          ? 'Select a video' 
+                          : (dragActive ? 'Release to upload' : 'Select a recording')}
+                      </h2>
+                      <p className="text-[var(--muted)] mb-8 max-w-xs mx-auto text-sm font-medium">
+                        {isAndroidApp 
+                          ? 'Tap here to browse your device files and begin background upload.' 
+                          : 'Drag and drop your file here or click to browse.'}
+                      </p>
+                      <button className="btn-primary px-8 py-3 rounded-xl mx-auto w-fit flex items-center gap-2">
+                        <Search className="w-4 h-4" />
+                        {isAndroidApp ? 'Select Video' : 'Browse Storage'}
+                      </button>
+                    </>
                     ) : (
                       <div className="space-y-6">
                         <div className="flex items-center gap-6 p-4 text-left glass-card bg-white/5 border border-white/10 rounded-2xl">
@@ -329,7 +339,6 @@ export default function Upload() {
                       </div>
                     )}
                   </motion.div>
-                )}
 
                 {/* Form Details (only if file selected or running on Android app, and not completed) */}
                 {(file || isAndroidApp) && !uploadComplete && (
