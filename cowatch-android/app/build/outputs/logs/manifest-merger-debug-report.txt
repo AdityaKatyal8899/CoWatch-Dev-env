@@ -1,9 +1,9 @@
 -- Merging decision tree log ---
 manifest
-ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:2:1-58:12
-INJECTED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:2:1-58:12
-INJECTED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:2:1-58:12
-INJECTED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:2:1-58:12
+ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:2:1-69:12
+INJECTED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:2:1-69:12
+INJECTED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:2:1-69:12
+INJECTED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:2:1-69:12
 MERGED from [com.google.android.material:material:1.10.0] C:\Users\AdityaJi\.gradle\caches\8.14.3\transforms\8062c16dcb79b34fa2c362c8787acfc7\transformed\material-1.10.0\AndroidManifest.xml:17:1-24:12
 MERGED from [androidx.constraintlayout:constraintlayout:2.1.4] C:\Users\AdityaJi\.gradle\caches\8.14.3\transforms\c076ddd131b81917697ea16e52a8d74a\transformed\constraintlayout-2.1.4\AndroidManifest.xml:2:1-11:12
 MERGED from [androidx.appcompat:appcompat-resources:1.6.1] C:\Users\AdityaJi\.gradle\caches\8.14.3\transforms\b7c9684e37a61f0fbd0c26114b90780b\transformed\jetified-appcompat-resources-1.6.1\AndroidManifest.xml:17:1-22:12
@@ -74,31 +74,43 @@ uses-permission#android.permission.RECORD_AUDIO
 ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:12:5-71
 	android:name
 		ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:12:22-68
+uses-permission#android.permission.FOREGROUND_SERVICE
+ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:15:5-77
+	android:name
+		ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:15:22-74
+uses-permission#android.permission.FOREGROUND_SERVICE_DATA_SYNC
+ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:16:5-87
+	android:name
+		ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:16:22-84
+uses-permission#android.permission.POST_NOTIFICATIONS
+ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:17:5-77
+	android:name
+		ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:17:22-74
 uses-permission#android.permission.READ_MEDIA_VIDEO
-ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:15:5-75
+ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:20:5-75
 	android:name
-		ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:15:22-72
+		ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:20:22-72
 uses-permission#android.permission.READ_EXTERNAL_STORAGE
-ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:16:5-107
+ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:21:5-107
 	android:maxSdkVersion
-		ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:16:78-104
+		ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:21:78-104
 	android:name
-		ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:16:22-77
+		ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:21:22-77
 uses-feature#android.hardware.camera
-ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:19:5-85
+ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:24:5-85
 	android:required
-		ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:19:58-82
+		ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:24:58-82
 	android:name
-		ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:19:19-57
+		ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:24:19-57
 uses-feature#android.hardware.microphone
-ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:20:5-89
+ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:25:5-89
 	android:required
-		ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:20:62-86
+		ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:25:62-86
 	android:name
-		ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:20:19-61
+		ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:25:19-61
 application
-ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:22:5-56:19
-INJECTED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:22:5-56:19
+ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:27:5-67:19
+INJECTED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:27:5-67:19
 MERGED from [com.google.android.material:material:1.10.0] C:\Users\AdityaJi\.gradle\caches\8.14.3\transforms\8062c16dcb79b34fa2c362c8787acfc7\transformed\material-1.10.0\AndroidManifest.xml:22:5-20
 MERGED from [com.google.android.material:material:1.10.0] C:\Users\AdityaJi\.gradle\caches\8.14.3\transforms\8062c16dcb79b34fa2c362c8787acfc7\transformed\material-1.10.0\AndroidManifest.xml:22:5-20
 MERGED from [androidx.constraintlayout:constraintlayout:2.1.4] C:\Users\AdityaJi\.gradle\caches\8.14.3\transforms\c076ddd131b81917697ea16e52a8d74a\transformed\constraintlayout-2.1.4\AndroidManifest.xml:9:5-20
@@ -120,69 +132,79 @@ MERGED from [androidx.startup:startup-runtime:1.1.1] C:\Users\AdityaJi\.gradle\c
 	android:appComponentFactory
 		ADDED from [androidx.core:core:1.12.0] C:\Users\AdityaJi\.gradle\caches\8.14.3\transforms\6d3fcef89277783d05a0aeb0ff04a338\transformed\core-1.12.0\AndroidManifest.xml:28:18-86
 	android:supportsRtl
-		ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:27:9-35
+		ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:32:9-35
 	android:label
-		ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:25:9-32
+		ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:30:9-32
 	android:hardwareAccelerated
-		ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:29:9-43
+		ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:34:9-43
 	android:roundIcon
-		ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:26:9-50
+		ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:31:9-50
 	android:icon
-		ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:24:9-45
+		ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:29:9-45
 	android:allowBackup
-		ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:23:9-35
+		ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:28:9-35
 	android:theme
-		ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:28:9-59
+		ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:33:9-59
 	android:usesCleartextTraffic
-		ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:30:9-44
-activity#com.cowatch.app.MainActivity
-ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:32:9-55:20
-	android:launchMode
-		ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:35:13-44
+		ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:35:9-44
+service#com.cowatch.app.UploadService
+ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:37:9-41:56
+	android:enabled
+		ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:39:13-35
 	android:exported
-		ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:34:13-36
+		ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:40:13-37
+	android:foregroundServiceType
+		ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:41:13-53
+	android:name
+		ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:38:13-42
+activity#com.cowatch.app.MainActivity
+ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:43:9-66:20
+	android:launchMode
+		ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:46:13-44
+	android:exported
+		ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:45:13-36
 	android:configChanges
-		ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:36:13-90
+		ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:47:13-90
 	android:name
-		ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:33:13-41
+		ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:44:13-41
 intent-filter#action:name:android.intent.action.MAIN+category:name:android.intent.category.LAUNCHER
-ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:37:13-40:29
+ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:48:13-51:29
 action#android.intent.action.MAIN
-ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:38:17-69
+ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:49:17-69
 	android:name
-		ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:38:25-66
+		ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:49:25-66
 category#android.intent.category.LAUNCHER
-ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:39:17-77
+ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:50:17-77
 	android:name
-		ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:39:27-74
+		ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:50:27-74
 intent-filter#action:name:android.intent.action.VIEW+category:name:android.intent.category.BROWSABLE+category:name:android.intent.category.DEFAULT+data:host:login-callback+data:scheme:cowatch
-ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:41:13-46:29
+ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:52:13-57:29
 	android:label
-		ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:41:28-66
+		ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:52:28-66
 action#android.intent.action.VIEW
-ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:42:17-69
+ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:53:17-69
 	android:name
-		ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:42:25-66
+		ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:53:25-66
 category#android.intent.category.DEFAULT
-ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:43:17-76
+ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:54:17-76
 	android:name
-		ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:43:27-73
+		ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:54:27-73
 category#android.intent.category.BROWSABLE
-ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:44:17-78
+ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:55:17-78
 	android:name
-		ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:44:27-75
+		ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:55:27-75
 data
-ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:45:17-80
+ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:56:17-80
 	android:host
-		ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:45:48-77
+		ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:56:48-77
 	android:scheme
-		ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:45:23-47
+		ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:56:23-47
 intent-filter#action:name:android.intent.action.VIEW+category:name:android.intent.category.BROWSABLE+category:name:android.intent.category.DEFAULT+data:host:cowatch-theta.vercel.app+data:scheme:http+data:scheme:https
-ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:47:13-54:29
+ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:58:13-65:29
 	android:label
-		ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:47:28-64
+		ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:58:28-64
 	android:autoVerify
-		ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:47:65-90
+		ADDED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:58:65-90
 uses-sdk
 INJECTED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml reason: use-sdk injection requested
 INJECTED from C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml

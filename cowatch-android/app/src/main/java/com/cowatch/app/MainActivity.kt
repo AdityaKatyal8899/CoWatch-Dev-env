@@ -6,6 +6,7 @@ import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.webkit.PermissionRequest
 import android.webkit.ValueCallback
@@ -73,6 +74,13 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        // Request notification permission for Android 13+ background updates
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 102)
+            }
+        }
+
         webView = findViewById(R.id.webView)
         setupWebView()
         setupBackNavigation()
@@ -113,11 +121,15 @@ class MainActivity : AppCompatActivity() {
         settings.databaseEnabled = true
         settings.useWideViewPort = true
         settings.loadWithOverviewMode = true
+        settings.cacheMode = WebSettings.LOAD_NO_CACHE
+        webView.clearCache(true)
         settings.mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
         
         // Enable popup window support for Google Identity Services popup auth
         settings.setSupportMultipleWindows(true)
         settings.javaScriptCanOpenWindowsAutomatically = true
+
+        webView.addJavascriptInterface(AndroidUploadBridge(), "AndroidUploadBridge")
 
         webView.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
@@ -301,6 +313,84 @@ class MainActivity : AppCompatActivity() {
         
         // Restore system UI
         window.decorView.systemUiVisibility = android.view.View.SYSTEM_UI_FLAG_VISIBLE
+    }
+
+    // Keep parameters globally cached for the current file picker request
+    private var pendingUploadTitle: String = ""
+    private var pendingUploadDescription: String = ""
+    private var pendingUploadCollectionId: String? = null
+    private var pendingUploadToken: String? = null
+    private var pendingUploadUrl: String = ""
+
+    private val nativeUploadFilePickerLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == RESULT_OK) {
+            val selectedUri = result.data?.data
+            if (selectedUri != null) {
+                // Grant persistent Uri permissions so service can read it
+                try {
+                    val takeFlags: Int = Intent.FLAG_GRANT_READ_URI_PERMISSION
+                    contentResolver.takePersistableUriPermission(selectedUri, takeFlags)
+                } catch (e: Exception) {
+                    // Ignore on non-persistable Uris
+                }
+
+                // Start Foreground Service
+                val serviceIntent = Intent(this, UploadService::class.java).apply {
+                    putExtra("uri", selectedUri.toString())
+                    putExtra("title", pendingUploadTitle)
+                    putExtra("description", pendingUploadDescription)
+                    putExtra("collection_id", pendingUploadCollectionId)
+                    putExtra("token", pendingUploadToken)
+                    putExtra("upload_url", pendingUploadUrl)
+                }
+                
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    startForegroundService(serviceIntent)
+                } else {
+                    startService(serviceIntent)
+                }
+
+                // Notify frontend JavaScript that upload has officially started
+                webView.evaluateJavascript("if (typeof window.onAndroidUploadStarted === 'function') { window.onAndroidUploadStarted(); }", null)
+            }
+        }
+    }
+
+    private fun launchNativeFilePicker(
+        title: String,
+        description: String,
+        collectionId: String?,
+        token: String?,
+        uploadUrl: String
+    ) {
+        pendingUploadTitle = title
+        pendingUploadDescription = description
+        pendingUploadCollectionId = collectionId
+        pendingUploadToken = token
+        pendingUploadUrl = uploadUrl
+
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "video/*"
+        }
+        nativeUploadFilePickerLauncher.launch(intent)
+    }
+
+    inner class AndroidUploadBridge {
+        @android.webkit.JavascriptInterface
+        fun triggerNativeUpload(
+            title: String,
+            description: String,
+            collectionId: String?,
+            token: String?,
+            uploadUrl: String
+        ) {
+            runOnUiThread {
+                launchNativeFilePicker(title, description, collectionId, token, uploadUrl)
+            }
+        }
     }
 
     private fun setupBackNavigation() {

@@ -381,6 +381,7 @@ def process_video_to_hls(video_id: str, input_path: str):
 
         if success and cleanup_succeeded:
             update_video_status(video_id, "ready")
+            # TODO: Trigger notification here (e.g. push notification, email, or WebSocket broadcast) to inform the user that their video is READY for playback.
         elif success:
             update_video_status(video_id, "failed")
 

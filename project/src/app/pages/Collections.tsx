@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Folder, Plus, Video as VideoIcon, Play, Trash2, Grid3x3, List, Search, CheckSquare, Square, X } from 'lucide-react';
+import { Folder, Plus, Video as VideoIcon, Play, Trash2, Grid3x3, List, Search, CheckSquare, Square, X, AlertCircle } from 'lucide-react';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { api } from '../lib/api';
 import type { Video, Collection } from '../lib/types';
@@ -13,7 +13,7 @@ import { Loader } from '../components/ui/Loader';
 import { ConfirmModal } from '../components/ui/modal';
 import { PageTransition } from '../components/ui/PageTransition';
 import { motion } from 'motion/react';
-import { formatBytes, formatDuration } from '../lib/utils';
+import { formatBytes, formatDuration, cn } from '../lib/utils';
 
 type ViewMode = 'grid' | 'list';
 
@@ -343,10 +343,12 @@ export default function Collections() {
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: idx * 0.03 }}
-                    whileHover={{ y: -5, borderColor: 'var(--primary)' }}
-                    className={`glass-card rounded-2xl overflow-hidden group border border-white/5 hover:border-white/10 transition-all cursor-pointer relative ${
+                    whileHover={video.processing_status === 'ready' ? { y: -5, borderColor: 'var(--primary)' } : {}}
+                    className={cn(
+                      "glass-card rounded-2xl overflow-hidden group border border-white/5 transition-all relative",
+                      video.processing_status === 'ready' ? "hover:border-white/10 cursor-pointer" : "opacity-60 cursor-not-allowed",
                       selectedVideoIds.includes(video.video_id) ? 'ring-1 ring-[var(--primary)]' : ''
-                    }`}
+                    )}
                     onClick={() => toggleSelectVideo(video.video_id)}
                   >
                     <div className="aspect-video bg-[#121212] flex items-center justify-center relative overflow-hidden">
@@ -361,23 +363,33 @@ export default function Collections() {
                       )}
                       
                       <div className="absolute bottom-2 right-2 px-1.5 py-0.5 bg-black/60 backdrop-blur-md rounded text-[10px] font-bold text-white uppercase tracking-widest">
-                        {formatDuration(video.duration || 0)}
+                        {video.processing_status === 'ready' ? formatDuration(video.duration || 0) : video.processing_status.toUpperCase()}
                       </div>
   
-                      <div 
-                        className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          router.push(`/create-stream?video=${video.video_id}`);
-                        }}
-                      >
-                        <motion.div 
-                          whileHover={{ scale: 1.2 }}
-                          className="w-12 h-12 rounded-xl bg-white flex items-center justify-center shadow-xl transition-transform"
+                      {video.processing_status === 'ready' ? (
+                        <div 
+                          className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            router.push(`/create-stream?video=${video.video_id}`);
+                          }}
                         >
-                          <Play className="w-5 h-5 text-black ml-0.5" fill="black" />
-                        </motion.div>
-                      </div>
+                          <motion.div 
+                            whileHover={{ scale: 1.2 }}
+                            className="w-12 h-12 rounded-xl bg-white flex items-center justify-center shadow-xl transition-transform"
+                          >
+                            <Play className="w-5 h-5 text-black ml-0.5" fill="black" />
+                          </motion.div>
+                        </div>
+                      ) : (
+                        <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px] flex items-center justify-center">
+                          {video.processing_status === 'failed' ? (
+                            <AlertCircle className="w-6 h-6 text-red-500" />
+                          ) : (
+                            <Loader className="w-6 h-6" />
+                          )}
+                        </div>
+                      )}
                     </div>
   
                     <div className="p-4">
@@ -408,9 +420,11 @@ export default function Collections() {
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: idx * 0.02 }}
-                    className={`glass-card rounded-2xl p-3 sm:p-4 flex items-center gap-3 sm:gap-5 border border-white/5 hover:border-[var(--primary)]/30 transition-all cursor-pointer group ${
+                    className={cn(
+                      "glass-card rounded-2xl p-3 sm:p-4 flex items-center gap-3 sm:gap-5 border border-white/5 transition-all group",
+                      video.processing_status === 'ready' ? "hover:border-[var(--primary)]/30 cursor-pointer" : "opacity-60 cursor-not-allowed",
                       selectedVideoIds.includes(video.video_id) ? 'bg-[var(--primary)]/5 border-[var(--primary)]/30' : ''
-                    }`}
+                    )}
                     onClick={() => toggleSelectVideo(video.video_id)}
                   >
                     <div 
@@ -436,8 +450,21 @@ export default function Collections() {
                         {video.title}
                       </h3>
                       <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-[9px] sm:text-[10px] font-black tracking-widest text-white/20 uppercase">
-                        <span className="text-white/40">{formatDuration(video.duration || 0)}</span>
-                        <span className="hidden sm:inline">•</span>
+                        {video.processing_status === 'ready' ? (
+                          <>
+                            <span className="text-white/40">{formatDuration(video.duration || 0)}</span>
+                            <span className="hidden sm:inline">•</span>
+                          </>
+                        ) : (
+                          <>
+                            <span className={`px-2 py-0.5 rounded font-black text-[9px] border ${
+                              video.processing_status === 'failed' 
+                                ? "bg-red-500/20 text-red-400 border-red-500/30" 
+                                : "bg-[var(--primary)]/20 text-[var(--primary)] border-[var(--primary)]/30 animate-pulse"
+                            }`}>{video.processing_status}</span>
+                            <span className="hidden sm:inline">•</span>
+                          </>
+                        )}
                         <span>{formatBytes(video.file_size)}</span>
                         <span className="hidden sm:inline">•</span>
                         <span>{new Date(video.created_at).toLocaleDateString()}</span>
@@ -445,17 +472,37 @@ export default function Collections() {
                     </div>
   
                     <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-                      <motion.button
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.9 }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          router.push(`/create-stream?video=${video.video_id}`);
-                        }}
-                        className="p-2 sm:p-3 min-w-[36px] min-h-[36px] sm:min-w-[44px] sm:min-h-[44px] flex items-center justify-center bg-white text-black rounded-xl hover:bg-[var(--primary)] hover:text-[var(--bg)] transition-all shadow-xl shadow-black/20"
-                      >
-                        <Play className="w-3 h-3 sm:w-4 sm:h-4 ml-0.5" fill="currentColor" />
-                      </motion.button>
+                      {video.processing_status === 'ready' ? (
+                        <motion.button
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            router.push(`/create-stream?video=${video.video_id}`);
+                          }}
+                          className="p-2 sm:p-3 min-w-[36px] min-h-[36px] sm:min-w-[44px] sm:min-h-[44px] flex items-center justify-center bg-white text-black rounded-xl hover:bg-[var(--primary)] hover:text-[var(--bg)] transition-all shadow-xl shadow-black/20"
+                        >
+                          <Play className="w-3 h-3 sm:w-4 sm:h-4 ml-0.5" fill="currentColor" />
+                        </motion.button>
+                      ) : (
+                        <div 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (video.processing_status === 'failed') {
+                              toast.error('This video failed processing.');
+                            } else {
+                              toast.info('This video is currently processing in the background.');
+                            }
+                          }}
+                          className="p-2 sm:p-3 min-w-[36px] min-h-[36px] sm:min-w-[44px] sm:min-h-[44px] flex items-center justify-center bg-white/5 border border-white/5 text-white/30 rounded-xl cursor-not-allowed"
+                        >
+                          {video.processing_status === 'failed' ? (
+                            <AlertCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-red-500" />
+                          ) : (
+                            <Loader className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                          )}
+                        </div>
+                      )}
                       <button
                         onClick={(e) => {
                           e.stopPropagation();

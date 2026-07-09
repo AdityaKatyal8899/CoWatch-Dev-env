@@ -10,6 +10,11 @@
     <!-- WebRTC Camera & Microphone Permissions -->
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    
+    <!-- Background Service & Notifications Permissions -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <!-- File Upload Permissions (For media files) -->
     <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
@@ -28,6 +33,12 @@
         android:theme="@style/Theme.AppCompat.NoActionBar"
         android:hardwareAccelerated="true"
         android:usesCleartextTraffic="true">
+
+        <service
+            android:name=".UploadService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
         
         <activity
             android:name=".MainActivity"

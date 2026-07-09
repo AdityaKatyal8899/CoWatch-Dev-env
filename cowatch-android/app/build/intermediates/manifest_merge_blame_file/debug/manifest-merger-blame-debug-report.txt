@@ -1,8 +1,8 @@
 1<?xml version="1.0" encoding="utf-8"?>
 2<manifest xmlns:android="http://schemas.android.com/apk/res/android"
 3    package="com.cowatch.app"
-4    android:versionCode="1"
-5    android:versionName="1.0" >
+4    android:versionCode="2"
+5    android:versionName="1.0.1" >
 6
 7    <uses-sdk
 8        android:minSdkVersion="26"
@@ -27,199 +27,221 @@
 18-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:12:5-71
 18-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:12:22-68
 19
-20    <!-- File Upload Permissions (For media files) -->
-21    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
-21-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:15:5-75
-21-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:15:22-72
-22    <uses-permission
-22-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:16:5-107
-23        android:name="android.permission.READ_EXTERNAL_STORAGE"
-23-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:16:22-77
-24        android:maxSdkVersion="32" />
-24-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:16:78-104
-25
-26    <!-- Feature Requirements for Play Store Filtering -->
-27    <uses-feature
-27-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:19:5-85
-28        android:name="android.hardware.camera"
-28-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:19:19-57
-29        android:required="false" />
-29-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:19:58-82
-30    <uses-feature
-30-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:20:5-89
-31        android:name="android.hardware.microphone"
-31-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:20:19-61
-32        android:required="false" />
-32-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:20:62-86
-33
-34    <permission
-34-->[androidx.core:core:1.12.0] C:\Users\AdityaJi\.gradle\caches\8.14.3\transforms\6d3fcef89277783d05a0aeb0ff04a338\transformed\core-1.12.0\AndroidManifest.xml:22:5-24:47
-35        android:name="com.cowatch.app.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
-35-->[androidx.core:core:1.12.0] C:\Users\AdityaJi\.gradle\caches\8.14.3\transforms\6d3fcef89277783d05a0aeb0ff04a338\transformed\core-1.12.0\AndroidManifest.xml:23:9-81
-36        android:protectionLevel="signature" />
-36-->[androidx.core:core:1.12.0] C:\Users\AdityaJi\.gradle\caches\8.14.3\transforms\6d3fcef89277783d05a0aeb0ff04a338\transformed\core-1.12.0\AndroidManifest.xml:24:9-44
-37
-38    <uses-permission android:name="com.cowatch.app.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" />
-38-->[androidx.core:core:1.12.0] C:\Users\AdityaJi\.gradle\caches\8.14.3\transforms\6d3fcef89277783d05a0aeb0ff04a338\transformed\core-1.12.0\AndroidManifest.xml:26:5-97
-38-->[androidx.core:core:1.12.0] C:\Users\AdityaJi\.gradle\caches\8.14.3\transforms\6d3fcef89277783d05a0aeb0ff04a338\transformed\core-1.12.0\AndroidManifest.xml:26:22-94
-39
-40    <application
-40-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:22:5-56:19
-41        android:allowBackup="true"
-41-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:23:9-35
-42        android:appComponentFactory="androidx.core.app.CoreComponentFactory"
-42-->[androidx.core:core:1.12.0] C:\Users\AdityaJi\.gradle\caches\8.14.3\transforms\6d3fcef89277783d05a0aeb0ff04a338\transformed\core-1.12.0\AndroidManifest.xml:28:18-86
-43        android:debuggable="true"
-44        android:extractNativeLibs="false"
-45        android:hardwareAccelerated="true"
-45-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:29:9-43
-46        android:icon="@drawable/ic_launcher"
-46-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:24:9-45
-47        android:label="CoWatch"
-47-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:25:9-32
-48        android:roundIcon="@drawable/ic_launcher"
-48-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:26:9-50
-49        android:supportsRtl="true"
-49-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:27:9-35
-50        android:theme="@style/Theme.AppCompat.NoActionBar"
-50-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:28:9-59
-51        android:usesCleartextTraffic="true" >
-51-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:30:9-44
-52        <activity
-52-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:32:9-55:20
-53            android:name="com.cowatch.app.MainActivity"
-53-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:33:13-41
-54            android:configChanges="orientation|screenSize|keyboardHidden|layoutDirection"
-54-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:36:13-90
-55            android:exported="true"
-55-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:34:13-36
-56            android:launchMode="singleTask" >
-56-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:35:13-44
-57            <intent-filter>
-57-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:37:13-40:29
-58                <action android:name="android.intent.action.MAIN" />
-58-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:38:17-69
-58-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:38:25-66
-59
-60                <category android:name="android.intent.category.LAUNCHER" />
-60-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:39:17-77
-60-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:39:27-74
-61            </intent-filter>
-62            <intent-filter android:label="CoWatch Login Callback" >
-62-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:41:13-46:29
-62-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:41:28-66
-63                <action android:name="android.intent.action.VIEW" />
-63-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:42:17-69
-63-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:42:25-66
-64
-65                <category android:name="android.intent.category.DEFAULT" />
-65-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:43:17-76
-65-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:43:27-73
-66                <category android:name="android.intent.category.BROWSABLE" />
-66-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:44:17-78
-66-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:44:27-75
-67
-68                <data
-68-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:45:17-80
-69                    android:host="login-callback"
-69-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:45:48-77
-70                    android:scheme="cowatch" />
-70-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:45:23-47
-71            </intent-filter>
-72            <intent-filter
-72-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:47:13-54:29
-73                android:autoVerify="true"
-73-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:47:65-90
-74                android:label="CoWatch Web Callback" >
-74-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:47:28-64
-75                <action android:name="android.intent.action.VIEW" />
-75-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:42:17-69
-75-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:42:25-66
-76
-77                <category android:name="android.intent.category.DEFAULT" />
-77-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:43:17-76
-77-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:43:27-73
-78                <category android:name="android.intent.category.BROWSABLE" />
-78-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:44:17-78
-78-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:44:27-75
-79
-80                <data android:scheme="http" />
-80-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:45:17-80
-80-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:45:23-47
-81                <data android:scheme="https" />
-81-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:45:17-80
-81-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:45:23-47
-82                <data android:host="cowatch-theta.vercel.app" />
-82-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:45:17-80
-82-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:45:48-77
-83            </intent-filter>
-84        </activity>
-85
-86        <provider
-86-->[androidx.emoji2:emoji2:1.2.0] C:\Users\AdityaJi\.gradle\caches\8.14.3\transforms\e950b0b94a5bebcc9a9dd0e0bea8329a\transformed\jetified-emoji2-1.2.0\AndroidManifest.xml:24:9-32:20
-87            android:name="androidx.startup.InitializationProvider"
-87-->[androidx.emoji2:emoji2:1.2.0] C:\Users\AdityaJi\.gradle\caches\8.14.3\transforms\e950b0b94a5bebcc9a9dd0e0bea8329a\transformed\jetified-emoji2-1.2.0\AndroidManifest.xml:25:13-67
-88            android:authorities="com.cowatch.app.androidx-startup"
-88-->[androidx.emoji2:emoji2:1.2.0] C:\Users\AdityaJi\.gradle\caches\8.14.3\transforms\e950b0b94a5bebcc9a9dd0e0bea8329a\transformed\jetified-emoji2-1.2.0\AndroidManifest.xml:26:13-68
-89            android:exported="false" >
-89-->[androidx.emoji2:emoji2:1.2.0] C:\Users\AdityaJi\.gradle\caches\8.14.3\transforms\e950b0b94a5bebcc9a9dd0e0bea8329a\transformed\jetified-emoji2-1.2.0\AndroidManifest.xml:27:13-37
-90            <meta-data
-90-->[androidx.emoji2:emoji2:1.2.0] C:\Users\AdityaJi\.gradle\caches\8.14.3\transforms\e950b0b94a5bebcc9a9dd0e0bea8329a\transformed\jetified-emoji2-1.2.0\AndroidManifest.xml:29:13-31:52
-91                android:name="androidx.emoji2.text.EmojiCompatInitializer"
-91-->[androidx.emoji2:emoji2:1.2.0] C:\Users\AdityaJi\.gradle\caches\8.14.3\transforms\e950b0b94a5bebcc9a9dd0e0bea8329a\transformed\jetified-emoji2-1.2.0\AndroidManifest.xml:30:17-75
-92                android:value="androidx.startup" />
-92-->[androidx.emoji2:emoji2:1.2.0] C:\Users\AdityaJi\.gradle\caches\8.14.3\transforms\e950b0b94a5bebcc9a9dd0e0bea8329a\transformed\jetified-emoji2-1.2.0\AndroidManifest.xml:31:17-49
-93            <meta-data
-93-->[androidx.lifecycle:lifecycle-process:2.6.1] C:\Users\AdityaJi\.gradle\caches\8.14.3\transforms\b1181847cf7c611563811f50cb59edb1\transformed\jetified-lifecycle-process-2.6.1\AndroidManifest.xml:29:13-31:52
-94                android:name="androidx.lifecycle.ProcessLifecycleInitializer"
-94-->[androidx.lifecycle:lifecycle-process:2.6.1] C:\Users\AdityaJi\.gradle\caches\8.14.3\transforms\b1181847cf7c611563811f50cb59edb1\transformed\jetified-lifecycle-process-2.6.1\AndroidManifest.xml:30:17-78
-95                android:value="androidx.startup" />
-95-->[androidx.lifecycle:lifecycle-process:2.6.1] C:\Users\AdityaJi\.gradle\caches\8.14.3\transforms\b1181847cf7c611563811f50cb59edb1\transformed\jetified-lifecycle-process-2.6.1\AndroidManifest.xml:31:17-49
-96            <meta-data
-96-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\AdityaJi\.gradle\caches\8.14.3\transforms\a084e1cdb808a6d7bdf4e0bbd8c51795\transformed\jetified-profileinstaller-1.3.0\AndroidManifest.xml:29:13-31:52
-97                android:name="androidx.profileinstaller.ProfileInstallerInitializer"
-97-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\AdityaJi\.gradle\caches\8.14.3\transforms\a084e1cdb808a6d7bdf4e0bbd8c51795\transformed\jetified-profileinstaller-1.3.0\AndroidManifest.xml:30:17-85
-98                android:value="androidx.startup" />
-98-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\AdityaJi\.gradle\caches\8.14.3\transforms\a084e1cdb808a6d7bdf4e0bbd8c51795\transformed\jetified-profileinstaller-1.3.0\AndroidManifest.xml:31:17-49
-99        </provider>
-100
-101        <receiver
-101-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\AdityaJi\.gradle\caches\8.14.3\transforms\a084e1cdb808a6d7bdf4e0bbd8c51795\transformed\jetified-profileinstaller-1.3.0\AndroidManifest.xml:34:9-52:20
-102            android:name="androidx.profileinstaller.ProfileInstallReceiver"
-102-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\AdityaJi\.gradle\caches\8.14.3\transforms\a084e1cdb808a6d7bdf4e0bbd8c51795\transformed\jetified-profileinstaller-1.3.0\AndroidManifest.xml:35:13-76
-103            android:directBootAware="false"
-103-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\AdityaJi\.gradle\caches\8.14.3\transforms\a084e1cdb808a6d7bdf4e0bbd8c51795\transformed\jetified-profileinstaller-1.3.0\AndroidManifest.xml:36:13-44
-104            android:enabled="true"
-104-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\AdityaJi\.gradle\caches\8.14.3\transforms\a084e1cdb808a6d7bdf4e0bbd8c51795\transformed\jetified-profileinstaller-1.3.0\AndroidManifest.xml:37:13-35
-105            android:exported="true"
-105-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\AdityaJi\.gradle\caches\8.14.3\transforms\a084e1cdb808a6d7bdf4e0bbd8c51795\transformed\jetified-profileinstaller-1.3.0\AndroidManifest.xml:38:13-36
-106            android:permission="android.permission.DUMP" >
-106-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\AdityaJi\.gradle\caches\8.14.3\transforms\a084e1cdb808a6d7bdf4e0bbd8c51795\transformed\jetified-profileinstaller-1.3.0\AndroidManifest.xml:39:13-57
-107            <intent-filter>
-107-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\AdityaJi\.gradle\caches\8.14.3\transforms\a084e1cdb808a6d7bdf4e0bbd8c51795\transformed\jetified-profileinstaller-1.3.0\AndroidManifest.xml:40:13-42:29
-108                <action android:name="androidx.profileinstaller.action.INSTALL_PROFILE" />
-108-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\AdityaJi\.gradle\caches\8.14.3\transforms\a084e1cdb808a6d7bdf4e0bbd8c51795\transformed\jetified-profileinstaller-1.3.0\AndroidManifest.xml:41:17-91
-108-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\AdityaJi\.gradle\caches\8.14.3\transforms\a084e1cdb808a6d7bdf4e0bbd8c51795\transformed\jetified-profileinstaller-1.3.0\AndroidManifest.xml:41:25-88
-109            </intent-filter>
-110            <intent-filter>
-110-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\AdityaJi\.gradle\caches\8.14.3\transforms\a084e1cdb808a6d7bdf4e0bbd8c51795\transformed\jetified-profileinstaller-1.3.0\AndroidManifest.xml:43:13-45:29
-111                <action android:name="androidx.profileinstaller.action.SKIP_FILE" />
-111-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\AdityaJi\.gradle\caches\8.14.3\transforms\a084e1cdb808a6d7bdf4e0bbd8c51795\transformed\jetified-profileinstaller-1.3.0\AndroidManifest.xml:44:17-85
-111-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\AdityaJi\.gradle\caches\8.14.3\transforms\a084e1cdb808a6d7bdf4e0bbd8c51795\transformed\jetified-profileinstaller-1.3.0\AndroidManifest.xml:44:25-82
-112            </intent-filter>
-113            <intent-filter>
-113-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\AdityaJi\.gradle\caches\8.14.3\transforms\a084e1cdb808a6d7bdf4e0bbd8c51795\transformed\jetified-profileinstaller-1.3.0\AndroidManifest.xml:46:13-48:29
-114                <action android:name="androidx.profileinstaller.action.SAVE_PROFILE" />
-114-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\AdityaJi\.gradle\caches\8.14.3\transforms\a084e1cdb808a6d7bdf4e0bbd8c51795\transformed\jetified-profileinstaller-1.3.0\AndroidManifest.xml:47:17-88
-114-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\AdityaJi\.gradle\caches\8.14.3\transforms\a084e1cdb808a6d7bdf4e0bbd8c51795\transformed\jetified-profileinstaller-1.3.0\AndroidManifest.xml:47:25-85
-115            </intent-filter>
-116            <intent-filter>
-116-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\AdityaJi\.gradle\caches\8.14.3\transforms\a084e1cdb808a6d7bdf4e0bbd8c51795\transformed\jetified-profileinstaller-1.3.0\AndroidManifest.xml:49:13-51:29
-117                <action android:name="androidx.profileinstaller.action.BENCHMARK_OPERATION" />
-117-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\AdityaJi\.gradle\caches\8.14.3\transforms\a084e1cdb808a6d7bdf4e0bbd8c51795\transformed\jetified-profileinstaller-1.3.0\AndroidManifest.xml:50:17-95
-117-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\AdityaJi\.gradle\caches\8.14.3\transforms\a084e1cdb808a6d7bdf4e0bbd8c51795\transformed\jetified-profileinstaller-1.3.0\AndroidManifest.xml:50:25-92
-118            </intent-filter>
-119        </receiver>
-120    </application>
-121
-122</manifest>
+20    <!-- Background Service & Notifications Permissions -->
+21    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+21-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:15:5-77
+21-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:15:22-74
+22    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+22-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:16:5-87
+22-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:16:22-84
+23    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+23-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:17:5-77
+23-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:17:22-74
+24
+25    <!-- File Upload Permissions (For media files) -->
+26    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+26-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:20:5-75
+26-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:20:22-72
+27    <uses-permission
+27-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:21:5-107
+28        android:name="android.permission.READ_EXTERNAL_STORAGE"
+28-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:21:22-77
+29        android:maxSdkVersion="32" />
+29-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:21:78-104
+30
+31    <!-- Feature Requirements for Play Store Filtering -->
+32    <uses-feature
+32-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:24:5-85
+33        android:name="android.hardware.camera"
+33-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:24:19-57
+34        android:required="false" />
+34-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:24:58-82
+35    <uses-feature
+35-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:25:5-89
+36        android:name="android.hardware.microphone"
+36-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:25:19-61
+37        android:required="false" />
+37-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:25:62-86
+38
+39    <permission
+39-->[androidx.core:core:1.12.0] C:\Users\AdityaJi\.gradle\caches\8.14.3\transforms\6d3fcef89277783d05a0aeb0ff04a338\transformed\core-1.12.0\AndroidManifest.xml:22:5-24:47
+40        android:name="com.cowatch.app.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
+40-->[androidx.core:core:1.12.0] C:\Users\AdityaJi\.gradle\caches\8.14.3\transforms\6d3fcef89277783d05a0aeb0ff04a338\transformed\core-1.12.0\AndroidManifest.xml:23:9-81
+41        android:protectionLevel="signature" />
+41-->[androidx.core:core:1.12.0] C:\Users\AdityaJi\.gradle\caches\8.14.3\transforms\6d3fcef89277783d05a0aeb0ff04a338\transformed\core-1.12.0\AndroidManifest.xml:24:9-44
+42
+43    <uses-permission android:name="com.cowatch.app.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" />
+43-->[androidx.core:core:1.12.0] C:\Users\AdityaJi\.gradle\caches\8.14.3\transforms\6d3fcef89277783d05a0aeb0ff04a338\transformed\core-1.12.0\AndroidManifest.xml:26:5-97
+43-->[androidx.core:core:1.12.0] C:\Users\AdityaJi\.gradle\caches\8.14.3\transforms\6d3fcef89277783d05a0aeb0ff04a338\transformed\core-1.12.0\AndroidManifest.xml:26:22-94
+44
+45    <application
+45-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:27:5-67:19
+46        android:allowBackup="true"
+46-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:28:9-35
+47        android:appComponentFactory="androidx.core.app.CoreComponentFactory"
+47-->[androidx.core:core:1.12.0] C:\Users\AdityaJi\.gradle\caches\8.14.3\transforms\6d3fcef89277783d05a0aeb0ff04a338\transformed\core-1.12.0\AndroidManifest.xml:28:18-86
+48        android:debuggable="true"
+49        android:extractNativeLibs="false"
+50        android:hardwareAccelerated="true"
+50-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:34:9-43
+51        android:icon="@drawable/ic_launcher"
+51-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:29:9-45
+52        android:label="CoWatch"
+52-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:30:9-32
+53        android:roundIcon="@drawable/ic_launcher"
+53-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:31:9-50
+54        android:supportsRtl="true"
+54-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:32:9-35
+55        android:theme="@style/Theme.AppCompat.NoActionBar"
+55-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:33:9-59
+56        android:usesCleartextTraffic="true" >
+56-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:35:9-44
+57        <service
+57-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:37:9-41:56
+58            android:name="com.cowatch.app.UploadService"
+58-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:38:13-42
+59            android:enabled="true"
+59-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:39:13-35
+60            android:exported="false"
+60-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:40:13-37
+61            android:foregroundServiceType="dataSync" />
+61-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:41:13-53
+62
+63        <activity
+63-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:43:9-66:20
+64            android:name="com.cowatch.app.MainActivity"
+64-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:44:13-41
+65            android:configChanges="orientation|screenSize|keyboardHidden|layoutDirection"
+65-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:47:13-90
+66            android:exported="true"
+66-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:45:13-36
+67            android:launchMode="singleTask" >
+67-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:46:13-44
+68            <intent-filter>
+68-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:48:13-51:29
+69                <action android:name="android.intent.action.MAIN" />
+69-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:49:17-69
+69-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:49:25-66
+70
+71                <category android:name="android.intent.category.LAUNCHER" />
+71-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:50:17-77
+71-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:50:27-74
+72            </intent-filter>
+73            <intent-filter android:label="CoWatch Login Callback" >
+73-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:52:13-57:29
+73-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:52:28-66
+74                <action android:name="android.intent.action.VIEW" />
+74-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:53:17-69
+74-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:53:25-66
+75
+76                <category android:name="android.intent.category.DEFAULT" />
+76-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:54:17-76
+76-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:54:27-73
+77                <category android:name="android.intent.category.BROWSABLE" />
+77-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:55:17-78
+77-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:55:27-75
+78
+79                <data
+79-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:56:17-80
+80                    android:host="login-callback"
+80-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:56:48-77
+81                    android:scheme="cowatch" />
+81-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:56:23-47
+82            </intent-filter>
+83            <intent-filter
+83-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:58:13-65:29
+84                android:autoVerify="true"
+84-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:58:65-90
+85                android:label="CoWatch Web Callback" >
+85-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:58:28-64
+86                <action android:name="android.intent.action.VIEW" />
+86-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:53:17-69
+86-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:53:25-66
+87
+88                <category android:name="android.intent.category.DEFAULT" />
+88-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:54:17-76
+88-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:54:27-73
+89                <category android:name="android.intent.category.BROWSABLE" />
+89-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:55:17-78
+89-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:55:27-75
+90
+91                <data android:scheme="http" />
+91-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:56:17-80
+91-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:56:23-47
+92                <data android:scheme="https" />
+92-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:56:17-80
+92-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:56:23-47
+93                <data android:host="cowatch-theta.vercel.app" />
+93-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:56:17-80
+93-->C:\Users\AdityaJi\OneDrive\Desktop\Stream\cowatch-android\app\src\main\AndroidManifest.xml:56:48-77
+94            </intent-filter>
+95        </activity>
+96
+97        <provider
+97-->[androidx.emoji2:emoji2:1.2.0] C:\Users\AdityaJi\.gradle\caches\8.14.3\transforms\e950b0b94a5bebcc9a9dd0e0bea8329a\transformed\jetified-emoji2-1.2.0\AndroidManifest.xml:24:9-32:20
+98            android:name="androidx.startup.InitializationProvider"
+98-->[androidx.emoji2:emoji2:1.2.0] C:\Users\AdityaJi\.gradle\caches\8.14.3\transforms\e950b0b94a5bebcc9a9dd0e0bea8329a\transformed\jetified-emoji2-1.2.0\AndroidManifest.xml:25:13-67
+99            android:authorities="com.cowatch.app.androidx-startup"
+99-->[androidx.emoji2:emoji2:1.2.0] C:\Users\AdityaJi\.gradle\caches\8.14.3\transforms\e950b0b94a5bebcc9a9dd0e0bea8329a\transformed\jetified-emoji2-1.2.0\AndroidManifest.xml:26:13-68
+100            android:exported="false" >
+100-->[androidx.emoji2:emoji2:1.2.0] C:\Users\AdityaJi\.gradle\caches\8.14.3\transforms\e950b0b94a5bebcc9a9dd0e0bea8329a\transformed\jetified-emoji2-1.2.0\AndroidManifest.xml:27:13-37
+101            <meta-data
+101-->[androidx.emoji2:emoji2:1.2.0] C:\Users\AdityaJi\.gradle\caches\8.14.3\transforms\e950b0b94a5bebcc9a9dd0e0bea8329a\transformed\jetified-emoji2-1.2.0\AndroidManifest.xml:29:13-31:52
+102                android:name="androidx.emoji2.text.EmojiCompatInitializer"
+102-->[androidx.emoji2:emoji2:1.2.0] C:\Users\AdityaJi\.gradle\caches\8.14.3\transforms\e950b0b94a5bebcc9a9dd0e0bea8329a\transformed\jetified-emoji2-1.2.0\AndroidManifest.xml:30:17-75
+103                android:value="androidx.startup" />
+103-->[androidx.emoji2:emoji2:1.2.0] C:\Users\AdityaJi\.gradle\caches\8.14.3\transforms\e950b0b94a5bebcc9a9dd0e0bea8329a\transformed\jetified-emoji2-1.2.0\AndroidManifest.xml:31:17-49
+104            <meta-data
+104-->[androidx.lifecycle:lifecycle-process:2.6.1] C:\Users\AdityaJi\.gradle\caches\8.14.3\transforms\b1181847cf7c611563811f50cb59edb1\transformed\jetified-lifecycle-process-2.6.1\AndroidManifest.xml:29:13-31:52
+105                android:name="androidx.lifecycle.ProcessLifecycleInitializer"
+105-->[androidx.lifecycle:lifecycle-process:2.6.1] C:\Users\AdityaJi\.gradle\caches\8.14.3\transforms\b1181847cf7c611563811f50cb59edb1\transformed\jetified-lifecycle-process-2.6.1\AndroidManifest.xml:30:17-78
+106                android:value="androidx.startup" />
+106-->[androidx.lifecycle:lifecycle-process:2.6.1] C:\Users\AdityaJi\.gradle\caches\8.14.3\transforms\b1181847cf7c611563811f50cb59edb1\transformed\jetified-lifecycle-process-2.6.1\AndroidManifest.xml:31:17-49
+107            <meta-data
+107-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\AdityaJi\.gradle\caches\8.14.3\transforms\a084e1cdb808a6d7bdf4e0bbd8c51795\transformed\jetified-profileinstaller-1.3.0\AndroidManifest.xml:29:13-31:52
+108                android:name="androidx.profileinstaller.ProfileInstallerInitializer"
+108-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\AdityaJi\.gradle\caches\8.14.3\transforms\a084e1cdb808a6d7bdf4e0bbd8c51795\transformed\jetified-profileinstaller-1.3.0\AndroidManifest.xml:30:17-85
+109                android:value="androidx.startup" />
+109-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\AdityaJi\.gradle\caches\8.14.3\transforms\a084e1cdb808a6d7bdf4e0bbd8c51795\transformed\jetified-profileinstaller-1.3.0\AndroidManifest.xml:31:17-49
+110        </provider>
+111
+112        <receiver
+112-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\AdityaJi\.gradle\caches\8.14.3\transforms\a084e1cdb808a6d7bdf4e0bbd8c51795\transformed\jetified-profileinstaller-1.3.0\AndroidManifest.xml:34:9-52:20
+113            android:name="androidx.profileinstaller.ProfileInstallReceiver"
+113-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\AdityaJi\.gradle\caches\8.14.3\transforms\a084e1cdb808a6d7bdf4e0bbd8c51795\transformed\jetified-profileinstaller-1.3.0\AndroidManifest.xml:35:13-76
+114            android:directBootAware="false"
+114-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\AdityaJi\.gradle\caches\8.14.3\transforms\a084e1cdb808a6d7bdf4e0bbd8c51795\transformed\jetified-profileinstaller-1.3.0\AndroidManifest.xml:36:13-44
+115            android:enabled="true"
+115-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\AdityaJi\.gradle\caches\8.14.3\transforms\a084e1cdb808a6d7bdf4e0bbd8c51795\transformed\jetified-profileinstaller-1.3.0\AndroidManifest.xml:37:13-35
+116            android:exported="true"
+116-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\AdityaJi\.gradle\caches\8.14.3\transforms\a084e1cdb808a6d7bdf4e0bbd8c51795\transformed\jetified-profileinstaller-1.3.0\AndroidManifest.xml:38:13-36
+117            android:permission="android.permission.DUMP" >
+117-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\AdityaJi\.gradle\caches\8.14.3\transforms\a084e1cdb808a6d7bdf4e0bbd8c51795\transformed\jetified-profileinstaller-1.3.0\AndroidManifest.xml:39:13-57
+118            <intent-filter>
+118-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\AdityaJi\.gradle\caches\8.14.3\transforms\a084e1cdb808a6d7bdf4e0bbd8c51795\transformed\jetified-profileinstaller-1.3.0\AndroidManifest.xml:40:13-42:29
+119                <action android:name="androidx.profileinstaller.action.INSTALL_PROFILE" />
+119-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\AdityaJi\.gradle\caches\8.14.3\transforms\a084e1cdb808a6d7bdf4e0bbd8c51795\transformed\jetified-profileinstaller-1.3.0\AndroidManifest.xml:41:17-91
+119-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\AdityaJi\.gradle\caches\8.14.3\transforms\a084e1cdb808a6d7bdf4e0bbd8c51795\transformed\jetified-profileinstaller-1.3.0\AndroidManifest.xml:41:25-88
+120            </intent-filter>
+121            <intent-filter>
+121-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\AdityaJi\.gradle\caches\8.14.3\transforms\a084e1cdb808a6d7bdf4e0bbd8c51795\transformed\jetified-profileinstaller-1.3.0\AndroidManifest.xml:43:13-45:29
+122                <action android:name="androidx.profileinstaller.action.SKIP_FILE" />
+122-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\AdityaJi\.gradle\caches\8.14.3\transforms\a084e1cdb808a6d7bdf4e0bbd8c51795\transformed\jetified-profileinstaller-1.3.0\AndroidManifest.xml:44:17-85
+122-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\AdityaJi\.gradle\caches\8.14.3\transforms\a084e1cdb808a6d7bdf4e0bbd8c51795\transformed\jetified-profileinstaller-1.3.0\AndroidManifest.xml:44:25-82
+123            </intent-filter>
+124            <intent-filter>
+124-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\AdityaJi\.gradle\caches\8.14.3\transforms\a084e1cdb808a6d7bdf4e0bbd8c51795\transformed\jetified-profileinstaller-1.3.0\AndroidManifest.xml:46:13-48:29
+125                <action android:name="androidx.profileinstaller.action.SAVE_PROFILE" />
+125-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\AdityaJi\.gradle\caches\8.14.3\transforms\a084e1cdb808a6d7bdf4e0bbd8c51795\transformed\jetified-profileinstaller-1.3.0\AndroidManifest.xml:47:17-88
+125-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\AdityaJi\.gradle\caches\8.14.3\transforms\a084e1cdb808a6d7bdf4e0bbd8c51795\transformed\jetified-profileinstaller-1.3.0\AndroidManifest.xml:47:25-85
+126            </intent-filter>
+127            <intent-filter>
+127-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\AdityaJi\.gradle\caches\8.14.3\transforms\a084e1cdb808a6d7bdf4e0bbd8c51795\transformed\jetified-profileinstaller-1.3.0\AndroidManifest.xml:49:13-51:29
+128                <action android:name="androidx.profileinstaller.action.BENCHMARK_OPERATION" />
+128-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\AdityaJi\.gradle\caches\8.14.3\transforms\a084e1cdb808a6d7bdf4e0bbd8c51795\transformed\jetified-profileinstaller-1.3.0\AndroidManifest.xml:50:17-95
+128-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\AdityaJi\.gradle\caches\8.14.3\transforms\a084e1cdb808a6d7bdf4e0bbd8c51795\transformed\jetified-profileinstaller-1.3.0\AndroidManifest.xml:50:25-92
+129            </intent-filter>
+130        </receiver>
+131    </application>
+132
+133</manifest>

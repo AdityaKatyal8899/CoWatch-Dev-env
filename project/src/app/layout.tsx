@@ -20,6 +20,7 @@ export const metadata: Metadata = {
 
 import { ThemeProvider } from './components/ThemeProvider';
 import { Suspense } from 'react';
+import { BackgroundNotificationListener } from './components/BackgroundNotificationListener';
 
 export default function RootLayout({
   children,
@@ -32,6 +33,7 @@ export default function RootLayout({
         <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
           <AuthProvider>
             <ThemeProvider>
+              <BackgroundNotificationListener />
               <Suspense fallback={null}>
                 <ProgressBar />
               </Suspense>

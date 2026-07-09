@@ -97,18 +97,61 @@ export const api = {
     return request(`/videos/${id}/status`);
   },
 
-  async uploadVideo(file: File, title: string, description: string = '', collectionId?: string): Promise<Video> {
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('title', title);
-    formData.append('description', description);
-    if (collectionId) {
-      formData.append('collection_id', collectionId);
-    }
+  async uploadVideo(
+    file: File,
+    title: string,
+    description: string = '',
+    collectionId?: string,
+    onProgress?: (event: ProgressEvent) => void
+  ): Promise<Video> {
+    return new Promise((resolve, reject) => {
+      const token = getAuthToken();
+      const xhr = new XMLHttpRequest();
+      
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('title', title);
+      formData.append('description', description);
+      if (collectionId) {
+        formData.append('collection_id', collectionId);
+      }
 
-    return request('/videos/upload', {
-      method: 'POST',
-      body: formData,
+      xhr.open('POST', `${BASE_URL}/videos/upload`);
+      
+      if (token && token !== 'true') {
+        xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+      }
+      
+      xhr.withCredentials = true;
+
+      if (onProgress && xhr.upload) {
+        xhr.upload.addEventListener('progress', onProgress);
+      }
+
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            resolve(JSON.parse(xhr.responseText));
+          } catch (e) {
+            resolve(xhr.responseText as any);
+          }
+        } else {
+          let detail = 'API request failed';
+          try {
+            const errorJson = JSON.parse(xhr.responseText);
+            detail = errorJson.detail || detail;
+          } catch {
+            detail = xhr.responseText || detail;
+          }
+          reject(new Error(typeof detail === 'string' ? detail : JSON.stringify(detail)));
+        }
+      };
+
+      xhr.onerror = () => {
+        reject(new Error('Network error during upload'));
+      };
+
+      xhr.send(formData);
     });
   },
 

@@ -29,10 +29,26 @@ export default function Upload() {
   const [uploadComplete, setUploadComplete] = useState(false);
   const [uploadedVideoId, setUploadedVideoId] = useState<string | null>(null);
   const [processingStatus, setProcessingStatus] = useState<string | null>(null);
+  const [isAndroidApp, setIsAndroidApp] = useState(false);
   const pollTimeoutRef = useRef<any>(null);
 
   useEffect(() => {
     loadCollections();
+
+    if (typeof window !== 'undefined') {
+      const bridgeExists = !!(window as any).AndroidUploadBridge;
+      setIsAndroidApp(bridgeExists);
+
+      // Register global callback for Android native file upload
+      (window as any).onAndroidUploadStarted = () => {
+        setUploadProgress(100);
+        setUploading(false);
+        setUploadedVideoId("native_android");
+        setUploadComplete(true);
+        toast.success('Native Android background upload started!');
+      };
+    }
+
     return () => {
       if (pollTimeoutRef.current) {
         clearTimeout(pollTimeoutRef.current);
@@ -103,50 +119,39 @@ export default function Upload() {
     setUploading(true);
     setUploadProgress(0);
 
-    const progressInterval = setInterval(() => {
-      setUploadProgress((prev: number) => {
-        if (prev >= 95) {
-          clearInterval(progressInterval);
-          return 95;
-        }
-        return prev + 2;
-      });
-    }, 200);
+    const startTime = Date.now();
+
+    const onProgress = (event: ProgressEvent) => {
+      if (event.lengthComputable) {
+        const percent = Math.round((event.loaded * 100) / event.total);
+        setUploadProgress(percent);
+      }
+    };
 
     try {
-      const video = await api.uploadVideo(file, title, description, selectedCollectionId || undefined);
+      const video = await api.uploadVideo(
+        file,
+        title,
+        description,
+        selectedCollectionId || undefined,
+        onProgress
+      );
       setUploadProgress(100);
-      setProcessing(true);
-      setProcessingStatus('pending');
-      setUploadedVideoId(video.video_id);
       setUploading(false);
+      setUploadedVideoId(video.video_id);
+      
+      // Save to localStorage for background tracking
+      try {
+        const stored = localStorage.getItem('cowatch_pending_uploads');
+        const pendingList = stored ? JSON.parse(stored) : [];
+        pendingList.push({ id: video.video_id, title: title });
+        localStorage.setItem('cowatch_pending_uploads', JSON.stringify(pendingList));
+      } catch (e) {
+        console.error('[Upload] Failed to save pending upload to localStorage:', e);
+      }
 
-      const pollStatus = async () => {
-        try {
-          const res = await api.getVideoStatus(video.video_id);
-          const currentStatus = res.status;
-          
-          if (currentStatus === 'ready') {
-            setProcessing(false);
-            setUploadComplete(true);
-            setProcessingStatus('ready');
-            toast.success('Video is ready for playback!');
-            return;
-          } else if (currentStatus === 'failed') {
-            setProcessing(false);
-            setProcessingStatus('failed');
-            toast.error('Video processing failed.');
-          } else {
-            setProcessingStatus(currentStatus);
-            pollTimeoutRef.current = setTimeout(pollStatus, 3000);
-          }
-        } catch (pollError) {
-          console.error('[Upload] Polling status failed:', pollError);
-          pollTimeoutRef.current = setTimeout(pollStatus, 3000);
-        }
-      };
-
-      pollTimeoutRef.current = setTimeout(pollStatus, 3000);
+      setUploadComplete(true);
+      toast.success('Upload complete! Processing in background.');
 
     } catch (error: any) {
       console.error('[Upload] Error:', error);
@@ -154,8 +159,25 @@ export default function Upload() {
       setUploading(false);
       setProcessing(false);
       setProcessingStatus(null);
-    } finally {
-      clearInterval(progressInterval);
+    }
+  };
+
+  const handleAndroidUpload = () => {
+    if (typeof window !== 'undefined' && (window as any).AndroidUploadBridge) {
+      const token = document.cookie
+        .split('; ')
+        .find(row => row.startsWith('cowatch_auth='))
+        ?.split('=')[1] || '';
+
+      const uploadUrl = `${window.location.origin}/api/videos/upload`;
+
+      (window as any).AndroidUploadBridge.triggerNativeUpload(
+        title,
+        description,
+        selectedCollectionId || '',
+        token,
+        uploadUrl
+      );
     }
   };
 
@@ -189,126 +211,128 @@ export default function Upload() {
 
               <div className="max-w-2xl mx-auto">
                 {/* Drag & Drop Area */}
-                <motion.div 
-                  whileHover={!uploading && !file ? { scale: 1.01, borderColor: 'var(--primary)' } : {}}
-                  className={`glass-card rounded-3xl border-2 border-dashed transition-all p-12 text-center mb-10 ${
-                    dragActive ? 'border-[var(--primary)] bg-[var(--primary)]/5 scale-[1.01]' : 'border-white/5 bg-white/[0.02]'
-                  } ${uploading || processing ? 'pointer-events-none opacity-80' : 'cursor-pointer'}`}
-                  onDragEnter={handleDrag}
-                  onDragLeave={handleDrag}
-                  onDragOver={handleDrag}
-                  onDrop={handleDrop}
-                  onClick={() => !uploading && !file && fileInputRef.current?.click()}
-                >
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={handleFileInput}
-                    className="hidden"
-                    accept="video/*"
-                  />
+                {!isAndroidApp && (
+                  <motion.div 
+                    whileHover={!uploading && !file ? { scale: 1.01, borderColor: 'var(--primary)' } : {}}
+                    className={`glass-card rounded-3xl border-2 border-dashed transition-all p-12 text-center mb-10 ${
+                      dragActive ? 'border-[var(--primary)] bg-[var(--primary)]/5 scale-[1.01]' : 'border-white/5 bg-white/[0.02]'
+                    } ${uploading || processing ? 'pointer-events-none opacity-80' : 'cursor-pointer'}`}
+                    onDragEnter={handleDrag}
+                    onDragLeave={handleDrag}
+                    onDragOver={handleDrag}
+                    onDrop={handleDrop}
+                    onClick={() => !uploading && !file && fileInputRef.current?.click()}
+                  >
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={handleFileInput}
+                      className="hidden"
+                      accept="video/*"
+                    />
 
-                  {!file ? (
-                    <>
-                      <div className="mb-8">
-                        <div className="w-24 h-24 rounded-3xl bg-white/5 flex items-center justify-center mx-auto transition-all duration-500">
-                          <CloudUpload className={`w-10 h-10 transition-colors ${dragActive ? 'text-[var(--primary)]' : 'text-white/20'}`} />
+                    {!file ? (
+                      <>
+                        <div className="mb-8">
+                          <div className="w-24 h-24 rounded-3xl bg-white/5 flex items-center justify-center mx-auto transition-all duration-500">
+                            <CloudUpload className={`w-10 h-10 transition-colors ${dragActive ? 'text-[var(--primary)]' : 'text-white/20'}`} />
+                          </div>
                         </div>
-                      </div>
-                      <h2 className="text-2xl font-bold text-white mb-2">
-                        {dragActive ? 'Release to upload' : 'Select a recording'}
-                      </h2>
-                      <p className="text-[var(--muted)] mb-8 max-w-xs mx-auto text-sm font-medium">
-                        Drag and drop your file here or click to browse.
-                      </p>
-                      <button className="btn-primary px-8 py-3 rounded-xl mx-auto w-fit flex items-center gap-2">
-                        <Search className="w-4 h-4" />
-                        Browse Storage
-                      </button>
-                    </>
-                  ) : (
-                    <div className="space-y-6">
-                      <div className="flex items-center gap-6 p-4 text-left glass-card bg-white/5 border border-white/10 rounded-2xl">
-                        <div className="w-16 h-16 rounded-xl bg-[var(--primary)]/20 flex items-center justify-center flex-shrink-0">
-                          <Video className="w-8 h-8 text-[var(--primary)]" />
+                        <h2 className="text-2xl font-bold text-white mb-2">
+                          {dragActive ? 'Release to upload' : 'Select a recording'}
+                        </h2>
+                        <p className="text-[var(--muted)] mb-8 max-w-xs mx-auto text-sm font-medium">
+                          Drag and drop your file here or click to browse.
+                        </p>
+                        <button className="btn-primary px-8 py-3 rounded-xl mx-auto w-fit flex items-center gap-2">
+                          <Search className="w-4 h-4" />
+                          Browse Storage
+                        </button>
+                      </>
+                    ) : (
+                      <div className="space-y-6">
+                        <div className="flex items-center gap-6 p-4 text-left glass-card bg-white/5 border border-white/10 rounded-2xl">
+                          <div className="w-16 h-16 rounded-xl bg-[var(--primary)]/20 flex items-center justify-center flex-shrink-0">
+                            <Video className="w-8 h-8 text-[var(--primary)]" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h3 className="text-white font-bold truncate">{file.name}</h3>
+                            <p className="text-xs text-[var(--muted)] font-bold uppercase tracking-wider">{formatBytes(file.size)}</p>
+                          </div>
+                          {!uploading && !processing && (
+                            <button onClick={(e) => { e.stopPropagation(); resetUpload(); }} className="p-2 hover:bg-white/10 rounded-lg">
+                              <X className="w-5 h-5 text-white/40" />
+                            </button>
+                          )}
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <h3 className="text-white font-bold truncate">{file.name}</h3>
-                          <p className="text-xs text-[var(--muted)] font-bold uppercase tracking-wider">{formatBytes(file.size)}</p>
-                        </div>
-                        {!uploading && !processing && (
-                          <button onClick={(e) => { e.stopPropagation(); resetUpload(); }} className="p-2 hover:bg-white/10 rounded-lg">
-                            <X className="w-5 h-5 text-white/40" />
-                          </button>
+
+                        {(uploading || (processing && processingStatus !== 'failed')) && (
+                          <div className="space-y-4 pt-4 border-t border-white/5">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[10px] font-black uppercase tracking-widest text-white/40">
+                                {processing 
+                                  ? (processingStatus === 'pending' 
+                                      ? 'Queued in pipeline (Waiting for CPU allocation)...' 
+                                      : processingStatus === 'processing' 
+                                        ? 'Transcoding to adaptive HLS stream (FFmpeg)...' 
+                                        : processingStatus === 'verifying'
+                                          ? 'Verifying stream integrity and availability...'
+                                          : 'Synchronizing segments to global CDN...')
+                                  : 'Transmitting to Deep Storage'}
+                              </span>
+                              <span className="text-xl font-black text-white">
+                                {processing 
+                                  ? (processingStatus === 'pending' 
+                                      ? 'Queued' 
+                                      : processingStatus === 'processing' 
+                                        ? 'Transcoding' 
+                                        : processingStatus === 'verifying'
+                                          ? 'Verifying'
+                                          : 'Uploading')
+                                  : `${uploadProgress}%`}
+                              </span>
+                            </div>
+                            <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden">
+                              <motion.div 
+                                initial={{ width: 0 }}
+                                animate={{ 
+                                  width: processing 
+                                    ? (processingStatus === 'pending' 
+                                        ? '15%' 
+                                        : processingStatus === 'processing' 
+                                          ? '50%' 
+                                          : processingStatus === 'verifying'
+                                            ? '95%'
+                                            : '80%')
+                                    : `${uploadProgress}%` 
+                                }}
+                                className="h-full bg-[var(--primary)] shadow-[0_0_20px_var(--primary)]"
+                              />
+                            </div>
+                          </div>
+                        )}
+
+                        {processingStatus === 'failed' && (
+                          <div className="space-y-4 pt-4 border-t border-red-500/20 text-left">
+                            <h4 className="text-sm font-bold text-red-500">Processing Failed</h4>
+                            <p className="text-xs text-[var(--muted)] leading-relaxed">
+                              We were unable to prepare your video for streaming. This can happen if the video format is corrupted, unsupported, or if a backend error occurred.
+                            </p>
+                            <button 
+                              onClick={(e) => { e.stopPropagation(); resetUpload(); }} 
+                              className="bg-white/5 border border-white/10 hover:bg-white/10 text-white px-4 py-2 text-xs rounded-xl font-bold transition-all"
+                            >
+                              Reset & Try Again
+                            </button>
+                          </div>
                         )}
                       </div>
+                    )}
+                  </motion.div>
+                )}
 
-                      {(uploading || (processing && processingStatus !== 'failed')) && (
-                        <div className="space-y-4 pt-4 border-t border-white/5">
-                          <div className="flex items-center justify-between">
-                            <span className="text-[10px] font-black uppercase tracking-widest text-white/40">
-                              {processing 
-                                ? (processingStatus === 'pending' 
-                                    ? 'Queued in pipeline (Waiting for CPU allocation)...' 
-                                    : processingStatus === 'processing' 
-                                      ? 'Transcoding to adaptive HLS stream (FFmpeg)...' 
-                                      : processingStatus === 'verifying'
-                                        ? 'Verifying stream integrity and availability...'
-                                        : 'Synchronizing segments to global CDN...')
-                                : 'Transmitting to Deep Storage'}
-                            </span>
-                            <span className="text-xl font-black text-white">
-                              {processing 
-                                ? (processingStatus === 'pending' 
-                                    ? 'Queued' 
-                                    : processingStatus === 'processing' 
-                                      ? 'Transcoding' 
-                                      : processingStatus === 'verifying'
-                                        ? 'Verifying'
-                                        : 'Uploading')
-                                : `${uploadProgress}%`}
-                            </span>
-                          </div>
-                          <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden">
-                            <motion.div 
-                              initial={{ width: 0 }}
-                              animate={{ 
-                                width: processing 
-                                  ? (processingStatus === 'pending' 
-                                      ? '15%' 
-                                      : processingStatus === 'processing' 
-                                        ? '50%' 
-                                        : processingStatus === 'verifying'
-                                          ? '95%'
-                                          : '80%')
-                                  : `${uploadProgress}%` 
-                              }}
-                              className="h-full bg-[var(--primary)] shadow-[0_0_20px_var(--primary)]"
-                            />
-                          </div>
-                        </div>
-                      )}
-
-                      {processingStatus === 'failed' && (
-                        <div className="space-y-4 pt-4 border-t border-red-500/20 text-left">
-                          <h4 className="text-sm font-bold text-red-500">Processing Failed</h4>
-                          <p className="text-xs text-[var(--muted)] leading-relaxed">
-                            We were unable to prepare your video for streaming. This can happen if the video format is corrupted, unsupported, or if a backend error occurred.
-                          </p>
-                          <button 
-                            onClick={(e) => { e.stopPropagation(); resetUpload(); }} 
-                            className="bg-white/5 border border-white/10 hover:bg-white/10 text-white px-4 py-2 text-xs rounded-xl font-bold transition-all"
-                          >
-                            Reset & Try Again
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </motion.div>
-
-                {/* Form Details (only if file selected and not finished) */}
-                {file && !uploadComplete && (
+                {/* Form Details (only if file selected or running on Android app, and not completed) */}
+                {(file || isAndroidApp) && !uploadComplete && (
                   <motion.div 
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -355,18 +379,12 @@ export default function Upload() {
                     </div>
 
                     <Button
-                      onClick={handleUpload}
+                      onClick={isAndroidApp ? handleAndroidUpload : handleUpload}
                       disabled={!title.trim() || uploading || processing}
                       className="btn-primary w-full py-6 text-sm font-bold uppercase tracking-widest shadow-xl shadow-[var(--primary)]/10"
                     >
-                      {processing 
-                        ? (processingStatus === 'pending' 
-                            ? 'Queued in pipeline...' 
-                            : processingStatus === 'processing' 
-                              ? 'Transcoding HLS...' 
-                              : processingStatus === 'verifying'
-                                ? 'Verifying stream...'
-                                : 'Uploading segments...')
+                      {isAndroidApp 
+                        ? 'Select Video & Begin Upload' 
                         : (uploading ? 'Transmitting...' : 'Begin Transmission')}
                     </Button>
                   </motion.div>

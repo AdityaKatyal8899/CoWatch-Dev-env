@@ -110,6 +110,7 @@ export default function Auth() {
               </div>
             </div>
 
+
             {/* Features */}
             <div className="space-y-3">
               <div className="flex items-center gap-3 text-sm text-white/70">

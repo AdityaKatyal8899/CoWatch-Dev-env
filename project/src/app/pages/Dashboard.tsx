@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Upload, Video as VideoIcon, Play, HardDrive, Folder, Clock, Sparkles, Trash2, AlertCircle, ChevronRight, Calendar, Archive } from 'lucide-react';
+import { Upload, Video as VideoIcon, Play, HardDrive, Folder, Clock, Sparkles, Trash2, AlertCircle, ChevronRight, Calendar, Archive, Loader2 } from 'lucide-react';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { useAuth } from '../lib/auth';
 import { api } from '../lib/api';
@@ -305,10 +305,23 @@ export default function Dashboard() {
                       initial={{ opacity: 0, x: -20 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: idx * 0.05 }}
-                      whileHover={{ scale: 1.01, backgroundColor: 'rgba(255,255,255,0.04)' }}
-                      whileTap={{ scale: 0.99 }}
-                      className="flex items-center gap-4 p-3 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 hover:bg-white/[0.04] transition-all cursor-pointer group"
-                      onClick={() => router.push(`/create-stream?video=${video.video_id}`)}
+                      whileHover={video.processing_status === 'ready' ? { scale: 1.01, backgroundColor: 'rgba(255,255,255,0.04)' } : {}}
+                      whileTap={video.processing_status === 'ready' ? { scale: 0.99 } : {}}
+                      className={cn(
+                        "flex items-center gap-4 p-3 rounded-2xl bg-white/[0.02] border border-white/5 transition-all group",
+                        video.processing_status === 'ready' 
+                          ? "hover:border-white/10 hover:bg-white/[0.04] cursor-pointer" 
+                          : "opacity-60 cursor-not-allowed"
+                      )}
+                      onClick={() => {
+                        if (video.processing_status === 'ready') {
+                          router.push(`/create-stream?video=${video.video_id}`);
+                        } else if (video.processing_status === 'failed') {
+                          toast.error('This video failed processing. Please delete and upload again.');
+                        } else {
+                          toast.info('This video is currently being processed in the background.');
+                        }
+                      }}
                     >
                       <div className="w-24 h-14 rounded-xl bg-[#121212] flex items-center justify-center overflow-hidden border border-white/5 relative">
                         {video.thumbnail_url ? (
@@ -316,8 +329,17 @@ export default function Dashboard() {
                         ) : (
                           <VideoIcon className="w-6 h-6 text-white/5" />
                         )}
-                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                           <Play className="w-4 h-4 text-white" fill="white" />
+                        <div className={cn(
+                          "absolute inset-0 bg-black/40 flex items-center justify-center transition-opacity",
+                          video.processing_status === 'ready' ? "opacity-0 group-hover:opacity-100" : "opacity-100"
+                        )}>
+                          {video.processing_status === 'ready' ? (
+                            <Play className="w-4 h-4 text-white" fill="white" />
+                          ) : video.processing_status === 'failed' ? (
+                            <AlertCircle className="w-4 h-4 text-red-500" />
+                          ) : (
+                            <Loader2 className="w-4 h-4 text-[var(--primary)] animate-spin" />
+                          )}
                         </div>
                       </div>
                       
@@ -326,8 +348,21 @@ export default function Dashboard() {
                           {video.title}
                         </h3>
                         <div className="flex items-center gap-3 mt-1 underline-offset-4">
-                          <span className="text-[10px] font-bold text-[var(--primary)] uppercase tracking-widest">{formatDuration(video.duration || 0)}</span>
-                          <span className="text-[10px] font-medium text-white/20 uppercase tracking-widest">{formatBytes(video.file_size)} </span>
+                          {video.processing_status === 'ready' ? (
+                            <>
+                              <span className="text-[10px] font-bold text-[var(--primary)] uppercase tracking-widest">{formatDuration(video.duration || 0)}</span>
+                              <span className="text-[10px] font-medium text-white/20 uppercase tracking-widest">{formatBytes(video.file_size)} </span>
+                            </>
+                          ) : (
+                            <span className={cn(
+                              "text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded border",
+                              video.processing_status === 'failed' 
+                                ? "bg-red-500/20 text-red-400 border-red-500/30" 
+                                : "bg-[var(--primary)]/20 text-[var(--primary)] border-[var(--primary)]/30 animate-pulse"
+                            )}>
+                              {video.processing_status}
+                            </span>
+                          )}
                         </div>
                       </div>
                       
