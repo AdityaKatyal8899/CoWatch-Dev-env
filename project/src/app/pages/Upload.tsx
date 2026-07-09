@@ -30,6 +30,9 @@ export default function Upload() {
   const [uploadedVideoId, setUploadedVideoId] = useState<string | null>(null);
   const [processingStatus, setProcessingStatus] = useState<string | null>(null);
   const [isAndroidApp, setIsAndroidApp] = useState(false);
+  const [uploadSpeed, setUploadSpeed] = useState<number>(0);
+  const [uploadEta, setUploadEta] = useState<number | null>(null);
+  const [uploadedBytes, setUploadedBytes] = useState<number>(0);
   const pollTimeoutRef = useRef<any>(null);
 
   useEffect(() => {
@@ -120,11 +123,30 @@ export default function Upload() {
     setUploadProgress(0);
 
     const startTime = Date.now();
+    let lastTime = startTime;
+    let lastLoaded = 0;
 
     const onProgress = (event: ProgressEvent) => {
       if (event.lengthComputable) {
         const percent = Math.round((event.loaded * 100) / event.total);
         setUploadProgress(percent);
+        setUploadedBytes(event.loaded);
+
+        const now = Date.now();
+        const timeElapsed = (now - lastTime) / 1000;
+
+        if (timeElapsed >= 0.5 || percent === 100) {
+          const bytesUploaded = event.loaded - lastLoaded;
+          const speed = timeElapsed > 0 ? bytesUploaded / timeElapsed : 0;
+          setUploadSpeed(speed);
+
+          const remainingBytes = event.total - event.loaded;
+          const eta = speed > 0 ? Math.round(remainingBytes / speed) : null;
+          setUploadEta(eta);
+
+          lastTime = now;
+          lastLoaded = event.loaded;
+        }
       }
     };
 
@@ -321,6 +343,21 @@ export default function Upload() {
                                 className="h-full bg-[var(--primary)] shadow-[0_0_20px_var(--primary)]"
                               />
                             </div>
+
+                            {/* Upload Speed, ETA, & Progress Details */}
+                            {!processing && uploading && (
+                              <div className="flex items-center justify-between text-[11px] font-bold text-white/50 pt-2">
+                                <span>
+                                  {formatBytes(uploadedBytes)} / {formatBytes(file.size)}
+                                </span>
+                                <div className="flex items-center gap-3">
+                                  <span>{formatSpeed(uploadSpeed)}</span>
+                                  {uploadEta !== null && (
+                                    <span className="text-[var(--primary)]">{formatEta(uploadEta)}</span>
+                                  )}
+                                </div>
+                              </div>
+                            )}
                           </div>
                         )}
 
@@ -474,3 +511,19 @@ export default function Upload() {
     </DashboardLayout>
   );
 }
+
+const formatSpeed = (bytesPerSec: number): string => {
+  if (bytesPerSec <= 0) return '0 B/s';
+  const units = ['B/s', 'KB/s', 'MB/s', 'GB/s'];
+  const exp = Math.floor(Math.log(bytesPerSec) / Math.log(1024));
+  const val = bytesPerSec / Math.pow(1024, exp);
+  return `${val.toFixed(1)} ${units[exp]}`;
+};
+
+const formatEta = (seconds: number | null): string => {
+  if (seconds === null || seconds <= 0) return 'calculating...';
+  if (seconds < 60) return `${seconds}s remaining`;
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${mins}m ${secs}s remaining`;
+};
