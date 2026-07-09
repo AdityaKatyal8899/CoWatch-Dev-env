@@ -289,7 +289,7 @@ def process_video_to_hls(video_id: str, input_path: str):
         args = [
             "ffmpeg", "-y", "-i", input_path,
             "-c:v", "libx264", "-preset", "ultrafast", "-tune", "zerolatency",
-            "-c:a", "aac", "-b:a", "128k",
+            "-c:a", "aac", "-b:a", "128k", "-ac", "2",
             "-force_key_frames", "expr:gte(t,n_forced*2)",
             "-hls_time", "4",
             "-hls_list_size", "0",
@@ -311,18 +311,27 @@ def process_video_to_hls(video_id: str, input_path: str):
         sync_thread.start()
 
         # Start FFmpeg and monitor process and upload errors
-        process = subprocess.Popen(args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        
-        while process.poll() is None:
-            if error_container:
-                print(f"[Task Error] S3 Sync Thread failed with error: {error_container[0]}. Terminating FFmpeg...", flush=True)
-                process.terminate()
-                process.wait()
-                raise error_container[0]
-            time.sleep(1)
-        
-        if process.returncode != 0:
-            raise Exception(f"FFmpeg failed with exit code {process.returncode}")
+        ffmpeg_log_path = os.path.join(output_dir, "ffmpeg.log")
+        with open(ffmpeg_log_path, "w") as log_file:
+            process = subprocess.Popen(args, stdout=subprocess.DEVNULL, stderr=log_file)
+            
+            while process.poll() is None:
+                if error_container:
+                    print(f"[Task Error] S3 Sync Thread failed with error: {error_container[0]}. Terminating FFmpeg...", flush=True)
+                    process.terminate()
+                    process.wait()
+                    raise error_container[0]
+                time.sleep(1)
+            
+            if process.returncode != 0:
+                error_msg = "Unknown FFmpeg error"
+                try:
+                    if os.path.exists(ffmpeg_log_path):
+                        with open(ffmpeg_log_path, "r") as f:
+                            error_msg = f.read()
+                except Exception as read_err:
+                    error_msg = f"Failed to read FFmpeg log: {read_err}"
+                raise Exception(f"FFmpeg failed with exit code {process.returncode}. Details:\n{error_msg}")
 
         # 5. Finalize S3 Sync
         update_video_status(video_id, "uploading")
