@@ -163,12 +163,14 @@ export default function Upload() {
   };
 
   const handleAndroidUpload = () => {
-    if (typeof window !== 'undefined' && (window as any).AndroidUploadBridge) {
-      const token = document.cookie
-        .split('; ')
-        .find(row => row.startsWith('cowatch_auth='))
-        ?.split('=')[1] || '';
+    if (!title.trim()) {
+      toast.error('Title is required.');
+      return;
+    }
 
+    if (typeof window !== 'undefined' && (window as any).AndroidUploadBridge) {
+      const cookieMatch = document.cookie.match(/(?:^|; )cowatch_auth=([^;]*)/);
+      const token = cookieMatch ? decodeURIComponent(cookieMatch[1]) : '';
       const uploadUrl = `${window.location.origin}/api/videos/upload`;
 
       (window as any).AndroidUploadBridge.triggerNativeUpload(

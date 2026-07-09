@@ -63,7 +63,6 @@ class UploadService : Service() {
         uploadUrlStr: String
     ) {
         val boundary = "Boundary-" + System.currentTimeMillis()
-        val LINE_FEED = "\r\n"
         var conn: HttpURLConnection? = null
         var outputStream: OutputStream? = null
         var inputStream: InputStream? = null
@@ -79,6 +78,44 @@ class UploadService : Service() {
                 return
             }
 
+            // Build metadata parts in raw byte buffers
+            val titlePart = (
+                "--$boundary\r\n" +
+                "Content-Disposition: form-data; name=\"title\"\r\n" +
+                "Content-Type: text/plain; charset=UTF-8\r\n\r\n" +
+                "$title\r\n"
+            ).toByteArray(Charsets.UTF_8)
+
+            val descriptionPart = if (description.isNotEmpty()) {
+                (
+                    "--$boundary\r\n" +
+                    "Content-Disposition: form-data; name=\"description\"\r\n" +
+                    "Content-Type: text/plain; charset=UTF-8\r\n\r\n" +
+                    "$description\r\n"
+                ).toByteArray(Charsets.UTF_8)
+            } else ByteArray(0)
+
+            val collectionPart = if (!collectionId.isNullOrEmpty() && collectionId != "null" && collectionId != "undefined") {
+                (
+                    "--$boundary\r\n" +
+                    "Content-Disposition: form-data; name=\"collection_id\"\r\n" +
+                    "Content-Type: text/plain; charset=UTF-8\r\n\r\n" +
+                    "$collectionId\r\n"
+                ).toByteArray(Charsets.UTF_8)
+            } else ByteArray(0)
+
+            val fileName = getFileName(fileUri) ?: "video.mp4"
+            val fileHeaderPart = (
+                "--$boundary\r\n" +
+                "Content-Disposition: form-data; name=\"file\"; filename=\"$fileName\"\r\n" +
+                "Content-Type: video/mp4\r\n\r\n"
+            ).toByteArray(Charsets.UTF_8)
+
+            val footerPart = "\r\n--$boundary--\r\n".toByteArray(Charsets.UTF_8)
+
+            // Compute exact total stream length
+            val totalLength = titlePart.size + descriptionPart.size + collectionPart.size + fileHeaderPart.size + fileLength + footerPart.size
+
             val url = URL(uploadUrlStr)
             conn = url.openConnection() as HttpURLConnection
             conn.doOutput = true
@@ -86,29 +123,27 @@ class UploadService : Service() {
             conn.useCaches = false
             conn.requestMethod = "POST"
             conn.setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
+            conn.setRequestProperty("Connection", "Keep-Alive")
             if (!token.isNullOrEmpty()) {
                 conn.setRequestProperty("Authorization", "Bearer $token")
             }
 
+            // Set fixed streaming mode to bypass memory buffering
+            conn.setFixedLengthStreamingMode(totalLength)
+
             outputStream = conn.outputStream
-            val writer = PrintWriter(OutputStreamWriter(outputStream, "UTF-8"), true)
 
-            // Add form fields
-            addFormField(writer, boundary, LINE_FEED, "title", title)
-            if (description.isNotEmpty()) {
-                addFormField(writer, boundary, LINE_FEED, "description", description)
+            // Write parts to output stream
+            outputStream.write(titlePart)
+            if (descriptionPart.isNotEmpty()) {
+                outputStream.write(descriptionPart)
             }
-            if (!collectionId.isNullOrEmpty() && collectionId != "null" && collectionId != "undefined") {
-                addFormField(writer, boundary, LINE_FEED, "collection_id", collectionId)
+            if (collectionPart.isNotEmpty()) {
+                outputStream.write(collectionPart)
             }
 
-            // File field header
-            val fileName = getFileName(fileUri) ?: "video.mp4"
-            writer.append("--$boundary").append(LINE_FEED)
-            writer.append("Content-Disposition: form-data; name=\"file\"; filename=\"$fileName\"").append(LINE_FEED)
-            writer.append("Content-Type: video/mp4").append(LINE_FEED)
-            writer.append(LINE_FEED)
-            writer.flush()
+            // Write file header and body bytes
+            outputStream.write(fileHeaderPart)
 
             val buffer = ByteArray(1024 * 64)
             var bytesRead: Int
@@ -129,19 +164,17 @@ class UploadService : Service() {
                     val etaSeconds = if (speedBytesPerSec > 0) (remainingBytes / speedBytesPerSec).toLong() else 0L
 
                     val progressText = "${formatBytes(totalBytesWritten)} / ${formatBytes(fileLength)}"
-                    val speedText = "${formatSpeed(speedBytesPerSec)}"
+                    val speedText = formatSpeed(speedBytesPerSec)
                     val etaText = formatEta(etaSeconds)
 
                     updateNotification(progress, progressText, speedText, etaText)
                     lastUpdate = now
                 }
             }
+
+            // Write closing boundary footer
+            outputStream.write(footerPart)
             outputStream.flush()
-            
-            // Finish multipart request
-            writer.append(LINE_FEED).flush()
-            writer.append("--$boundary--").append(LINE_FEED)
-            writer.close()
 
             val responseCode = conn.responseCode
             if (responseCode == HttpURLConnection.HTTP_OK || responseCode == HttpURLConnection.HTTP_CREATED) {
