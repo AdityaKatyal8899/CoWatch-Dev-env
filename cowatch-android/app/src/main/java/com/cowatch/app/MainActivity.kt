@@ -82,6 +82,17 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        // Request storage/media video access permissions for upload support
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_VIDEO) != PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(arrayOf(Manifest.permission.READ_MEDIA_VIDEO), 103)
+            }
+        } else {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE), 103)
+            }
+        }
+
         webView = findViewById(R.id.webView)
         setupWebView()
         setupBackNavigation()
@@ -382,6 +393,7 @@ class MainActivity : AppCompatActivity() {
 
         val serviceIntent = Intent(this, UploadService::class.java).apply {
             data = uri
+            clipData = android.content.ClipData.newRawUri("video", uri)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             putExtra("title", title)
             putExtra("description", description)
