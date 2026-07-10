@@ -39,8 +39,8 @@ export default function Upload() {
     loadCollections();
 
     if (typeof window !== 'undefined') {
-      const bridgeExists = !!(window as any).AndroidUploadBridge;
-      setIsAndroidApp(bridgeExists);
+      const isCoWatchAndroid = navigator.userAgent.includes('CoWatchAndroid') || !!(window as any).AndroidUploadBridge;
+      setIsAndroidApp(isCoWatchAndroid);
 
       // Register callback for Android native file selection
       (window as any).onAndroidFileSelected = (fileName: string, fileSize: number) => {
@@ -275,7 +275,8 @@ export default function Upload() {
                   onDrop={isAndroidApp ? undefined : handleDrop}
                   onClick={() => {
                     if (uploading || processing) return;
-                    if (isAndroidApp) {
+                    const isAndroidEnv = isAndroidApp || (typeof window !== 'undefined' && (!!(window as any).AndroidUploadBridge || navigator.userAgent.includes('CoWatchAndroid')));
+                    if (isAndroidEnv) {
                       handleAndroidSelectVideo();
                     } else if (!file) {
                       fileInputRef.current?.click();

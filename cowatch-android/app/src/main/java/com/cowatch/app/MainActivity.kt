@@ -113,8 +113,8 @@ class MainActivity : AppCompatActivity() {
         settings.javaScriptEnabled = true
         settings.domStorageEnabled = true
         
-        // Use a clean, standard mobile User-Agent to bypass Google OAuth WebView blocks
-        settings.userAgentString = "Mozilla/5.0 (Linux; Android 13; SM-S901B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Mobile Safari/537.36"
+        // Use a clean, standard mobile User-Agent to bypass Google OAuth WebView blocks and identify the Android app wrapper
+        settings.userAgentString = "Mozilla/5.0 (Linux; Android 13; SM-S901B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Mobile Safari/537.36 CoWatchAndroid"
         
         // Autoplay and hardware configurations
         settings.mediaPlaybackRequiresUserGesture = false 
