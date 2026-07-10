@@ -168,6 +168,15 @@ class UploadService : Service() {
                     val etaText = formatEta(etaSeconds)
 
                     updateNotification(progress, progressText, speedText, etaText)
+
+                    // Dispatch progress update to WebView
+                    android.os.Handler(android.os.Looper.getMainLooper()).post {
+                        MainActivity.getWebView()?.evaluateJavascript(
+                            "if (typeof window.onAndroidUploadProgress === 'function') { window.onAndroidUploadProgress($progress, $speedBytesPerSec, $etaSeconds, $totalBytesWritten); }",
+                            null
+                        )
+                    }
+
                     lastUpdate = now
                 }
             }
@@ -188,8 +197,14 @@ class UploadService : Service() {
                 // Show success notification
                 showSuccessNotification(title)
 
-                // Begin background polling for ready status
+                // Notify WebView of final completion and pass real videoId
                 if (!videoId.isNullOrEmpty()) {
+                    android.os.Handler(android.os.Looper.getMainLooper()).post {
+                        MainActivity.getWebView()?.evaluateJavascript(
+                            "if (typeof window.onAndroidUploadComplete === 'function') { window.onAndroidUploadComplete('$videoId'); }",
+                            null
+                        )
+                    }
                     val statusUrl = uploadUrlStr.replace("/upload", "/$videoId/status")
                     pollProcessingStatus(videoId, statusUrl, token)
                 } else {

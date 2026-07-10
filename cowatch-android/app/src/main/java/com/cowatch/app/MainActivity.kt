@@ -72,6 +72,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        instance = this
         setContentView(R.layout.activity_main)
 
         // Request notification permission for Android 13+ background updates
@@ -316,11 +317,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     // Keep parameters globally cached for the current file picker request
-    private var pendingUploadTitle: String = ""
-    private var pendingUploadDescription: String = ""
-    private var pendingUploadCollectionId: String? = null
-    private var pendingUploadToken: String? = null
-    private var pendingUploadUrl: String = ""
+    private var selectedFileUri: Uri? = null
 
     private val nativeUploadFilePickerLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -328,6 +325,7 @@ class MainActivity : AppCompatActivity() {
         if (result.resultCode == RESULT_OK) {
             val selectedUri = result.data?.data
             if (selectedUri != null) {
+                selectedFileUri = selectedUri
                 // Grant persistent Uri permissions so service can read it
                 try {
                     val takeFlags: Int = Intent.FLAG_GRANT_READ_URI_PERMISSION
@@ -336,41 +334,32 @@ class MainActivity : AppCompatActivity() {
                     // Ignore on non-persistable Uris
                 }
 
-                // Start Foreground Service
-                val serviceIntent = Intent(this, UploadService::class.java).apply {
-                    putExtra("uri", selectedUri.toString())
-                    putExtra("title", pendingUploadTitle)
-                    putExtra("description", pendingUploadDescription)
-                    putExtra("collection_id", pendingUploadCollectionId)
-                    putExtra("token", pendingUploadToken)
-                    putExtra("upload_url", pendingUploadUrl)
-                }
-                
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    startForegroundService(serviceIntent)
-                } else {
-                    startService(serviceIntent)
+                // Query details of selected file to notify WebView
+                var fileName = "video.mp4"
+                var fileSize = 0L
+                contentResolver.query(selectedUri, null, null, null, null)?.use { cursor ->
+                    val nameIndex = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                    val sizeIndex = cursor.getColumnIndex(android.provider.OpenableColumns.SIZE)
+                    if (cursor.moveToFirst()) {
+                        if (nameIndex != -1) {
+                            fileName = cursor.getString(nameIndex) ?: "video.mp4"
+                        }
+                        if (sizeIndex != -1) {
+                            fileSize = cursor.getLong(sizeIndex)
+                        }
+                    }
                 }
 
-                // Notify frontend JavaScript that upload has officially started
-                webView.evaluateJavascript("if (typeof window.onAndroidUploadStarted === 'function') { window.onAndroidUploadStarted(); }", null)
+                // Escape single quotes for JS safety
+                val escapedFileName = fileName.replace("'", "\\'")
+
+                // Notify WebView of file selection
+                webView.evaluateJavascript("if (typeof window.onAndroidFileSelected === 'function') { window.onAndroidFileSelected('$escapedFileName', $fileSize); }", null)
             }
         }
     }
 
-    private fun launchNativeFilePicker(
-        title: String,
-        description: String,
-        collectionId: String?,
-        token: String?,
-        uploadUrl: String
-    ) {
-        pendingUploadTitle = title
-        pendingUploadDescription = description
-        pendingUploadCollectionId = collectionId
-        pendingUploadToken = token
-        pendingUploadUrl = uploadUrl
-
+    private fun launchNativeFilePicker() {
         val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
             addCategory(Intent.CATEGORY_OPENABLE)
             type = "video/*"
@@ -378,9 +367,48 @@ class MainActivity : AppCompatActivity() {
         nativeUploadFilePickerLauncher.launch(intent)
     }
 
+    private fun startNativeUploadService(
+        title: String,
+        description: String,
+        collectionId: String?,
+        token: String?,
+        uploadUrl: String
+    ) {
+        val uri = selectedFileUri
+        if (uri == null) {
+            Toast.makeText(this, "No video selected", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val serviceIntent = Intent(this, UploadService::class.java).apply {
+            putExtra("uri", uri.toString())
+            putExtra("title", title)
+            putExtra("description", description)
+            putExtra("collection_id", collectionId)
+            putExtra("token", token)
+            putExtra("upload_url", uploadUrl)
+        }
+        
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            startForegroundService(serviceIntent)
+        } else {
+            startService(serviceIntent)
+        }
+
+        // Notify WebView that background upload service has successfully started
+        webView.evaluateJavascript("if (typeof window.onAndroidUploadStarted === 'function') { window.onAndroidUploadStarted(); }", null)
+    }
+
     inner class AndroidUploadBridge {
         @android.webkit.JavascriptInterface
-        fun triggerNativeUpload(
+        fun triggerNativeFilePicker() {
+            runOnUiThread {
+                launchNativeFilePicker()
+            }
+        }
+
+        @android.webkit.JavascriptInterface
+        fun startNativeUpload(
             title: String,
             description: String,
             collectionId: String?,
@@ -388,7 +416,7 @@ class MainActivity : AppCompatActivity() {
             uploadUrl: String
         ) {
             runOnUiThread {
-                launchNativeFilePicker(title, description, collectionId, token, uploadUrl)
+                startNativeUploadService(title, description, collectionId, token, uploadUrl)
             }
         }
     }
@@ -406,5 +434,20 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         })
+    }
+
+    override fun onDestroy() {
+        if (instance == this) {
+            instance = null
+        }
+        super.onDestroy()
+    }
+
+    companion object {
+        private var instance: MainActivity? = null
+
+        fun getWebView(): WebView? {
+            return instance?.webView
+        }
     }
 }

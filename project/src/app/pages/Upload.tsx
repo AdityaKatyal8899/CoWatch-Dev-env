@@ -42,13 +42,36 @@ export default function Upload() {
       const bridgeExists = !!(window as any).AndroidUploadBridge;
       setIsAndroidApp(bridgeExists);
 
-      // Register global callback for Android native file upload
+      // Register callback for Android native file selection
+      (window as any).onAndroidFileSelected = (fileName: string, fileSize: number) => {
+        setFile({ name: fileName, size: fileSize } as File);
+        const nameWithoutExt = fileName.substring(0, fileName.lastIndexOf('.')) || fileName;
+        setTitle(nameWithoutExt);
+      };
+
+      // Register callback for Android native upload start
       (window as any).onAndroidUploadStarted = () => {
+        setUploading(true);
+        setUploadProgress(0);
+        setUploadComplete(false);
+        setUploadedVideoId(null);
+      };
+
+      // Register callback for Android native upload progress
+      (window as any).onAndroidUploadProgress = (percent: number, speed: number, eta: number, bytes: number) => {
+        setUploadProgress(percent);
+        setUploadSpeed(speed);
+        setUploadEta(eta);
+        setUploadedBytes(bytes);
+      };
+
+      // Register callback for Android native upload completion
+      (window as any).onAndroidUploadComplete = (videoId: string) => {
         setUploadProgress(100);
         setUploading(false);
-        setUploadedVideoId("native_android");
+        setUploadedVideoId(videoId);
         setUploadComplete(true);
-        toast.success('Native Android background upload started!');
+        toast.success('Upload complete! Video is processing in background.');
       };
     }
 
@@ -184,6 +207,12 @@ export default function Upload() {
     }
   };
 
+  const handleAndroidSelectVideo = () => {
+    if (typeof window !== 'undefined' && (window as any).AndroidUploadBridge) {
+      (window as any).AndroidUploadBridge.triggerNativeFilePicker();
+    }
+  };
+
   const handleAndroidUpload = () => {
     if (!title.trim()) {
       toast.error('Title is required.');
@@ -195,7 +224,7 @@ export default function Upload() {
       const token = cookieMatch ? decodeURIComponent(cookieMatch[1]) : '';
       const uploadUrl = `${window.location.origin}/api/videos/upload`;
 
-      (window as any).AndroidUploadBridge.triggerNativeUpload(
+      (window as any).AndroidUploadBridge.startNativeUpload(
         title,
         description,
         selectedCollectionId || '',
@@ -247,7 +276,7 @@ export default function Upload() {
                   onClick={() => {
                     if (uploading || processing) return;
                     if (isAndroidApp) {
-                      handleAndroidUpload();
+                      handleAndroidSelectVideo();
                     } else if (!file) {
                       fileInputRef.current?.click();
                     }
@@ -379,8 +408,8 @@ export default function Upload() {
                     )}
                   </motion.div>
 
-                {/* Form Details (only if file selected or running on Android app, and not completed) */}
-                {(file || isAndroidApp) && !uploadComplete && (
+                {/* Form Details (only if file selected, and not completed) */}
+                {file && !uploadComplete && (
                   <motion.div 
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -431,9 +460,7 @@ export default function Upload() {
                       disabled={!title.trim() || uploading || processing}
                       className="btn-primary w-full py-6 text-sm font-bold uppercase tracking-widest shadow-xl shadow-[var(--primary)]/10"
                     >
-                      {isAndroidApp 
-                        ? 'Select Video & Begin Upload' 
-                        : (uploading ? 'Transmitting...' : 'Begin Transmission')}
+                      {uploading ? 'Transmitting...' : 'Begin Transmission'}
                     </Button>
                   </motion.div>
                 )}
