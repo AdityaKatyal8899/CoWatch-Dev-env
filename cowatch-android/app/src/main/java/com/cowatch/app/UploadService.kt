@@ -30,15 +30,14 @@ class UploadService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val fileUriStr = intent?.getStringExtra("uri")
+        val fileUri = intent?.data
         val title = intent?.getStringExtra("title") ?: "Video"
         val description = intent?.getStringExtra("description") ?: ""
         val collectionId = intent?.getStringExtra("collection_id")
         val token = intent?.getStringExtra("token")
         val uploadUrlStr = intent?.getStringExtra("upload_url")
 
-        if (fileUriStr != null && uploadUrlStr != null) {
-            val fileUri = Uri.parse(fileUriStr)
+        if (fileUri != null && uploadUrlStr != null) {
             
             val initialNotification = buildProgressNotification("Preparing upload...", 0, "0 B", "0 MB/s", "Calculating...")
             // Start Foreground immediately with dataSync type for Android 11+ compatibility

@@ -381,7 +381,8 @@ class MainActivity : AppCompatActivity() {
         }
 
         val serviceIntent = Intent(this, UploadService::class.java).apply {
-            putExtra("uri", uri.toString())
+            data = uri
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             putExtra("title", title)
             putExtra("description", description)
             putExtra("collection_id", collectionId)
