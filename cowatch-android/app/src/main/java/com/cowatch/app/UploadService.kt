@@ -128,8 +128,12 @@ class UploadService : Service() {
                 conn.setRequestProperty("Authorization", "Bearer $token")
             }
 
-            // Set fixed streaming mode to bypass memory buffering
-            conn.setFixedLengthStreamingMode(totalLength)
+            // Set streaming mode: use fixed length if size is valid, else fallback to chunked streaming to prevent OOM
+            if (fileLength > 0 && totalLength > 0) {
+                conn.setFixedLengthStreamingMode(totalLength)
+            } else {
+                conn.setChunkedStreamingMode(1024 * 64)
+            }
 
             outputStream = conn.outputStream
 
@@ -157,15 +161,15 @@ class UploadService : Service() {
 
                 val now = System.currentTimeMillis()
                 if (now - lastUpdate >= 1000) {
-                    val progress = ((totalBytesWritten * 100) / fileLength).toInt()
+                    val progress = if (fileLength > 0) ((totalBytesWritten * 100) / fileLength).toInt() else 0
                     val elapsedSeconds = (now - startTime) / 1000.0
                     val speedBytesPerSec = if (elapsedSeconds > 0) totalBytesWritten / elapsedSeconds else 0.0
-                    val remainingBytes = fileLength - totalBytesWritten
-                    val etaSeconds = if (speedBytesPerSec > 0) (remainingBytes / speedBytesPerSec).toLong() else 0L
+                    val remainingBytes = if (fileLength > 0) fileLength - totalBytesWritten else 0L
+                    val etaSeconds = if (speedBytesPerSec > 0 && fileLength > 0) (remainingBytes / speedBytesPerSec).toLong() else 0L
 
-                    val progressText = "${formatBytes(totalBytesWritten)} / ${formatBytes(fileLength)}"
+                    val progressText = if (fileLength > 0) "${formatBytes(totalBytesWritten)} / ${formatBytes(fileLength)}" else formatBytes(totalBytesWritten)
                     val speedText = formatSpeed(speedBytesPerSec)
-                    val etaText = formatEta(etaSeconds)
+                    val etaText = if (fileLength > 0) formatEta(etaSeconds) else "Streaming..."
 
                     updateNotification(progress, progressText, speedText, etaText)
 
@@ -274,9 +278,30 @@ class UploadService : Service() {
     }
 
     private fun getFileSize(uri: Uri): Long {
-        return contentResolver.openAssetFileDescriptor(uri, "r")?.use {
-            it.length
-        } ?: 0L
+        var size = 0L
+        try {
+            contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                val sizeIndex = cursor.getColumnIndex(android.provider.OpenableColumns.SIZE)
+                if (cursor.moveToFirst() && sizeIndex != -1) {
+                    size = cursor.getLong(sizeIndex)
+                }
+            }
+        } catch (e: Exception) {
+            // Ignore query failures
+        }
+        if (size <= 0L) {
+            try {
+                contentResolver.openAssetFileDescriptor(uri, "r")?.use {
+                    val len = it.length
+                    if (len != android.content.res.AssetFileDescriptor.UNKNOWN_LENGTH) {
+                        size = len
+                    }
+                }
+            } catch (e: Exception) {
+                // Ignore descriptor failures
+            }
+        }
+        return size
     }
 
     private fun getFileName(uri: Uri): String? {
