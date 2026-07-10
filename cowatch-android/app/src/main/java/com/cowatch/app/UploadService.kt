@@ -40,9 +40,17 @@ class UploadService : Service() {
         if (fileUriStr != null && uploadUrlStr != null) {
             val fileUri = Uri.parse(fileUriStr)
             
-            // Start Foreground immediately
             val initialNotification = buildProgressNotification("Preparing upload...", 0, "0 B", "0 MB/s", "Calculating...")
-            startForeground(NOTIFICATION_ID, initialNotification)
+            // Start Foreground immediately with dataSync type for Android 11+ compatibility
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                startForeground(
+                    NOTIFICATION_ID,
+                    initialNotification,
+                    android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+                )
+            } else {
+                startForeground(NOTIFICATION_ID, initialNotification)
+            }
 
             thread {
                 performUpload(fileUri, title, description, collectionId, token, uploadUrlStr)
@@ -118,6 +126,8 @@ class UploadService : Service() {
 
             val url = URL(uploadUrlStr)
             conn = url.openConnection() as HttpURLConnection
+            conn.connectTimeout = 30000 // 30 seconds
+            conn.readTimeout = 30000 // 30 seconds
             conn.doOutput = true
             conn.doInput = true
             conn.useCaches = false
