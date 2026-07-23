@@ -47,6 +47,9 @@ export function YouTubePlayer({
   const [showControls, setShowControls] = useState(true);
   const [isLocked, setIsLocked] = useState(false);
   const [hostAction, setHostAction] = useState<string | null>(null);
+  const [availableQualities, setAvailableQualities] = useState<string[]>([]);
+  const [currentQuality, setCurrentQuality] = useState<string>('default');
+  const [showQualityMenu, setShowQualityMenu] = useState(false);
 
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const actionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -69,6 +72,7 @@ export function YouTubePlayer({
     if (isLocked) return;
     controlsTimeoutRef.current = setTimeout(() => {
       setShowControls(false);
+      setShowQualityMenu(false);
     }, 3000);
   }, [isLocked]);
 
@@ -116,6 +120,14 @@ export function YouTubePlayer({
             console.log("[YouTubePlayer] onReady fired");
             setIsReady(true);
             setDuration(event.target.getDuration());
+
+            // Fetch available and current quality levels
+            if (typeof event.target.getAvailableQualityLevels === 'function') {
+              setAvailableQualities(event.target.getAvailableQualityLevels());
+            }
+            if (typeof event.target.getPlaybackQuality === 'function') {
+              setCurrentQuality(event.target.getPlaybackQuality());
+            }
             
             // Set initial state from syncState if present
             if (syncState) {
@@ -139,6 +151,16 @@ export function YouTubePlayer({
               setIsPlaying(true);
             } else if (state === window.YT.PlayerState.PAUSED) {
               setIsPlaying(false);
+            }
+
+            // Update quality levels dynamically when video starts playing/buffering (as levels are sometimes only populated then)
+            if (state === window.YT.PlayerState.PLAYING || state === window.YT.PlayerState.BUFFERING) {
+              if (event.target && typeof event.target.getAvailableQualityLevels === 'function') {
+                setAvailableQualities(event.target.getAvailableQualityLevels());
+              }
+              if (event.target && typeof event.target.getPlaybackQuality === 'function') {
+                setCurrentQuality(event.target.getPlaybackQuality());
+              }
             }
           }
         }
@@ -551,6 +573,83 @@ export function YouTubePlayer({
                     {isLocked ? <Lock className="w-3 h-3" /> : <Unlock className="w-3 h-3" />}
                   </button>
                 )}
+
+                {/* Playback Quality settings popover */}
+                <div className="relative">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const nextState = !showQualityMenu;
+                      setShowQualityMenu(nextState);
+                      if (nextState && playerRef.current) {
+                        if (typeof playerRef.current.getAvailableQualityLevels === 'function') {
+                          const levels = playerRef.current.getAvailableQualityLevels();
+                          if (levels && levels.length > 0) {
+                            setAvailableQualities(levels);
+                          }
+                        }
+                        if (typeof playerRef.current.getPlaybackQuality === 'function') {
+                          setCurrentQuality(playerRef.current.getPlaybackQuality());
+                        }
+                      }
+                    }}
+                    title="Playback Quality"
+                    className={`w-7 h-7 shrink-0 rounded-lg flex items-center justify-center transition-all border ${showQualityMenu
+                        ? 'bg-[var(--primary)] border-[var(--primary)]/40 text-black shadow-[0_0_15px_var(--primary)]'
+                        : 'bg-black/40 border-white/10 text-white/60 hover:text-white hover:bg-white/10'
+                      }`}
+                  >
+                    <Settings className="w-3 h-3" />
+                  </button>
+
+                  {showQualityMenu && (
+                    <div className="absolute bottom-9 right-0 bg-[#121212]/95 backdrop-blur-2xl border border-white/10 rounded-2xl p-1.5 min-w-[110px] flex flex-col gap-0.5 shadow-2xl z-[70]">
+                      <div className="text-[8px] font-black uppercase tracking-[0.15em] text-white/40 px-2.5 py-1.5 border-b border-white/5 mb-1">
+                        Quality
+                      </div>
+                      {(availableQualities.length > 0 ? availableQualities : ['default', 'hd1080', 'hd720', 'large', 'medium', 'small']).map((quality) => {
+                        const labelMap: Record<string, string> = {
+                          hd2160: '4K',
+                          hd1440: '1440p',
+                          hd1080: '1080p',
+                          hd720: '720p',
+                          large: '480p',
+                          medium: '360p',
+                          small: '240p',
+                          tiny: '144p',
+                          default: 'Auto'
+                        };
+                        const displayLabel = labelMap[quality] || quality;
+                        const isSelected = currentQuality === quality;
+                        return (
+                          <button
+                            key={quality}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (playerRef.current) {
+                                if (typeof playerRef.current.setPlaybackQuality === 'function') {
+                                  playerRef.current.setPlaybackQuality(quality);
+                                }
+                                if (typeof playerRef.current.setPlaybackQualityRange === 'function') {
+                                  playerRef.current.setPlaybackQualityRange(quality, quality);
+                                }
+                                setCurrentQuality(quality);
+                              }
+                              setShowQualityMenu(false);
+                            }}
+                            className={`w-full text-left px-2.5 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-[0.05em] transition-all ${
+                              isSelected
+                                ? 'bg-[var(--primary)] text-black font-extrabold'
+                                : 'text-white/70 hover:text-white hover:bg-white/5'
+                            }`}
+                          >
+                            {displayLabel}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
 
                 {/* Fullscreen */}
                 <button
