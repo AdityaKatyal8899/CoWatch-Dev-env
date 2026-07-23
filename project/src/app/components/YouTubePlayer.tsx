@@ -229,7 +229,25 @@ export function YouTubePlayer({
 
       // RULE: Viewer MUST STAY BEHIND the host
       if (localTime > hostTime) {
-        playerRef.current.seekTo(hostTime - TARGET_OFFSET, true);
+        if (!isSeekingRef.current) {
+          isSeekingRef.current = true;
+          if (isRemoteEvent) isRemoteEvent.current = true;
+
+          playerRef.current.seekTo(hostTime - TARGET_OFFSET, true);
+
+          if (shouldPlay) {
+            playerRef.current.playVideo();
+            setIsPlaying(true);
+          } else {
+            playerRef.current.pauseVideo();
+            setIsPlaying(false);
+          }
+
+          setTimeout(() => {
+            isSeekingRef.current = false;
+            if (isRemoteEvent) isRemoteEvent.current = false;
+          }, 800);
+        }
         return;
       }
 
