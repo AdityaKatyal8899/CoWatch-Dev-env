@@ -207,6 +207,39 @@ async def room_websocket(websocket: WebSocket, room_id: str, user_id: str):
                         "data": {}
                     })
                     
+                elif msg_type == "change_video" and is_host:
+                    yt_id = message.get("youtube_video_id")
+                    vid_url = message.get("video_url")
+                    media_type = message.get("media_type", "youtube")
+
+                    room.youtube_video_id = yt_id
+                    room.video_url = vid_url
+                    room.media_type = media_type
+
+                    # Reset playback state for new media
+                    room.is_playing = False
+                    room.stream_status = "waiting"
+                    room.offset = 0.0
+                    room.started_at = None
+
+                    db.commit()
+
+                    # Broadcast the new state to all clients
+                    await broadcast_to_room(room_id, {
+                        "type": "room_state",
+                        "stream_status": room.stream_status,
+                        "is_playing": room.is_playing,
+                        "currentTime": room.offset,
+                        "startedAt": None,
+                        "updatedAt": datetime.now(timezone.utc).isoformat(),
+                        "title": room.title,
+                        "stream_url": room.stream_url,
+                        "media_type": room.media_type,
+                        "video_url": room.video_url,
+                        "youtube_video_id": room.youtube_video_id,
+                        "participant_count": len(active_connections.get(room_id, {}))
+                    })
+
                 elif msg_type == "end_room" and is_host:
 
                     db.delete(room)

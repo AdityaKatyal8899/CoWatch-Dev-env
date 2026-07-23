@@ -50,6 +50,7 @@ export default function Room() {
   const unmountingRef = useRef(false);
   const [isDisbanding, setIsDisbanding] = useState(false);
   const [disbandCountdown, setDisbandCountdown] = useState(5);
+  const [newVideoLink, setNewVideoLink] = useState('');
 
   // Constants (CRITICAL CONFIG)
   // Initialize room
@@ -203,7 +204,7 @@ export default function Room() {
 
       switch (message.type) {
         case 'room_state':
-          const data = message.data as SyncState & { participant_count?: number };
+          const data = message.data as SyncState & { participant_count?: number; youtube_video_id?: string; media_type?: string; video_url?: string };
           setSyncState({
             streamStatus: data.streamStatus || 'waiting',
             isPlaying: data.isPlaying,
@@ -214,6 +215,26 @@ export default function Room() {
 
           if (data.participant_count !== undefined) {
             setParticipantCount(data.participant_count);
+          }
+
+          // Dynamically update the video in the room if the video details changed!
+          if (data.youtube_video_id && (!video || video.video_id !== data.youtube_video_id)) {
+            setVideo({
+              video_id: data.youtube_video_id,
+              title: "YouTube Video Watch Together",
+              description: '',
+              stream_url: data.video_url || '',
+              duration: 0,
+              thumbnail_url: '',
+              processing_status: 'ready'
+            } as any);
+
+            setRoom(prev => prev ? {
+              ...prev,
+              youtube_video_id: data.youtube_video_id,
+              media_type: data.media_type || 'youtube',
+              video_url: data.video_url || ''
+            } : null);
           }
           break;
         case 'seek':
@@ -300,6 +321,30 @@ export default function Room() {
     };
   }, [currentUser?.id, roomId, room?.host_id]);
 
+
+  const handleChangeVideoSubmit = useCallback((e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newVideoLink || !ws) return;
+
+    // Parse YouTube Video ID helper
+    const ytIdMatch = newVideoLink.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/i);
+    const parsedId = ytIdMatch ? ytIdMatch[1] : null;
+
+    if (!parsedId) {
+      toast.error('Invalid YouTube link. Please provide a valid URL.');
+      return;
+    }
+
+    // Send change_video WebSocket control message to the backend
+    ws.sendType('change_video', {
+      youtube_video_id: parsedId,
+      video_url: newVideoLink,
+      media_type: 'youtube'
+    });
+
+    setNewVideoLink('');
+    toast.success('Changing room video...');
+  }, [newVideoLink, ws]);
 
   const isHost = useMemo(() => {
     if (!currentUser || !room) return false;
@@ -429,6 +474,24 @@ export default function Room() {
                  {syncState.streamStatus === 'live' ? 'Live' : 'Waiting'}
                </div>
             </div>
+
+            {isHost && (
+              <form onSubmit={handleChangeVideoSubmit} className="flex items-center gap-2 max-w-sm w-full">
+                <input
+                  type="text"
+                  placeholder="Paste YouTube URL to load..."
+                  value={newVideoLink}
+                  onChange={(e) => setNewVideoLink(e.target.value)}
+                  className="bg-white/5 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[var(--primary)] transition-all flex-1"
+                />
+                <button
+                  type="submit"
+                  className="bg-[var(--primary)] hover:bg-[var(--primary)]/90 text-black font-extrabold uppercase tracking-[0.1em] text-[10px] px-4 py-2 rounded-xl transition-all shadow-lg active:scale-95 whitespace-nowrap"
+                >
+                  Load Video
+                </button>
+              </form>
+            )}
           </div>
 
           <div id="video-player-container" className="w-full aspect-video lg:flex-1 lg:aspect-auto p-0 lg:p-6 overflow-hidden relative bg-black shrink-0 order-1 lg:order-none">

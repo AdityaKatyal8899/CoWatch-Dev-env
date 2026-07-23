@@ -68,13 +68,16 @@ export class RealWebSocket {
   private handleInboundMessage(message: any) {
     // Standardize backend messages to frontend WebSocketMessage type
     if (message.type === 'room_state' || message.type === 'seek') {
-      const syncData: SyncState & { participant_count?: number } = {
+      const syncData: SyncState & { participant_count?: number; youtube_video_id?: string; media_type?: string; video_url?: string } = {
         isPlaying: message.is_playing,
         currentTime: message.currentTime,
         startedAt: message.startedAt ? new Date(message.startedAt).getTime() : null,
         updatedAt: message.updatedAt || null,
         streamStatus: message.stream_status || (message.is_playing ? 'live' : 'waiting'),
-        participant_count: message.participant_count
+        participant_count: message.participant_count,
+        youtube_video_id: message.youtube_video_id,
+        media_type: message.media_type,
+        video_url: message.video_url
       };
       
       this.handlers.forEach(handler => handler({
