@@ -208,9 +208,10 @@ async def room_websocket(websocket: WebSocket, room_id: str, user_id: str):
                     })
                     
                 elif msg_type == "change_video" and is_host:
-                    yt_id = message.get("youtube_video_id")
-                    vid_url = message.get("video_url")
-                    media_type = message.get("media_type", "youtube")
+                    payload = message.get("data") or {}
+                    yt_id = payload.get("youtube_video_id")
+                    vid_url = payload.get("video_url")
+                    media_type = payload.get("media_type", "youtube")
 
                     room.youtube_video_id = yt_id
                     room.video_url = vid_url

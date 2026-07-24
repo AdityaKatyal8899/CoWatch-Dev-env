@@ -52,6 +52,11 @@ export default function Room() {
   const [disbandCountdown, setDisbandCountdown] = useState(5);
   const [newVideoLink, setNewVideoLink] = useState('');
 
+  const videoRef = useRef<Video | null>(null);
+  useEffect(() => {
+    videoRef.current = video;
+  }, [video]);
+
   // Constants (CRITICAL CONFIG)
   // Initialize room
   useEffect(() => {
@@ -103,6 +108,19 @@ export default function Room() {
         setVideo(videoData as any);
         setLoading(false);
         toast.success('Connected to room');
+
+        // Append system message for current user joining
+        const isSelfHost = user.id === roomData.host_id;
+        const selfMsg: ChatMessage = {
+          id: `system-self-${user.id}-${Date.now()}`,
+          userId: 'system',
+          username: 'System',
+          message: isSelfHost
+            ? `${user.name} is the HOST`
+            : `${user.name} joined the room`,
+          timestamp: new Date().toISOString()
+        };
+        setMessages([selfMsg]);
       } catch (error) {
         console.error('[Room] Init Error:', error);
         toast.error('Failed to join room');
@@ -218,7 +236,8 @@ export default function Room() {
           }
 
           // Dynamically update the video in the room if the video details changed!
-          if (data.youtube_video_id && (!video || video.video_id !== data.youtube_video_id)) {
+          const currentVideo = videoRef.current;
+          if (data.youtube_video_id && (!currentVideo || currentVideo.video_id !== data.youtube_video_id)) {
             setVideo({
               video_id: data.youtube_video_id,
               title: "YouTube Video Watch Together",
@@ -272,6 +291,19 @@ export default function Room() {
               storage_limit: 0,
               created_at: new Date().toISOString()
             };
+
+            // Append system message to chat log
+            const joinMsg: ChatMessage = {
+              id: `system-join-${message.data.id}-${Date.now()}`,
+              userId: 'system',
+              username: 'System',
+              message: message.data.isHost 
+                ? `${message.data.name} is the HOST` 
+                : `${message.data.name} joined the room`,
+              timestamp: new Date().toISOString()
+            };
+            setMessages((prev) => [...prev, joinMsg]);
+
             setRoom((prev) => {
               if (!prev) return null;
               if (prev.participants.some((p) => p.id === newParticipant.id)) return prev;
@@ -289,6 +321,17 @@ export default function Room() {
           if (message.data.id) {
             setRoom((prev) => {
               if (!prev) return null;
+              const leavingUser = prev.participants.find((p) => p.id === message.data.id);
+              if (leavingUser) {
+                const leaveMsg: ChatMessage = {
+                  id: `system-leave-${message.data.id}-${Date.now()}`,
+                  userId: 'system',
+                  username: 'System',
+                  message: `${leavingUser.name} left the room`,
+                  timestamp: new Date().toISOString()
+                };
+                setMessages((prevMsgs) => [...prevMsgs, leaveMsg]);
+              }
               return {
                 ...prev,
                 participants: prev.participants.filter((p) => p.id !== message.data.id)
@@ -312,8 +355,7 @@ export default function Room() {
     }
 
     return () => {
-      // Only disconnect on explicit unmount of the page
-      if (unmountingRef.current && wsRef.current) {
+      if (wsRef.current) {
         wsRef.current.disconnect();
         wsRef.current = null;
         setWs(null);
@@ -497,6 +539,7 @@ export default function Room() {
           <div id="video-player-container" className="w-full aspect-video lg:flex-1 lg:aspect-auto p-0 lg:p-6 overflow-hidden relative bg-black shrink-0 order-1 lg:order-none">
             {room.media_type === 'youtube' ? (
               <YouTubePlayer
+                key={room.youtube_video_id || "default"}
                 videoId={room.youtube_video_id || ""}
                 isHost={isHost}
                 onPlayStateChange={handlePlayStateChange}

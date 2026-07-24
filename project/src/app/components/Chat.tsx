@@ -70,6 +70,17 @@ export function Chat({
             </div>
           ) : (
             messages.map((msg) => {
+              const isSystem = msg.userId === 'system';
+              if (isSystem) {
+                return (
+                  <div key={msg.id} className="flex justify-center w-full my-1 animate-fade-in">
+                    <span className="text-[9px] font-black uppercase tracking-[0.15em] text-white/30 bg-white/[0.02] border border-white/5 px-3 py-1 rounded-full text-center">
+                      {msg.message}
+                    </span>
+                  </div>
+                );
+              }
+
               const isOwnMessage = msg.username === currentUsername;
               const themeColor = getThemeColor(msg.theme);
               
