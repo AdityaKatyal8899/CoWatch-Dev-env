@@ -17,7 +17,7 @@ export function TopBar({ roomId, roomName, isHost, onLeave }: TopBarProps) {
   };
 
   return (
-    <div className="h-14 bg-[#0B0B0F] border-b border-white/5 px-4 lg:px-6 flex items-center justify-between shrink-0">
+    <div className="h-14 bg-[#0B0B0F] border-b border-white/5 px-3 sm:px-6 flex items-center justify-between shrink-0">
       {/* Left: Room Info */}
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-3">
@@ -32,7 +32,7 @@ export function TopBar({ roomId, roomName, isHost, onLeave }: TopBarProps) {
       </div>
 
       {/* Center: Status */}
-      <div className={`px-3 py-1 rounded-full flex items-center gap-2 border ${
+      <div className={`px-2.5 py-1 rounded-full flex items-center gap-1 sm:gap-2 border ${
         isHost 
           ? 'bg-[var(--primary)]/10 border-[var(--primary)]/20 text-[var(--primary)]' 
           : 'bg-white/5 border-white/10 text-white/40'

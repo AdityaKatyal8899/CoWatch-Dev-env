@@ -61,7 +61,7 @@ export function Chat({
     <div className="flex flex-col h-full bg-[#0B0B0F] min-h-0">
       <div className="flex-1 overflow-hidden relative flex flex-col min-h-0">
         {/* Messages Area */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin">
+        <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 sm:space-y-4 scrollbar-thin">
           {messages.length === 0 ? (
             <div className="flex items-center justify-center h-full">
               <p className="text-white/20 text-xs text-center font-medium">
@@ -122,7 +122,7 @@ export function Chat({
         </div>
 
         {/* Input Area */}
-        <form onSubmit={handleSubmit} className="p-4 border-t border-white/5 bg-[#0B0B0F]">
+        <form onSubmit={handleSubmit} className="p-3 sm:p-4 border-t border-white/5 bg-[#0B0B0F]">
           <div className="flex gap-2">
             <input
               type="text"

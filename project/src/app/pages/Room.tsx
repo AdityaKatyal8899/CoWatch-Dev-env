@@ -494,7 +494,7 @@ export default function Room() {
 
         {/* Stream Area */}
         <div className="w-full lg:flex-1 flex flex-col min-w-0 lg:h-full shrink-0 order-1 lg:order-none">
-          <div className="px-4 lg:px-6 py-3 bg-[#0B0B0F] border-b border-white/5 flex items-center justify-between order-2 lg:order-none">
+          <div className="px-4 lg:px-6 py-3 bg-[#0B0B0F] border-b border-white/5 flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between order-2 lg:order-none">
             <div className="flex items-center gap-4">
                <div className="flex items-center gap-2 px-3 py-1 bg-white/[0.03] border border-white/5 rounded-full">
                  <div className="w-1.5 h-1.5 bg-[#9333EA] rounded-full animate-pulse" />
