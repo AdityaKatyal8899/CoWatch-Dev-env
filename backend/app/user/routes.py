@@ -5,6 +5,7 @@ from app.database.config import get_db
 from app.database import models
 from app.auth.oauth2 import get_current_user
 from app.services.s3_service import generate_upload_url
+from app.subscriptions.plans import DEFAULT_THEME, get_user_plan_config, user_allows
 from pydantic import BaseModel
 from typing import Any
 
@@ -44,7 +45,7 @@ async def get_user_stats(
 
     return {
         "storageUsed": storage_sum,
-        "storageLimit": current_user.storage_limit,
+        "storageLimit": get_user_plan_config(current_user)["storage_limit"],
         "totalUploads": total_uploads,
         "activeStreams": active_streams
     }
@@ -77,13 +78,17 @@ async def onboard_user(
     if not req.display_name or len(req.display_name.strip()) < 2:
         raise HTTPException(status_code=400, detail="Display name must be at least 2 characters")
 
-    if not validate_theme_selection(req.theme):
-        raise HTTPException(status_code=400, detail="Invalid theme selection or custom colors")
+    # Theme customization requires a paid plan. Free users are locked to the default theme.
+    if user_allows(current_user, "custom_themes"):
+        if not validate_theme_selection(req.theme):
+            raise HTTPException(status_code=400, detail="Invalid theme selection or custom colors")
+        current_user.theme = req.theme
+    else:
+        current_user.theme = DEFAULT_THEME
 
     current_user.display_name = req.display_name.strip()
     current_user.age = req.age
     current_user.genres = req.genres
-    current_user.theme = req.theme
 
     db.commit()
     db.refresh(current_user)
@@ -104,6 +109,8 @@ async def update_profile(
         current_user.display_name = req.display_name.strip()
 
     if req.theme is not None:
+        if not user_allows(current_user, "custom_themes"):
+            raise HTTPException(status_code=403, detail="Theme customization is available on paid plans")
         if not validate_theme_selection(req.theme):
             raise HTTPException(status_code=400, detail="Invalid theme selection")
         current_user.theme = req.theme

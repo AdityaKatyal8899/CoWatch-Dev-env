@@ -1,17 +1,18 @@
 import { ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { 
-  LayoutDashboard, 
-  Upload, 
-  FolderOpen, 
-  Video, 
-  User, 
-  Settings, 
+import {
+  LayoutDashboard,
+  Upload,
+  FolderOpen,
+  Video,
+  User,
+  Settings,
   LogOut,
   Play,
   Menu,
-  X
+  X,
+  Gem
 } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '../lib/auth';
@@ -37,6 +38,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     { icon: Video, label: 'Create Stream', path: '/create-stream' },
     { icon: User, label: 'Profile', path: '/profile' },
     { icon: Settings, label: 'Settings', path: '/settings' },
+    { icon: Gem, label: 'Plans', path: '/plans' },
   ];
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);

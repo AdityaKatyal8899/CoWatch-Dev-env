@@ -18,6 +18,7 @@ from app.collections.routes import router as collections_router
 from app.user.routes import router as user_router
 from app.auth.routes import router as auth_router
 from app.livekit.token_route import router as livekit_router
+from app.coupons.routes import router as coupons_router
 
 from app.middleware.limiter import limiter
 from app.middleware.cache_control import CacheControlMiddleware
@@ -76,6 +77,7 @@ app.include_router(collections_router, prefix="/api")
 app.include_router(user_router, prefix="/api/user")
 app.include_router(auth_router, prefix="/api")
 app.include_router(livekit_router, prefix="/api/livekit")
+app.include_router(coupons_router, prefix="/api")
 
 mimetypes.add_type("application/vnd.apple.mpegurl", ".m3u8")
 mimetypes.add_type("video/mp2t", ".ts")

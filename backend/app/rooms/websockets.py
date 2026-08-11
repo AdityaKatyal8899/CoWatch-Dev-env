@@ -65,7 +65,11 @@ async def room_websocket(websocket: WebSocket, room_id: str, user_id: str):
             "media_type": room.media_type,
             "video_url": room.video_url,
             "youtube_video_id": room.youtube_video_id,
-            "participant_count": len(active_connections.get(room_id, {})) + 1 
+            "video_id": room.video.video_id if room.video else None,
+            "video_title": room.video.title if room.video else room.title,
+            "thumbnail_url": room.video.thumbnail_url if room.video else None,
+            "duration": room.video.duration if room.video else None,
+            "participant_count": len(active_connections.get(room_id, {})) + 1
         }
 
 
@@ -209,13 +213,61 @@ async def room_websocket(websocket: WebSocket, room_id: str, user_id: str):
                     
                 elif msg_type == "change_video" and is_host:
                     payload = message.get("data") or {}
-                    yt_id = payload.get("youtube_video_id")
-                    vid_url = payload.get("video_url")
-                    media_type = payload.get("media_type", "youtube")
+                    requested_media_type = payload.get("media_type", "youtube")
+                    new_video_id = payload.get("video_id")  # library video UUID string
 
-                    room.youtube_video_id = yt_id
-                    room.video_url = vid_url
-                    room.media_type = media_type
+                    broadcast_extra = {}
+
+                    # Library (HLS) video switch — resolve stream_url from DB
+                    if requested_media_type == "hls" or new_video_id:
+                        video = db.query(models.Video).filter(models.Video.video_id == new_video_id).first() if new_video_id else None
+                        if not video:
+                            await websocket.send_json({
+                                "type": "error",
+                                "code": "VIDEO_NOT_FOUND",
+                                "message": "Video no longer exists"
+                            })
+                            continue
+
+                        # Collection-bound rooms can only switch within their playlist
+                        if room.collection_id:
+                            is_member = db.query(models.CollectionVideo).filter(
+                                models.CollectionVideo.collection_id == room.collection_id,
+                                models.CollectionVideo.video_id == video.id
+                            ).first()
+                            if not is_member:
+                                await websocket.send_json({
+                                    "type": "error",
+                                    "code": "VIDEO_NOT_IN_COLLECTION",
+                                    "message": "This video is not part of the room's collection"
+                                })
+                                continue
+
+                        room.video_id = video.id
+                        room.stream_url = video.stream_url
+                        room.media_type = "hls"
+                        room.video_url = None
+                        room.youtube_video_id = None
+
+                        broadcast_extra = {
+                            "video_id": video.video_id,
+                            "video_title": video.title,
+                            "thumbnail_url": video.thumbnail_url,
+                            "duration": video.duration,
+                        }
+                    else:
+                        # YouTube switch (existing behavior)
+                        room.youtube_video_id = payload.get("youtube_video_id")
+                        room.video_url = payload.get("video_url")
+                        room.media_type = "youtube"
+                        room.video_id = None
+
+                        broadcast_extra = {
+                            "video_id": room.youtube_video_id,
+                            "video_title": room.title,
+                            "thumbnail_url": None,
+                            "duration": None,
+                        }
 
                     # Reset playback state for new media
                     room.is_playing = False
@@ -238,6 +290,10 @@ async def room_websocket(websocket: WebSocket, room_id: str, user_id: str):
                         "media_type": room.media_type,
                         "video_url": room.video_url,
                         "youtube_video_id": room.youtube_video_id,
+                        "video_id": broadcast_extra.get("video_id"),
+                        "video_title": broadcast_extra.get("video_title"),
+                        "thumbnail_url": broadcast_extra.get("thumbnail_url"),
+                        "duration": broadcast_extra.get("duration"),
                         "participant_count": len(active_connections.get(room_id, {}))
                     })
 

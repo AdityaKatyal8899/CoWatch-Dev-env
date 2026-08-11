@@ -12,7 +12,8 @@ class UserBase(BaseModel):
     theme: str = "default-dark"
     profile_picture: Optional[str] = None
     storage_used: int = 0
-    storage_limit: int = 5368709120
+    storage_limit: int = 2 * 1024 ** 3  # Free plan: 2 GB
+    plan: str = "free"  # free, pro, pro_plus, vibers
 
 class UserCreate(UserBase):
     provider: str = "google"

@@ -11,6 +11,7 @@ from app.database import models
 from app.database.models import User
 from app.auth.oauth2 import get_current_user
 from app.videos.schemas import VideoResponse, BulkDeleteVideos
+from app.subscriptions.plans import get_user_plan_config
 from app.middleware.limiter import limiter
 import shutil
 from typing import Optional
@@ -48,7 +49,9 @@ async def upload_video(
     async with aiofiles.open(input_path, 'wb') as out_file:
         while content := await file.read(1024 * 1024): # 1MB chunks
             file_size_bytes += len(content)
-            if current_user.storage_used + file_size_bytes > current_user.storage_limit:
+            # Enforce the plan's storage quota (single source of truth = plan config)
+            plan_storage_limit = get_user_plan_config(current_user)["storage_limit"]
+            if current_user.storage_used + file_size_bytes > plan_storage_limit:
                  # Cleanup and abort if limit hit mid-upload
                  await out_file.close()
                  os.remove(input_path)

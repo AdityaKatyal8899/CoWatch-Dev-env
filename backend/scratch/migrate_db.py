@@ -45,4 +45,34 @@ with engine.connect() as conn:
         conn.commit()
         print("'youtube_video_id' column added successfully.")
 
+    # Add collection_id if not exists (collection-bound rooms / in-room playlist switching)
+    if "collection_id" not in existing_columns:
+        print("Adding 'collection_id' column...")
+        conn.execute(text("ALTER TABLE rooms ADD COLUMN collection_id INTEGER REFERENCES collections(id) ON DELETE SET NULL;"))
+        conn.commit()
+        print("'collection_id' column added successfully.")
+
+    # Check current columns in users table
+    result = conn.execute(text("""
+        SELECT column_name
+        FROM information_schema.columns
+        WHERE table_name = 'users';
+    """))
+    existing_columns = [row[0] for row in result.fetchall()]
+    print(f"Existing columns in 'users': {existing_columns}")
+
+    # Add plan column if not exists (subscriptions)
+    if "plan" not in existing_columns:
+        print("Adding 'plan' column...")
+        conn.execute(text("ALTER TABLE users ADD COLUMN plan VARCHAR DEFAULT 'free' NOT NULL;"))
+        conn.commit()
+        print("'plan' column added successfully.")
+
+    # Add plan_expires_at column if not exists (coupon/expiry grants)
+    if "plan_expires_at" not in existing_columns:
+        print("Adding 'plan_expires_at' column...")
+        conn.execute(text("ALTER TABLE users ADD COLUMN plan_expires_at TIMESTAMPTZ;"))
+        conn.commit()
+        print("'plan_expires_at' column added successfully.")
+
     print("Migration check completed.")

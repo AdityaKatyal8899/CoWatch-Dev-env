@@ -17,8 +17,10 @@ import type { Room as RoomType, User, Video, ChatMessage, SyncState } from '../l
 import { useAuth } from '../lib/auth';
 import { toast } from 'sonner';
 import { Loader } from '../components/ui/Loader';
+import { ListVideo, X } from 'lucide-react';
 const ConfirmModal = dynamic(() => import('../components/ui/modal').then(mod => ({ default: mod.ConfirmModal })), { ssr: false });
 import { cn } from '../lib/utils';
+import { EpisodeList } from '../components/EpisodeList';
 
 
 export default function Room() {
@@ -211,7 +213,7 @@ export default function Room() {
         // KILL SOCKET: Prevent automatic reconnect loops during the 5s redirect countdown
         websocket.disconnect();
         setIsDisbanding(true);
-        
+
         if (message.code === "ROOM_NOT_FOUND") {
           toast.error('Room no longer exists. Redirecting...');
         } else {
@@ -220,9 +222,17 @@ export default function Room() {
         return;
       }
 
+      // Generic WS error surfaced to the user (e.g. rejected video switch)
+      if (message.type === 'error') {
+        if (message.code !== 'ROOM_NOT_FOUND' && message.message) {
+          toast.error(message.message);
+        }
+        return;
+      }
+
       switch (message.type) {
-        case 'room_state':
-          const data = message.data as SyncState & { participant_count?: number; youtube_video_id?: string; media_type?: string; video_url?: string };
+        case 'room_state': {
+          const data = message.data as SyncState & { participant_count?: number; youtube_video_id?: string; media_type?: string; video_url?: string; video_id?: string; video_title?: string; stream_url?: string; thumbnail_url?: string; duration?: number };
           setSyncState({
             streamStatus: data.streamStatus || 'waiting',
             isPlaying: data.isPlaying,
@@ -235,27 +245,32 @@ export default function Room() {
             setParticipantCount(data.participant_count);
           }
 
-          // Dynamically update the video in the room if the video details changed!
+          // Dynamically update the media if it changed — works for both HLS (video_id) and YouTube
           const currentVideo = videoRef.current;
-          if (data.youtube_video_id && (!currentVideo || currentVideo.video_id !== data.youtube_video_id)) {
+          const newMediaId = data.video_id || data.youtube_video_id;
+          if (newMediaId && (!currentVideo || currentVideo.video_id !== newMediaId)) {
+            const isYoutube = data.media_type === 'youtube';
             setVideo({
-              video_id: data.youtube_video_id,
-              title: "YouTube Video Watch Together",
+              video_id: newMediaId,
+              title: data.video_title || (isYoutube ? 'YouTube Video Watch Together' : room?.title || ''),
               description: '',
-              stream_url: data.video_url || '',
-              duration: 0,
-              thumbnail_url: '',
+              stream_url: isYoutube ? (data.video_url || data.stream_url || '') : (data.stream_url || ''),
+              duration: data.duration || 0,
+              thumbnail_url: data.thumbnail_url || '',
               processing_status: 'ready'
             } as any);
 
             setRoom(prev => prev ? {
               ...prev,
-              youtube_video_id: data.youtube_video_id,
-              media_type: data.media_type || 'youtube',
-              video_url: data.video_url || ''
+              youtube_video_id: data.youtube_video_id || undefined,
+              video_url: data.video_url || '',
+              media_type: data.media_type || prev.media_type,
+              video_id: data.video_id || prev.video_id,
+              stream_url: data.stream_url || prev.stream_url,
             } : null);
           }
           break;
+        }
         case 'seek':
           setSyncState(prev => ({ ...prev, currentTime: message.data.currentTime }));
           setSeekTrigger(Date.now());
@@ -393,6 +408,23 @@ export default function Room() {
     return currentUser.id === room.host_id;
   }, [currentUser, room]);
 
+  // Switch to an episode from the room's collection playlist (host only)
+  const handleSelectEpisode = useCallback((episode: Video) => {
+    if (!ws || !isHost) return;
+    if (episode.processing_status !== 'ready') {
+      toast.error('This episode is not ready yet.');
+      return;
+    }
+    if (episode.video_id === videoRef.current?.video_id) return;
+
+    ws.sendType('change_video', {
+      video_id: episode.video_id,
+      media_type: 'hls'
+    });
+    setEpisodesOpen(false);
+    toast.success(`Loading ${episode.title}...`);
+  }, [ws, isHost]);
+
   const handlePlayStateChange = useCallback((isPlaying: boolean, currentTime: number) => {
     if (!ws || !currentUser) return;
     ws.sendHostControl(isPlaying ? 'play' : 'pause', { currentTime });
@@ -439,7 +471,8 @@ export default function Room() {
     ws.sendSyncReport(currentTime);
   }, [ws, isHost]);
 
-  const [activeTab, setActiveTab] = useState<'chat' | 'invite'>('chat');
+  const [activeTab, setActiveTab] = useState<'chat' | 'invite' | 'episodes'>('chat');
+  const [episodesOpen, setEpisodesOpen] = useState(false);
 
   if (loading || !room || !currentUser || !video) {
     return <Loader fullscreen label="Connecting to Room" />;
@@ -563,6 +596,54 @@ export default function Room() {
                 hostName={room.host_name}
               />
             )}
+
+            {/* Collection playlist overlay — visible on the player */}
+            {room.collection && (
+              <>
+                <button
+                  onClick={() => setEpisodesOpen(prev => !prev)}
+                  title="Episodes"
+                  aria-label="Episodes"
+                  className={cn(
+                    "absolute top-4 right-4 z-20 w-9 h-9 rounded-xl flex items-center justify-center border transition-all",
+                    episodesOpen
+                      ? "bg-[var(--primary)] text-black border-[var(--primary)]/50 shadow-lg shadow-[var(--primary)]/30"
+                      : "bg-black/50 backdrop-blur-xl border-white/10 text-white/70 hover:text-white hover:border-white/25"
+                  )}
+                >
+                  <ListVideo className="w-4 h-4" />
+                </button>
+
+                {episodesOpen && (
+                  <div className="absolute inset-y-0 right-0 z-30 w-80 max-w-[85%] bg-[#0B0B0F]/95 backdrop-blur-xl border-l border-white/10 flex flex-col animate-in fade-in slide-in-from-right-4 duration-300">
+                    <div className="flex items-center justify-between gap-3 p-4 border-b border-white/5 shrink-0">
+                      <div className="min-w-0">
+                        <h3 className="text-xs font-black uppercase tracking-widest text-white truncate">{room.collection.name}</h3>
+                        <p className="text-[9px] font-bold text-white/20 uppercase tracking-widest mt-0.5">
+                          {room.collection.videos.length} {room.collection.videos.length === 1 ? 'episode' : 'episodes'}
+                          {!isHost && ' · Host controls playback'}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => setEpisodesOpen(false)}
+                        className="p-2 hover:bg-white/5 rounded-lg text-white/30 hover:text-white transition-colors shrink-0"
+                        aria-label="Close episodes"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <div className="flex-1 overflow-y-auto scrollbar-thin p-4">
+                      <EpisodeList
+                        episodes={room.collection.videos}
+                        currentVideoId={video?.video_id}
+                        isHost={isHost}
+                        onSelect={handleSelectEpisode}
+                      />
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
           </div>
         </div>
 
@@ -579,6 +660,18 @@ export default function Room() {
             >
               Chat
             </button>
+            {room.collection && (
+              <button
+                 onClick={() => setActiveTab('episodes')}
+                 className={cn(
+                   "flex-1 py-2.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all flex items-center justify-center gap-1.5",
+                   activeTab === 'episodes' ? "bg-white/5 text-white" : "text-white/20 hover:text-white/40"
+                 )}
+              >
+                <ListVideo className="w-3 h-3" />
+                Episodes
+              </button>
+            )}
             <button
                onClick={() => setActiveTab('invite')}
                className={cn(
@@ -592,13 +685,29 @@ export default function Room() {
 
           <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
             {activeTab === 'chat' ? (
-              <Chat 
+              <Chat
                 messages={messages}
                 onSendMessage={handleSendMessage}
                 currentUsername={currentUser.name}
                 room={room}
                 isHost={isHost}
               />
+            ) : activeTab === 'episodes' && room.collection ? (
+              <div className="h-full overflow-y-auto scrollbar-thin">
+                <div className="p-6">
+                  <h2 className="heading-section mb-1">{room.collection.name}</h2>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-white/20 mb-5 flex items-center gap-2">
+                    {room.collection.videos.length} {room.collection.videos.length === 1 ? 'episode' : 'episodes'}
+                    {!isHost && ' · Host controls playback'}
+                  </p>
+                  <EpisodeList
+                    episodes={room.collection.videos}
+                    currentVideoId={video?.video_id}
+                    isHost={isHost}
+                    onSelect={handleSelectEpisode}
+                  />
+                </div>
+              </div>
             ) : (
               <div className="h-full overflow-y-auto scrollbar-thin">
                 <div className="p-6">

@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 -m py_compile app/subscriptions/plans.py app/database/models.py app/schemas/pydantic_model.py app/auth/routes.py app/videos/routes.py app/user/routes.py app/collections/routes.py app/livekit/token_route.py scratch/migrate_db.py)"
+    ]
+  }
+}

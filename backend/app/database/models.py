@@ -1,9 +1,10 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Float, BigInteger, Table, JSON
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Float, BigInteger, Table, JSON, UniqueConstraint
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID
 from app.database.config import Base
 from sqlalchemy.sql import func
 import uuid
+from app.subscriptions.plans import DEFAULT_PLAN
 
 class User(Base):
     __tablename__ = "users"
@@ -19,7 +20,9 @@ class User(Base):
     provider_id = Column(String)
     profile_picture = Column(String)
     storage_used = Column(BigInteger, default=0)
-    storage_limit = Column(BigInteger, default=5368709120) # 5GB
+    storage_limit = Column(BigInteger, default=2 * 1024 ** 3)  # Free plan: 2 GB (enforced from plan config)
+    plan = Column(String, default=DEFAULT_PLAN, nullable=False)  # free, pro, pro_plus, vibers
+    plan_expires_at = Column(DateTime(timezone=True), nullable=True)  # None = free or lifetime
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     videos = relationship("Video", back_populates="owner")
@@ -71,6 +74,7 @@ class Room(Base):
     title = Column(String, nullable=True)
     host_id = Column(String, nullable=True) # Changed from UUID to String for guest support
     video_id = Column(Integer, ForeignKey("videos.id", ondelete="SET NULL"))
+    collection_id = Column(Integer, ForeignKey("collections.id", ondelete="SET NULL"), nullable=True)
     _stream_url = Column("stream_url", String, nullable=True) # Cached stream URL
     scheduled_time = Column(DateTime(timezone=True))
     media_type = Column(String, default="hls")
@@ -104,6 +108,7 @@ class Room(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
     video = relationship("Video", back_populates="rooms")
+    collection = relationship("Collection")
 
 class Collection(Base):
     __tablename__ = "collections"
@@ -123,3 +128,33 @@ class CollectionVideo(Base):
     id = Column(Integer, primary_key=True, index=True)
     collection_id = Column(Integer, ForeignKey("collections.id", ondelete="CASCADE"))
     video_id = Column(Integer, ForeignKey("videos.id", ondelete="CASCADE"))
+
+class Coupon(Base):
+    """A code that grants a paid plan for free. Created by the owner and handed out."""
+    __tablename__ = "coupons"
+
+    id = Column(Integer, primary_key=True, index=True)
+    code = Column(String, unique=True, index=True, nullable=False)
+    plan = Column(String, nullable=False)  # pro, pro_plus, vibers
+    duration_days = Column(Integer, nullable=True)  # None = lifetime
+    max_redemptions = Column(Integer, default=1)
+    times_redeemed = Column(Integer, default=0)
+    active = Column(Boolean, default=True)
+    expires_at = Column(DateTime(timezone=True), nullable=True)
+    created_by = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    redemptions = relationship("CouponRedemption", back_populates="coupon")
+
+class CouponRedemption(Base):
+    """Tracks who redeemed a coupon so the same user cannot reuse the same code."""
+    __tablename__ = "coupon_redemptions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    coupon_id = Column(Integer, ForeignKey("coupons.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    redeemed_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    __table_args__ = (UniqueConstraint("coupon_id", "user_id", name="uq_coupon_user"),)
+
+    coupon = relationship("Coupon", back_populates="redemptions")

@@ -125,3 +125,20 @@ input[type="range"]::-webkit-slider-thumb {
 #nprogress .peg {
   box-shadow: 0 0 10px var(--primary), 0 0 5px var(--primary) !important;
 }
+
+/* Subscription plan card animations */
+@keyframes co-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes co-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 0.75;
+  }
+}

@@ -5,7 +5,7 @@ export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Paths that require authentication
-  const protectedPaths = ['/dashboard', '/upload', '/collections', '/create-stream', '/profile', '/settings', '/room'];
+  const protectedPaths = ['/dashboard', '/upload', '/collections', '/create-stream', '/profile', '/settings', '/plans', '/room'];
   const isProtectedPath = protectedPaths.some(path => pathname.startsWith(path));
 
   // Paths that are only for public (auth)

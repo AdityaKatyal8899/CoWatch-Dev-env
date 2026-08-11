@@ -21,6 +21,7 @@ import qrcode
 from io import BytesIO
 from fastapi.responses import StreamingResponse
 from app.middleware.limiter import limiter
+from app.auth.oauth2 import get_current_user_optional
 
 router = APIRouter()
 rooms: Dict[str, Any] = {}
@@ -46,13 +47,14 @@ def extract_youtube_id(url: str) -> Optional[str]:
 
 @router.post("/rooms/create", response_model=RoomCreatedResponse)
 @limiter.limit("10/minute")
-async def create_room(request: Request, response: Response, req: CreateRoomRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
+async def create_room(request: Request, response: Response, req: CreateRoomRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user_optional)):
     short_id = str(uuid.uuid4())[:8] # Short clean room ID
     invite_link = f"/room/{short_id}"
-    
+
     stream_url = req.stream_url
     room_title = req.title or "New Watch Party"
     video_db_id = None
+    collection = None
     media_type = "hls"
     video_url = None
     youtube_id = None
@@ -65,27 +67,60 @@ async def create_room(request: Request, response: Response, req: CreateRoomReque
         youtube_id = extracted_id
         video_url = test_url
         stream_url = test_url
-    
+
     # Resolve stream_url and real DB ID from video_id (UUID string) if provided (and not YouTube)
-    elif req.video_id:
-        video = db.query(models.Video).filter(models.Video.video_id == req.video_id).first()
+    elif req.video_id or req.collection_id:
+        video = None
+        if req.collection_id:
+            # Collection-bound room: validate ownership + pick the start video
+            if not current_user:
+                raise HTTPException(status_code=401, detail="Authentication required for collection rooms")
+            collection = db.query(models.Collection).filter(
+                models.Collection.id == req.collection_id,
+                models.Collection.user_id == current_user.id
+            ).first()
+            if not collection:
+                raise HTTPException(status_code=404, detail="Collection not found")
+
+            # Ordered episode list (insertion order — collection_videos.id)
+            collection_videos = (
+                db.query(models.Video)
+                .join(models.CollectionVideo, models.CollectionVideo.video_id == models.Video.id)
+                .filter(models.CollectionVideo.collection_id == collection.id)
+                .order_by(models.CollectionVideo.id)
+                .all()
+            )
+            if not collection_videos:
+                raise HTTPException(status_code=400, detail="Collection has no videos")
+
+            # Explicitly chosen video must be a member of this collection
+            if req.video_id:
+                video = next((v for v in collection_videos if v.video_id == req.video_id), None)
+                if not video:
+                    raise HTTPException(status_code=400, detail="Video is not in this collection")
+            else:
+                # Default to the first ready video; fall back to the first item
+                video = next((v for v in collection_videos if v.processing_status == "ready"), collection_videos[0])
+        elif req.video_id:
+            video = db.query(models.Video).filter(models.Video.video_id == req.video_id).first()
+
         if video:
             video_db_id = video.id
             stream_url = video.stream_url
             if not req.title:
                 room_title = video.title
-                
+
             import os
             local_dir = os.path.join("storage", "videos", str(video.video_id))
             if not os.path.exists(local_dir):
                 from ..streaming.hls_worker import fetch_initial_hls_segments
                 background_tasks.add_task(fetch_initial_hls_segments, str(video.video_id))
-    
+
     if not stream_url:
         raise HTTPException(status_code=400, detail="Missing stream_url or invalid video_id")
-        
+
     # Remove scheduling logic
-    
+
     host_id_attr = str(req.host_id) if req.host_id else None
 
     
@@ -101,6 +136,7 @@ async def create_room(request: Request, response: Response, req: CreateRoomReque
         title=room_title,
         host_id=host_final_id,
         video_id=video_db_id,
+        collection_id=collection.id if collection else None,
         stream_url=stream_url,
         stream_status=initial_status,
         is_playing=False,
@@ -189,14 +225,15 @@ async def get_room_qr(room_id: str):
 async def get_room(room_id: str, db: Session = Depends(get_db)):
     # Use ORM model directly to benefit from Pydantic from_attributes and nested joins
     room = db.query(models.Room).options(
-        joinedload(models.Room.video)
+        joinedload(models.Room.video),
+        joinedload(models.Room.collection)
     ).filter(models.Room.room_id == room_id).first()
-    
+
     if room:
-        # Manually attach host_name and video_description for schema compatibility 
+        # Manually attach host_name and video_description for schema compatibility
         # (until we refactor RoomSchema to rely solely on relations)
         host = db.query(models.User).filter(models.User.id == cast(room.host_id, UUID(as_uuid=True))).first() if room.host_id else None
-        
+
         # We dynamic-patch the object so the response_model can pick it up
         room.host_name = host.display_name if host else "Guest"
         room.description = room.video.description if room.video else "No description available"
@@ -240,7 +277,40 @@ async def get_room(room_id: str, db: Session = Depends(get_db)):
                     })
         
         room.participants = participants_list
-        return room
+
+        # Temporarily detach collection relationship to prevent Pydantic validation errors
+        collection_orm = room.collection
+        room.collection = None
+
+        # Convert ORM object to Pydantic schema safely to bypass SQLAlchemy relationship restrictions
+        room_schema_data = RoomSchema.model_validate(room) if hasattr(RoomSchema, 'model_validate') else RoomSchema.from_orm(room)
+
+        # Restore the relationship
+        room.collection = collection_orm
+
+        # Collection-bound room: attach the ordered episode playlist (insertion order)
+        if room.collection_id:
+            collection_videos = (
+                db.query(models.Video)
+                .join(models.CollectionVideo, models.CollectionVideo.video_id == models.Video.id)
+                .filter(models.CollectionVideo.collection_id == room.collection_id)
+                .order_by(models.CollectionVideo.id)
+                .all()
+            )
+            # Map ORM Video models to VideoResponse Pydantic schemas to allow clean JSON serialization
+            from app.videos.schemas import VideoResponse
+            videos_serialized = [
+                VideoResponse.model_validate(v) if hasattr(VideoResponse, 'model_validate') else VideoResponse.from_orm(v)
+                for v in collection_videos
+            ]
+
+            room_schema_data.collection = {
+                "id": room.collection_id,
+                "name": room.collection.name if room.collection else "Collection",
+                "videos": videos_serialized
+            }
+
+        return room_schema_data
     
     raise HTTPException(status_code=404, detail="Room not found")
 

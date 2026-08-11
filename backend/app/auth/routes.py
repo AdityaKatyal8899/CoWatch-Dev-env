@@ -7,6 +7,7 @@ from app.auth.jwt import create_access_token
 from app.auth.oauth2 import get_current_user
 from app.schemas import pydantic_model as schema
 from app.middleware.limiter import limiter
+from app.subscriptions.plans import PLAN_VIBERS, get_user_plan, get_user_plan_config, is_owner
 from pydantic import BaseModel
 
 router = APIRouter(
@@ -44,7 +45,15 @@ def google_auth(request: Request, response: Response, token_req: GoogleTokenRequ
         user.name = name
         user.profile_picture = picture
         user.provider_id = provider_id
-    
+
+    # Sync plan entitlements. Default to Free; the owner gets lifetime Vibers.
+    if is_owner(user):
+        user.plan = PLAN_VIBERS
+        user.plan_expires_at = None
+    else:
+        user.plan = get_user_plan(user)
+    user.storage_limit = get_user_plan_config(user)["storage_limit"]
+
     db.commit()
     db.refresh(user)
 

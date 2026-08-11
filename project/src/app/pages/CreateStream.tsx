@@ -70,6 +70,19 @@ export default function CreateStream() {
     }
   };
 
+  // When a collection is chosen, default the selected episode to its first ready video
+  const selectCollection = (id: string) => {
+    setSelectedCollectionId(id);
+    if (id === 'all') return;
+    const collection = collections.find((c: Collection) => String(c.id) === id);
+    const cVideos = collection?.videos || [];
+    const ready = cVideos.filter((v: Video) => v.processing_status === 'ready');
+    if (ready.length > 0 && !ready.some((v: Video) => v.video_id === selectedVideoId)) {
+      setSelectedVideoId(ready[0].video_id);
+      setStreamTitle(`${ready[0].title} - Watch Party`);
+    }
+  };
+
   const handleStartStream = async () => {
     if (!user) {
       toast.error('Access Denied: You must be fully authenticated to initialize rooms.');
@@ -107,7 +120,23 @@ export default function CreateStream() {
           return;
         }
 
-        const room = await api.createRoom(streamTitle || selectedVideo.title, selectedVideoId, user.id);
+        // Collection-bound room: pass the collection and ensure the start video is a member
+        const collectionId = selectedCollectionId !== 'all' ? Number(selectedCollectionId) : undefined;
+        let vidToUse = selectedVideoId;
+        let titleToUse = streamTitle || selectedVideo.title;
+        if (collectionId) {
+          const coll = collections.find((c: Collection) => c.id === collectionId);
+          const cVideos = coll?.videos || [];
+          const chosen = cVideos.find((v: Video) => v.video_id === vidToUse)
+            || cVideos.find((v: Video) => v.processing_status === 'ready')
+            || cVideos[0];
+          if (chosen) {
+            vidToUse = chosen.video_id;
+            titleToUse = streamTitle || `${chosen.title} - Watch Party`;
+          }
+        }
+
+        const room = await api.createRoom(titleToUse, vidToUse, user.id, undefined, collectionId);
         toast.success('Ready to stream!');
         router.push(`/room/${room.room_id}`);
       }
@@ -208,8 +237,8 @@ export default function CreateStream() {
                          <h2 className="heading-section">Choose Content</h2>
                        </div>
                        <div className="flex gap-2">
-                          <button 
-                            onClick={() => setSelectedCollectionId('all')}
+                          <button
+                            onClick={() => selectCollection('all')}
                             className={`px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all border ${
                               selectedCollectionId === 'all' ? 'bg-white text-black border-white' : 'bg-white/5 text-white/40 border-white/5 hover:border-white/10'
                             }`}
@@ -217,9 +246,9 @@ export default function CreateStream() {
                             All
                           </button>
                           {collections.map(c => (
-                            <button 
+                            <button
                               key={c.id}
-                              onClick={() => setSelectedCollectionId(String(c.id))}
+                              onClick={() => selectCollection(String(c.id))}
                               className={`px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all border ${
                                 selectedCollectionId === String(c.id) ? 'bg-white text-black border-white' : 'bg-white/5 text-white/40 border-white/5 hover:border-white/10'
                               }`}

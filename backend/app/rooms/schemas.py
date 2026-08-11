@@ -4,6 +4,12 @@ from datetime import datetime
 from uuid import UUID
 from app.videos.schemas import VideoResponse
 
+class CollectionPlaylistSchema(BaseModel):
+    """The ordered episode list bound to a collection room."""
+    id: int
+    name: str
+    videos: List[VideoResponse] = []
+
 class ParticipantSchema(BaseModel):
     id: str
     name: str
@@ -18,6 +24,7 @@ class RoomSchema(BaseModel):
     room_id: str
     host_id: Optional[Union[str, UUID]] = None
     video_id: Optional[int] = None
+    collection: Optional[CollectionPlaylistSchema] = None
     stream_url: str
     title: str
     stream_status: str = "waiting"
@@ -40,6 +47,7 @@ class RoomSchema(BaseModel):
 
 class CreateRoomRequest(BaseModel):
     video_id: Optional[str] = None
+    collection_id: Optional[int] = None
     title: Optional[str] = None
     stream_url: Optional[str] = None
     video_url: Optional[str] = None

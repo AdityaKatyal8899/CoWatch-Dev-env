@@ -10,6 +10,7 @@ export interface User {
   profile_picture?: string;
   storage_used: number;
   storage_limit: number;
+  plan?: 'free' | 'pro' | 'pro_plus' | 'vibers'; // Backend-driven once subscriptions are wired
   created_at: string;
   isHost?: boolean; // Frontend-only role flag
   provider?: string;
@@ -39,6 +40,13 @@ export interface Room {
   media_type?: string;
   video_url?: string;
   youtube_video_id?: string;
+  collection?: CollectionPlaylist;
+}
+
+export interface CollectionPlaylist {
+  id: number;
+  name: string;
+  videos: Video[];
 }
 
 export interface Video {
