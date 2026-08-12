@@ -7,9 +7,10 @@ interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (idToken: string) => Promise<void>;
+  login: (idToken: string, accessToken?: string) => Promise<void>;
   logout: () => Promise<void>;
   updateProfile: (updates: Partial<User>) => Promise<void>;
+  acceptTerms: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -38,10 +39,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     checkAuth();
   }, []);
 
-  const login = async (idToken: string) => {
+  const login = async (idToken: string, accessToken?: string) => {
     setIsLoading(true);
     try {
-      const { access_token, user: userData } = await api.googleLogin(idToken);
+      const { access_token, user: userData } = await api.googleLogin(idToken, accessToken);
       
       setUser(userData);
       
@@ -71,7 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const updateProfile = async (updates: Partial<User>) => {
     if (!user) return;
-    
+
     try {
       const updatedUser = await api.updateProfile(updates);
       setUser(updatedUser);
@@ -82,16 +83,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // Onboarding Guard
+  const acceptTerms = async () => {
+    const updatedUser = await api.acceptTerms();
+    setUser(updatedUser);
+    localStorage.setItem('cowatch_user', JSON.stringify(updatedUser));
+  };
+
+  // Post-login guard: terms acceptance is the FIRST gate, then onboarding.
   useEffect(() => {
     if (isLoading) return;
-    
+
     const pathname = window.location.pathname;
-    
+
     if (user) {
-      if (!user.display_name && pathname !== '/onboarding') {
+      const termsAccepted = !!user.terms_accepted_at;
+      const hasName = !!user.display_name;
+
+      if (!termsAccepted && pathname !== '/guidelines') {
+        window.location.href = '/guidelines';
+      } else if (termsAccepted && !hasName && pathname !== '/onboarding') {
         window.location.href = '/onboarding';
-      } else if (user.display_name && pathname === '/onboarding') {
+      } else if (
+        termsAccepted &&
+        hasName &&
+        (pathname === '/guidelines' || pathname === '/onboarding')
+      ) {
         window.location.href = '/dashboard';
       }
     }
@@ -105,6 +121,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       login,
       logout,
       updateProfile,
+      acceptTerms,
     }}>
       {children}
     </AuthContext.Provider>

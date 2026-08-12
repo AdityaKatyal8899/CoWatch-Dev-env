@@ -75,4 +75,41 @@ with engine.connect() as conn:
         conn.commit()
         print("'plan_expires_at' column added successfully.")
 
+    # --- Moderation / age-verification columns on users ---
+    user_mod_cols = {
+        "date_of_birth": "DATE",
+        "age_verified": "BOOLEAN NOT NULL DEFAULT FALSE",
+        "age_verification_method": "VARCHAR(32) NOT NULL DEFAULT 'none'",
+        "terms_accepted_at": "TIMESTAMPTZ",
+        "is_banned": "BOOLEAN NOT NULL DEFAULT FALSE",
+        "banned_reason": "VARCHAR",
+    }
+    for col, ddl in user_mod_cols.items():
+        if col not in existing_columns:
+            print(f"Adding 'users.{col}' column...")
+            conn.execute(text(f"ALTER TABLE users ADD COLUMN {col} {ddl};"))
+            conn.commit()
+            print(f"'users.{col}' column added successfully.")
+
+    # --- Moderation columns on rooms ---
+    result = conn.execute(text("""
+        SELECT column_name FROM information_schema.columns WHERE table_name = 'rooms';
+    """))
+    room_columns = [row[0] for row in result.fetchall()]
+
+    room_mod_cols = {
+        "is_adult": "BOOLEAN NOT NULL DEFAULT FALSE",
+        "status": "VARCHAR(32) NOT NULL DEFAULT 'active'",
+    }
+    for col, ddl in room_mod_cols.items():
+        if col not in room_columns:
+            print(f"Adding 'rooms.{col}' column...")
+            conn.execute(text(f"ALTER TABLE rooms ADD COLUMN {col} {ddl};"))
+            conn.commit()
+            print(f"'rooms.{col}' column added successfully.")
+
+    # New moderation tables (moderation_warnings, moderation_reports, moderation_appeals)
+    # are auto-created by models.Base.metadata.create_all on backend startup (run on
+    # Windows / your deployment). No manual DDL needed here.
+
     print("Migration check completed.")

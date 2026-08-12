@@ -16,6 +16,10 @@ router = APIRouter()
 active_connections: Dict[str, Dict[str, WebSocket]] = {}
 last_seek_time: Dict[str, float] = {}  # Tracks last seek per room
 
+# Chat-moderation state (in-memory; reset on restart — acceptable for v1 warn+mute)
+chat_violations: Dict[str, Dict[str, int]] = {}  # room_id -> user_id -> violation count
+chat_muted: Dict[str, Dict[str, float]] = {}     # room_id -> user_id -> mute expiry (epoch seconds)
+
 @router.websocket("/ws/rooms/{room_id}/{user_id}")
 async def room_websocket(websocket: WebSocket, room_id: str, user_id: str):
     await websocket.accept()
@@ -31,6 +35,33 @@ async def room_websocket(websocket: WebSocket, room_id: str, user_id: str):
             })
             await websocket.close()
             return
+
+        # --- Moderation gates on connect ---
+        if room.status == "cancelled":
+            await websocket.send_json({
+                "type": "error",
+                "code": "ROOM_CANCELLED",
+                "message": "This room has been cancelled by moderation."
+            })
+            await websocket.close()
+            return
+
+        if room.is_adult:
+            from app.moderation.config import is_age_verified
+            db_user_for_age = None
+            try:
+                val_uuid = uuid.UUID(user_id)
+                db_user_for_age = db.query(models.User).filter(models.User.id == val_uuid).first()
+            except Exception:
+                pass
+            if not is_age_verified(db_user_for_age):
+                await websocket.send_json({
+                    "type": "error",
+                    "code": "ADULT_AGE_REQUIRED",
+                    "message": "You can't join right now — this is an 18+ room."
+                })
+                await websocket.close()
+                return
         
         # Determine host status using CLEAN UUIDs (no dashes, lowercase)
         db_host_id = str(room.host_id).replace("-", "").lower() if room.host_id else "none"
@@ -72,6 +103,35 @@ async def room_websocket(websocket: WebSocket, room_id: str, user_id: str):
             "participant_count": len(active_connections.get(room_id, {})) + 1
         }
 
+
+    # Enforce participant limits based on host's plan
+    host_plan = "free"
+    if room.host_id:
+        try:
+            with SessionLocal() as db_cap:
+                host_user = db_cap.query(models.User).filter(models.User.id == uuid.UUID(room.host_id)).first()
+                if host_user:
+                    from app.subscriptions.plans import get_effective_plan
+                    host_plan = get_effective_plan(host_user)
+        except Exception:
+            pass
+
+    from app.subscriptions.plans import get_plan_config
+    plan_config = get_plan_config(host_plan)
+    max_participants = plan_config.get("max_participants", 6)
+
+    # Check active connections count
+    current_active = active_connections.get(room_id, {})
+    if clean_user_id not in current_active and len(current_active) >= max_participants:
+        # Always allow the host to join to prevent lockout
+        if not is_host_initial:
+            await websocket.send_json({
+                "type": "error",
+                "code": "ROOM_FULL",
+                "message": f"This room has reached its maximum capacity of {max_participants} participants allowed by the host's plan."
+            })
+            await websocket.close()
+            return
 
     if room_id not in active_connections:
         active_connections[room_id] = {}
@@ -199,10 +259,53 @@ async def room_websocket(websocket: WebSocket, room_id: str, user_id: str):
                     }, exclude_user=user_id)
 
                 elif msg_type == "chat":
+                    # --- Tier 2 chat filter (server-side; never trust the client) ---
+                    from app.moderation.config import (
+                        moderate_message,
+                        CHAT_WARN_THRESHOLD,
+                        CHAT_MUTE_SECONDS,
+                    )
+                    chat_data = message.get("data") or {}
+                    chat_text = chat_data.get("message") if isinstance(chat_data, dict) else str(chat_data)
+
+                    # 1) If currently muted, honor the timeout. Expiry -> unmute + reset violations.
+                    room_mutes = chat_muted.get(room_id)
+                    muted_until = room_mutes.get(user_id) if room_mutes else None
+                    if muted_until is not None:
+                        if time.time() >= muted_until:
+                            room_mutes.pop(user_id, None)
+                            chat_violations.get(room_id, {}).pop(user_id, None)
+                        else:
+                            await websocket.send_json({
+                                "type": "chat_warning",
+                                "data": {
+                                    "message": "You are temporarily muted and cannot send chat messages yet.",
+                                    "muted": True,
+                                },
+                            })
+                            continue
+
+                    allowed, reason = moderate_message(chat_text or "")
+
+                    if not allowed:
+                        chat_violations.setdefault(room_id, {})
+                        chat_violations[room_id][user_id] = chat_violations[room_id].get(user_id, 0) + 1
+                        is_muted = chat_violations[room_id][user_id] >= CHAT_WARN_THRESHOLD
+                        if is_muted:
+                            chat_muted.setdefault(room_id, {})[user_id] = time.time() + CHAT_MUTE_SECONDS
+                        await websocket.send_json({
+                            "type": "chat_warning",
+                            "data": {
+                                "message": reason + (" You have been muted for repeated violations." if is_muted else ""),
+                                "muted": is_muted,
+                            },
+                        })
+                        continue
+
                     # Broadcast chat message to all in room
                     await broadcast_to_room(room_id, {
                         "type": "chat",
-                        "data": message.get("data")
+                        "data": chat_data
                     })
                     
                 elif msg_type == "request_sync":

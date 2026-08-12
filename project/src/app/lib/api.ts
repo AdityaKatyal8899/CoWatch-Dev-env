@@ -50,10 +50,10 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
 
 export const api = {
   // Authentication
-  async googleLogin(idToken: string): Promise<{ access_token: string; user: User }> {
+  async googleLogin(idToken: string, accessToken?: string): Promise<{ access_token: string; user: User }> {
     return request('/auth/google', {
       method: 'POST',
-      body: JSON.stringify({ id_token: idToken }),
+      body: JSON.stringify({ id_token: idToken, access_token: accessToken }),
     });
   },
 
@@ -63,6 +63,51 @@ export const api = {
     } catch {
       return null;
     }
+  },
+
+  async acceptTerms(): Promise<User> {
+    return request('/moderation/accept-terms', { method: 'POST' });
+  },
+
+  async reportContent(payload: { target_type: string; target_id: string; reason: string }): Promise<any> {
+    return request('/moderation/report', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async submitAppeal(payload: { target_type: string; target_id: string; text?: string }): Promise<any> {
+    return request('/moderation/appeals', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async redeemCoupon(code: string): Promise<{ success: boolean; plan: string; plan_expires_at?: string; message: string }> {
+    return request('/coupons/redeem', {
+      method: 'POST',
+      body: JSON.stringify({ code }),
+    });
+  },
+
+  async createPaymentOrder(planId: string, billing: string): Promise<{ order_id: string; amount: number; currency: string }> {
+    return request('/payments/create-order', {
+      method: 'POST',
+      body: JSON.stringify({ plan_id: planId, billing }),
+    });
+  },
+
+  async verifyPayment(payload: {
+    razorpay_payment_id: string;
+    razorpay_order_id: string;
+    razorpay_signature: string;
+    plan_id: string;
+    billing: string;
+  }): Promise<{ success: boolean; plan: string; plan_expires_at: string; message: string }> {
+    return request('/payments/verify-payment', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
   },
 
   async onboardUser(data: { display_name: string; age?: number; genres: string[]; theme: string }): Promise<User> {
@@ -197,7 +242,7 @@ export const api = {
   },
 
   // Room endpoints
-  async createRoom(name: string, videoId?: string, hostId?: string, videoUrl?: string, collectionId?: number): Promise<any> {
+  async createRoom(name: string, videoId?: string, hostId?: string, videoUrl?: string, collectionId?: number, isAdult?: boolean): Promise<any> {
     return request('/rooms/create', {
       method: 'POST',
       body: JSON.stringify({
@@ -205,7 +250,8 @@ export const api = {
         video_id: videoId || undefined,
         host_id: hostId,
         video_url: videoUrl || undefined,
-        collection_id: collectionId || undefined
+        collection_id: collectionId || undefined,
+        is_adult: isAdult || false
       }),
     });
   },

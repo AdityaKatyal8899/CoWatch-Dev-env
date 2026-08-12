@@ -38,6 +38,22 @@ async def upload_video(
     Accept a video upload request, save it, and trigger HLS conversion.
     Also save metadata to SQLite.
     """
+    # Enforce maximum upload count limits based on plans
+    from app.subscriptions.plans import get_effective_plan
+    user_plan = get_effective_plan(current_user)
+    existing_uploads_count = db.query(models.Video).filter(models.Video.user_id == current_user.id).count()
+
+    if user_plan == "free" and existing_uploads_count >= 3:
+        raise HTTPException(
+            status_code=403,
+            detail="Free tier accounts are capped at a maximum of 3 video uploads. Upgrade to Pro for more!"
+        )
+    elif user_plan == "pro" and existing_uploads_count >= 5:
+        raise HTTPException(
+            status_code=403,
+            detail="Pro tier accounts are capped at a maximum of 5 video uploads. Upgrade to Pro+ or Vibers for unlimited uploads!"
+        )
+
     video_id = str(uuid.uuid4())
     video_dir = os.path.join(VIDEOS_DIR, video_id)
     os.makedirs(video_dir, exist_ok=True)

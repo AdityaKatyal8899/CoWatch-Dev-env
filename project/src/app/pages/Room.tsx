@@ -205,6 +205,12 @@ export default function Room() {
         return;
       }
 
+      // Moderation feedback (profanity filter warning / mute notice)
+      if (message.type === "chat_warning") {
+        toast.warning(message.data?.message ?? "Message blocked by moderation.");
+        return;
+      }
+
       // 2. Feedback Loop Suppression (Echo Guard)
       isProcessingRemoteEvent.current = true;
 

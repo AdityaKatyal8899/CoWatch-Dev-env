@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Float, BigInteger, Table, JSON, UniqueConstraint
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Date, ForeignKey, Float, BigInteger, Table, JSON, UniqueConstraint
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID
 from app.database.config import Base
@@ -23,6 +23,13 @@ class User(Base):
     storage_limit = Column(BigInteger, default=2 * 1024 ** 3)  # Free plan: 2 GB (enforced from plan config)
     plan = Column(String, default=DEFAULT_PLAN, nullable=False)  # free, pro, pro_plus, vibers
     plan_expires_at = Column(DateTime(timezone=True), nullable=True)  # None = free or lifetime
+    # --- Moderation / age verification ---
+    date_of_birth = Column(Date, nullable=True)  # captured at onboarding; source of truth for age gate
+    age_verified = Column(Boolean, default=False, nullable=False)  # True once DOB proves >= 18
+    age_verification_method = Column(String, default="none", nullable=False)  # none | self_declared | google | kyc
+    terms_accepted_at = Column(DateTime(timezone=True), nullable=True)  # NULL = terms not yet accepted
+    is_banned = Column(Boolean, default=False, nullable=False)  # set by Tier 1 / appeal-denied enforcement
+    banned_reason = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     videos = relationship("Video", back_populates="owner")
@@ -80,6 +87,10 @@ class Room(Base):
     media_type = Column(String, default="hls")
     video_url = Column(String, nullable=True)
     youtube_video_id = Column(String, nullable=True)
+
+    # --- Moderation ---
+    is_adult = Column(Boolean, default=False, nullable=False)  # host-flagged 18+ room (age gate applies)
+    status = Column(String, default="active", nullable=False)  # active | cancelled (moderation auto-cancel)
 
     @property
     def stream_url(self):
@@ -158,3 +169,40 @@ class CouponRedemption(Base):
     __table_args__ = (UniqueConstraint("coupon_id", "user_id", name="uq_coupon_user"),)
 
     coupon = relationship("Coupon", back_populates="redemptions")
+
+
+class ModerationWarning(Base):
+    """A warning issued to a user (e.g., hosting an unflagged adult room)."""
+    __tablename__ = "moderation_warnings"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    room_id = Column(Integer, ForeignKey("rooms.id", ondelete="CASCADE"), nullable=True)
+    reason = Column(String, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class ModerationReport(Base):
+    """A user/submission report (Tier 2/3/4). Triaged via the review queue."""
+    __tablename__ = "moderation_reports"
+
+    id = Column(Integer, primary_key=True, index=True)
+    reporter_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    target_type = Column(String, nullable=False)  # room | user | message
+    target_id = Column(String, nullable=False)
+    reason = Column(String, nullable=False)
+    status = Column(String, default="open", nullable=False)  # open | reviewed | dismissed | actioned
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class ModerationAppeal(Base):
+    """An appeal against a warning or ban (excluding confirmed Tier 1)."""
+    __tablename__ = "moderation_appeals"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    target_type = Column(String, nullable=False)  # warning | report | ban
+    target_id = Column(String, nullable=False)
+    text = Column(String, nullable=True)
+    status = Column(String, default="open", nullable=False)  # open | approved | denied
+    created_at = Column(DateTime(timezone=True), server_default=func.now())

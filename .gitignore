@@ -1,5 +1,2 @@
-node_modules/
-__pycache__/
-.env
-.DS_Store
-storage/
+Coupon Gen/
+Coupon-Gen/

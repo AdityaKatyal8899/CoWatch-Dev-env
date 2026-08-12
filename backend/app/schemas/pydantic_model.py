@@ -1,7 +1,7 @@
 from pydantic import BaseModel, EmailStr
 from typing import Optional, List
 from uuid import UUID
-from datetime import datetime
+from datetime import datetime, date
 
 class UserBase(BaseModel):
     email: EmailStr
@@ -22,6 +22,12 @@ class UserCreate(UserBase):
 class UserSchema(UserBase):
     id: UUID
     created_at: datetime
+    # Moderation / age verification
+    date_of_birth: Optional[date] = None
+    age_verified: bool = False
+    age_verification_method: str = "none"
+    terms_accepted_at: Optional[datetime] = None
+    is_banned: bool = False
 
     class Config:
         from_attributes = True
@@ -85,11 +91,13 @@ class CollectionSchema(CollectionBase):
 class OnboardingRequest(BaseModel):
     display_name: str
     age: Optional[int] = None
+    date_of_birth: Optional[str] = None  # ISO date (YYYY-MM-DD); source of truth for age gate
     genres: List[str] = []
     theme: str = "default-dark"
 
 class ProfileUpdateRequest(BaseModel):
     display_name: Optional[str] = None
     age: Optional[int] = None
+    date_of_birth: Optional[str] = None  # ISO date (YYYY-MM-DD); source of truth for age gate
     genres: Optional[List[str]] = None
     theme: Optional[str] = None

@@ -19,6 +19,8 @@ from app.user.routes import router as user_router
 from app.auth.routes import router as auth_router
 from app.livekit.token_route import router as livekit_router
 from app.coupons.routes import router as coupons_router
+from app.moderation.routes import router as moderation_router
+from app.payments.routes import router as payments_router
 
 from app.middleware.limiter import limiter
 from app.middleware.cache_control import CacheControlMiddleware
@@ -78,6 +80,8 @@ app.include_router(user_router, prefix="/api/user")
 app.include_router(auth_router, prefix="/api")
 app.include_router(livekit_router, prefix="/api/livekit")
 app.include_router(coupons_router, prefix="/api")
+app.include_router(moderation_router, prefix="/api/moderation")
+app.include_router(payments_router, prefix="/api")
 
 mimetypes.add_type("application/vnd.apple.mpegurl", ".m3u8")
 mimetypes.add_type("video/mp2t", ".ts")

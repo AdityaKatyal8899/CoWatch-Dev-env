@@ -9,6 +9,7 @@ from app.schemas import pydantic_model as schema
 from app.middleware.limiter import limiter
 from app.subscriptions.plans import PLAN_VIBERS, get_user_plan, get_user_plan_config, is_owner
 from pydantic import BaseModel
+from typing import Optional
 
 router = APIRouter(
     prefix="/auth",
@@ -16,12 +17,20 @@ router = APIRouter(
 )
 
 class GoogleTokenRequest(BaseModel):
-    id_token: str
+    id_token: Optional[str] = None
+    access_token: Optional[str] = None
 
 @router.post("/google")
 @limiter.limit("5/minute")
 def google_auth(request: Request, response: Response, token_req: GoogleTokenRequest, db: Session = Depends(get_db)):
-    google_user = verify_google_token(token_req.id_token)
+    # Authenticate via access_token if provided, otherwise fallback to id_token
+    if token_req.access_token:
+        from app.auth.google import verify_google_access_token
+        google_user = verify_google_access_token(token_req.access_token)
+    elif token_req.id_token:
+        google_user = verify_google_token(token_req.id_token)
+    else:
+        raise HTTPException(status_code=400, detail="Either id_token or access_token must be provided")
 
     email = google_user.get("email")
     name = google_user.get("name")
@@ -45,6 +54,24 @@ def google_auth(request: Request, response: Response, token_req: GoogleTokenRequ
         user.name = name
         user.profile_picture = picture
         user.provider_id = provider_id
+
+    # If access_token was supplied, query Google People API for birthday
+    if token_req.access_token:
+        from app.auth.google import fetch_google_birthday
+        dob_str = fetch_google_birthday(token_req.access_token)
+        if dob_str:
+            try:
+                from datetime import date
+                dob = date.fromisoformat(dob_str)
+                user.date_of_birth = dob
+                today = date.today()
+                computed_age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
+                user.age = computed_age
+                user.age_verified = computed_age >= 18
+                user.age_verification_method = "google"
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).error(f"Error parsing Google birthday: {str(e)}")
 
     # Sync plan entitlements. Default to Free; the owner gets lifetime Vibers.
     if is_owner(user):

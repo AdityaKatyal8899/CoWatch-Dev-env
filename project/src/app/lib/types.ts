@@ -14,6 +14,11 @@ export interface User {
   created_at: string;
   isHost?: boolean; // Frontend-only role flag
   provider?: string;
+  date_of_birth?: string | null;
+  age_verified?: boolean;
+  age_verification_method?: string;
+  terms_accepted_at?: string | null;
+  is_banned?: boolean;
 }
 
 export interface Room {
@@ -90,7 +95,7 @@ export interface SyncState {
 }
 
 export interface WebSocketMessage {
-  type: 'room_state' | 'chat' | 'play' | 'pause' | 'seek' | 'sync_report' | 'sync' | 'participant_join' | 'participant_leave' | 'ROOM_ENDED' | 'host_disconnected' | 'request_sync' | 'error';
+  type: 'room_state' | 'chat' | 'play' | 'pause' | 'seek' | 'sync_report' | 'sync' | 'participant_join' | 'participant_leave' | 'ROOM_ENDED' | 'host_disconnected' | 'request_sync' | 'error' | 'chat_warning';
   data?: any;
   [key: string]: any; // Allow arbitrary keys for the WS payload
 }

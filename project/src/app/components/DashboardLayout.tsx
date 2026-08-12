@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '../lib/auth';
+import { toast } from 'sonner';
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -81,12 +82,20 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.path;
+            const isLocked = item.path === '/collections' && (!user?.plan || user.plan === 'free');
             
             return (
               <Link
                 key={item.path}
-                href={item.path}
-                onClick={() => setIsSidebarOpen(false)}
+                href={isLocked ? '/plans' : item.path}
+                onClick={(e) => {
+                  setIsSidebarOpen(false);
+                  if (isLocked) {
+                    e.preventDefault();
+                    toast.error('Collections is only available on paid plans. Redirecting to plans...');
+                    router.push('/plans');
+                  }
+                }}
                 className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-all group ${
                   isActive
                     ? 'bg-white/5 text-white'
@@ -94,7 +103,10 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                 }`}
               >
                 <Icon className={`w-4 h-4 transition-colors ${isActive ? 'text-white' : 'group-hover:text-white/60'}`} />
-                <span className="font-medium text-[13px]">{item.label}</span>
+                <span className="font-medium text-[13px] flex items-center justify-between w-full">
+                  <span>{item.label}</span>
+                  {isLocked && <span className="text-[10px]">🔒</span>}
+                </span>
               </Link>
             );
           })}

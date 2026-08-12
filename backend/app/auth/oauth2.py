@@ -19,6 +19,11 @@ def get_current_user(
         headers={"WWW-Authenticate": "Bearer"},
     )
     user = verify_token(token, db, credentials_exception)
+    if getattr(user, "is_banned", False):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This account has been suspended.",
+        )
     return user
 
 

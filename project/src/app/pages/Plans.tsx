@@ -9,6 +9,22 @@ import { Badge } from '../components/ui/badge';
 import { motion } from 'motion/react';
 import { toast } from 'sonner';
 import { cn } from '../lib/utils';
+import { useRouter } from 'next/navigation';
+import { api } from '../lib/api';
+
+const loadRazorpayScript = (): Promise<boolean> => {
+  return new Promise((resolve) => {
+    if (typeof window !== 'undefined' && (window as any).Razorpay) {
+      resolve(true);
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+};
 
 type BillingCycle = 'monthly' | 'annual';
 
@@ -36,6 +52,7 @@ const PLANS: Plan[] = [
     features: [
       { text: '2 GB storage', included: true },
       { text: '720p upload quality', included: true },
+      { text: 'Max 3 uploads of 720p', included: true },
       { text: 'Rooms up to 6 people', included: true },
       { text: '20 YouTube rooms / month', included: true },
       { text: 'Collections', included: false },
@@ -47,12 +64,13 @@ const PLANS: Plan[] = [
     id: 'pro',
     name: 'Pro',
     tagline: 'The dedicated host',
-    monthly: 4.99,
-    annual: 49,
+    monthly: 1.99,
+    annual: 19,
     icon: Rocket,
     features: [
       { text: '10 GB storage', included: true },
       { text: '1080p upload quality', included: true },
+      { text: 'Max 5 uploads of 1080p', included: true },
       { text: 'Rooms up to 16 people', included: true },
       { text: 'Unlimited YouTube rooms', included: true },
       { text: 'Collections', included: true },
@@ -65,12 +83,13 @@ const PLANS: Plan[] = [
     id: 'pro_plus',
     name: 'Pro+',
     tagline: 'Serious watch parties',
-    monthly: 8.99,
-    annual: 89,
+    monthly: 5.99,
+    annual: 59,
     icon: Zap,
     features: [
       { text: '20 GB storage', included: true },
       { text: '1080p upload quality', included: true },
+      { text: 'Unlimited 1080p uploads', included: true },
       { text: 'Rooms up to 31 people', included: true },
       { text: 'Unlimited YouTube rooms', included: true },
       { text: 'Everything in Pro', included: true },
@@ -82,13 +101,14 @@ const PLANS: Plan[] = [
     id: 'vibers',
     name: 'Vibers',
     tagline: 'The full experience',
-    monthly: 12.99,
-    annual: 129,
+    monthly: 8.99,
+    annual: 89,
     flagship: true,
     icon: Crown,
     features: [
       { text: '50 GB storage', included: true },
       { text: '4K upload quality', included: true },
+      { text: 'Unlimited 4K uploads', included: true },
       { text: 'Unlimited room capacity', included: true },
       { text: 'Unlimited YouTube rooms', included: true },
       { text: 'Everything in Pro+', included: true },
@@ -98,15 +118,42 @@ const PLANS: Plan[] = [
   },
 ];
 
+const PLAN_THEMES = {
+  free: {
+    glow: 'rgba(255, 255, 255, 0.01)',
+    border: 'transparent',
+    priceClass: 'text-white',
+    badge: null,
+    showBorder: false
+  },
+  pro: {
+    glow: 'radial-gradient(closest-side, rgba(59, 130, 246, 0.2), transparent 70%)',
+    border: 'conic-gradient(from 0deg, transparent 0deg, #3B82F6 80deg, #60A5FA 160deg, transparent 240deg, transparent 360deg)',
+    priceClass: 'bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent',
+    badge: 'Popular Choice',
+    showBorder: true
+  },
+  pro_plus: {
+    glow: 'radial-gradient(closest-side, rgba(236, 72, 153, 0.2), transparent 70%)',
+    border: 'conic-gradient(from 0deg, transparent 0deg, #EC4899 80deg, #F472B6 160deg, transparent 240deg, transparent 360deg)',
+    priceClass: 'bg-gradient-to-r from-pink-500 to-purple-400 bg-clip-text text-transparent',
+    badge: 'Best Value',
+    showBorder: true
+  },
+  vibers: {
+    glow: 'radial-gradient(closest-side, rgba(139, 92, 246, 0.25), transparent 70%)',
+    border: 'conic-gradient(from 0deg, transparent 0deg, #8B5CF6 80deg, #7C3AED 160deg, transparent 240deg, transparent 360deg)',
+    priceClass: 'bg-gradient-to-r from-purple-400 to-indigo-400 bg-clip-text text-transparent',
+    badge: 'Ultimate Party',
+    showBorder: true
+  }
+};
+
 const currentPlanId = (plan?: string): PlanId => {
   if (plan && PLANS.some((p) => p.id === plan)) return plan as PlanId;
   return 'free';
 };
 
-/**
- * Lightweight count-up for the price so it animates smoothly
- * when the billing cycle or plan changes.
- */
 function useCountUp(target: number, duration = 550) {
   const [display, setDisplay] = useState(0);
   const fromRef = useRef(0);
@@ -143,10 +190,13 @@ function PlanCard({
   isCurrent: boolean;
   index: number;
 }) {
+  const router = useRouter();
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
   const price = billing === 'monthly' ? plan.monthly : plan.annual / 12;
   const displayPrice = useCountUp(price);
   const Icon = plan.icon;
   const showAnnualNote = billing === 'annual' && plan.monthly > 0;
+  const theme = PLAN_THEMES[plan.id];
 
   return (
     <motion.div
@@ -156,50 +206,45 @@ function PlanCard({
       whileHover={{ y: -8 }}
       className="relative h-full"
     >
-      {/* Soft glow that bleeds behind the card (flagship only) */}
-      {plan.flagship && (
+      {theme.showBorder && (
         <div
           className="absolute -inset-5 rounded-3xl blur-2xl pointer-events-none"
           style={{
-            background: 'radial-gradient(closest-side, rgba(147, 51, 234, 0.35), transparent 70%)',
+            background: theme.glow,
             animation: 'co-pulse 4s ease-in-out infinite',
           }}
         />
       )}
 
-      {/* Animated gradient border wrapper */}
-      <div className={cn('relative rounded-2xl p-px h-full', plan.flagship && 'overflow-hidden')}>
-        {plan.flagship && (
+      <div className={cn('relative rounded-2xl p-px h-full', theme.showBorder && 'overflow-hidden')}>
+        {theme.showBorder && (
           <div
             className="absolute -inset-[200%]"
             style={{
-              background:
-                'conic-gradient(from 0deg, transparent 0deg, var(--primary) 80deg, var(--secondary) 160deg, transparent 240deg, transparent 360deg)',
+              background: theme.border,
               animation: 'co-spin 5s linear infinite',
             }}
           />
         )}
 
-        {/* Card body */}
         <div
           className={cn(
             'relative glass-card rounded-2xl p-6 lg:p-7 h-full flex flex-col',
-            plan.flagship
-              ? 'bg-[#15151D] border-transparent shadow-[0_20px_60px_-30px_rgba(147,51,234,0.4)]'
+            theme.showBorder
+              ? 'bg-[#15151D] border-transparent shadow-[0_20px_60px_-30px_rgba(255,255,255,0.05)]'
               : 'border border-white/5 bg-white/[0.02] hover:border-white/15 transition-colors'
           )}
         >
-          {/* Plan header */}
           <div className="flex items-center justify-between mb-4">
             <div
               className={cn(
                 'w-11 h-11 rounded-xl flex items-center justify-center border',
-                plan.flagship
+                theme.showBorder
                   ? 'bg-gradient-to-br from-[var(--primary)]/30 to-[var(--secondary)]/20 border-[var(--primary)]/30'
                   : 'bg-[var(--primary)]/10 border-[var(--primary)]/20'
               )}
             >
-              <Icon className={cn('w-5 h-5', plan.flagship ? 'text-[var(--primary)]' : 'text-[var(--primary)]/80')} />
+              <Icon className={cn('w-5 h-5', theme.showBorder ? 'text-[var(--primary)]' : 'text-[var(--primary)]/80')} />
             </div>
             <div className="flex items-center gap-1.5">
               {isCurrent && (
@@ -207,10 +252,10 @@ function PlanCard({
                   Current
                 </Badge>
               )}
-              {plan.flagship && !isCurrent && (
-                <Badge className="text-[10px]">
-                  <Sparkles className="w-3 h-3" />
-                  Most Popular
+              {theme.badge && !isCurrent && (
+                <Badge className="text-[10px] bg-white/10 hover:bg-white/15 text-white/80 border border-white/5">
+                  <Sparkles className="w-3 h-3 text-[var(--primary)] mr-1" />
+                  {theme.badge}
                 </Badge>
               )}
             </div>
@@ -219,16 +264,8 @@ function PlanCard({
           <h2 className="text-lg font-bold text-white tracking-tight">{plan.name}</h2>
           <p className="text-sm text-white/40 mt-1 mb-6">{plan.tagline}</p>
 
-          {/* Price */}
           <div className="mb-6">
-            <span
-              className={cn(
-                'text-4xl lg:text-5xl font-extrabold tracking-tight',
-                plan.flagship
-                  ? 'bg-gradient-to-r from-[var(--primary)] to-[var(--secondary)] bg-clip-text text-transparent'
-                  : 'text-white'
-              )}
-            >
+            <span className={cn('text-4xl lg:text-5xl font-extrabold tracking-tight', theme.priceClass)}>
               {plan.monthly === 0 ? '$0' : `$${displayPrice.toFixed(2)}`}
             </span>
             <span className="text-sm text-white/35 font-medium ml-1.5">
@@ -241,7 +278,6 @@ function PlanCard({
             )}
           </div>
 
-          {/* Features */}
           <ul className="space-y-3 flex-1 mb-7">
             {plan.features.map((feature, idx) => (
               <motion.li
@@ -267,17 +303,66 @@ function PlanCard({
             ))}
           </ul>
 
-          {/* CTA */}
           <motion.button
-            whileHover={{ scale: 1.03 }}
-            whileTap={{ scale: 0.97 }}
-            onClick={() => {
+            whileHover={isCurrent || checkoutLoading ? {} : { scale: 1.03 }}
+            whileTap={isCurrent || checkoutLoading ? {} : { scale: 0.97 }}
+            onClick={async () => {
               if (isCurrent) return;
-              toast.info(`${plan.name} checkout is coming soon`);
+              if (plan.id === 'vibers') {
+                toast.info('Vibers plan is coming soon!');
+                return;
+              }
+              setCheckoutLoading(true);
+              try {
+                const loaded = await loadRazorpayScript();
+                if (!loaded) {
+                  throw new Error('Failed to load Razorpay SDK. Please check your network connection.');
+                }
+                const order = await api.createPaymentOrder(plan.id, billing);
+                
+                const options = {
+                  key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_test_yourkeyhere',
+                  amount: order.amount,
+                  currency: order.currency,
+                  name: 'CoWatch',
+                  description: `Subscribe to ${plan.name} (${billing})`,
+                  order_id: order.order_id,
+                  handler: async (response: any) => {
+                    setCheckoutLoading(true);
+                    try {
+                      const res = await api.verifyPayment({
+                        razorpay_payment_id: response.razorpay_payment_id,
+                        razorpay_order_id: response.razorpay_order_id,
+                        razorpay_signature: response.razorpay_signature,
+                        plan_id: plan.id,
+                        billing: billing
+                      });
+                      toast.success(res.message || 'Payment verified! Upgraded successfully!');
+                      setTimeout(() => {
+                        window.location.reload();
+                      }, 1500);
+                    } catch (err: any) {
+                      toast.error(err.message || 'Payment verification failed');
+                    } finally {
+                      setCheckoutLoading(false);
+                    }
+                  },
+                  theme: {
+                    color: '#8B5CF6'
+                  }
+                };
+
+                const rzp = new (window as any).Razorpay(options);
+                rzp.open();
+              } catch (err: any) {
+                toast.error(err.message || 'Checkout failed');
+              } finally {
+                setCheckoutLoading(false);
+              }
             }}
-            disabled={isCurrent}
+            disabled={isCurrent || checkoutLoading}
             className={cn(
-              'w-full py-3 text-[13px]',
+              'w-full py-3 text-[13px] font-bold flex items-center justify-center gap-2',
               isCurrent
                 ? 'rounded-xl bg-white/[0.03] border border-white/10 text-white/40 font-bold uppercase tracking-widest cursor-default'
                 : plan.flagship
@@ -285,7 +370,18 @@ function PlanCard({
                   : 'btn-secondary w-full'
             )}
           >
-            {isCurrent ? 'Current Plan' : plan.monthly === 0 ? 'Your Current Plan' : `Upgrade to ${plan.name}`}
+            {checkoutLoading ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                Processing...
+              </>
+            ) : isCurrent ? (
+              'Current Plan'
+            ) : plan.id === 'vibers' ? (
+              'Coming Soon'
+            ) : (
+              `Upgrade to ${plan.name}`
+            )}
           </motion.button>
         </div>
       </div>
@@ -294,6 +390,7 @@ function PlanCard({
 }
 
 export default function Plans() {
+  const router = useRouter();
   const { user } = useAuth();
   const [billing, setBilling] = useState<BillingCycle>('monthly');
 
@@ -307,7 +404,15 @@ export default function Plans() {
           <div className="mb-10 flex flex-col md:flex-row md:items-center justify-between gap-6 border-b border-white/5 pb-10">
             <div>
               <h1 className="heading-page mb-1">Plans</h1>
-              <p className="text-body">Pick the plan that fits your watch parties. Upgrade or downgrade anytime.</p>
+              <p className="text-body flex flex-wrap items-center gap-x-2">
+                <span>Pick the plan that fits your watch parties. Upgrade or downgrade anytime.</span>
+                <button 
+                  onClick={() => router.push('/settings')}
+                  className="text-[var(--primary)] hover:underline text-xs font-semibold inline-flex items-center gap-1 mt-1 md:mt-0 transition-all hover:translate-x-0.5"
+                >
+                  Have a coupon? Redeem here →
+                </button>
+              </p>
             </div>
 
             {/* Billing Toggle */}

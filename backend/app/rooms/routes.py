@@ -63,6 +63,30 @@ async def create_room(request: Request, response: Response, req: CreateRoomReque
     test_url = req.video_url or req.stream_url
     extracted_id = extract_youtube_id(test_url)
     if extracted_id:
+        # Enforce monthly YouTube room limits for the host's plan
+        if current_user:
+            from app.subscriptions.plans import get_effective_plan, get_plan_config
+            user_plan = get_effective_plan(current_user)
+            plan_config = get_plan_config(user_plan)
+            yt_limit = plan_config.get("yt_rooms_per_month")
+            
+            if yt_limit is not None:
+                from datetime import datetime, date
+                today = date.today()
+                start_of_month = datetime(today.year, today.month, 1)
+                
+                yt_rooms_count = db.query(models.Room).filter(
+                    models.Room.host_id == str(current_user.id),
+                    models.Room.media_type == "youtube",
+                    models.Room.created_at >= start_of_month
+                ).count()
+                
+                if yt_rooms_count >= yt_limit:
+                    raise HTTPException(
+                        status_code=403,
+                        detail=f"You have reached your monthly limit of {yt_limit} YouTube rooms. Upgrade your plan for unlimited rooms."
+                    )
+
         media_type = "youtube"
         youtube_id = extracted_id
         video_url = test_url
@@ -119,6 +143,15 @@ async def create_room(request: Request, response: Response, req: CreateRoomReque
     if not stream_url:
         raise HTTPException(status_code=400, detail="Missing stream_url or invalid video_id")
 
+    # 18+ rooms may only be created by age-verified (>=18) hosts.
+    if req.is_adult:
+        from app.moderation.config import is_age_verified
+        if not current_user or not is_age_verified(current_user):
+            raise HTTPException(
+                status_code=403,
+                detail="You must be age-verified (18+) to host an 18+ room.",
+            )
+
     # Remove scheduling logic
 
     host_id_attr = str(req.host_id) if req.host_id else None
@@ -143,7 +176,8 @@ async def create_room(request: Request, response: Response, req: CreateRoomReque
         offset=0.0,
         media_type=media_type,
         video_url=video_url,
-        youtube_video_id=youtube_id
+        youtube_video_id=youtube_id,
+        is_adult=bool(req.is_adult)
     )
     db.add(new_room)
     db.commit()
@@ -180,7 +214,26 @@ async def join_room(req: JoinRoomRequest, db: Session = Depends(get_db)):
             db.refresh(room)
         else:
             return JoinRoomResponse(success=False, message="Room or Video not found")
-        
+
+    # --- Moderation gates on join ---
+    if room.status == "cancelled":
+        return JoinRoomResponse(success=False, message="This room has been cancelled.")
+
+    if room.is_adult:
+        from app.moderation.config import is_age_verified
+        allowed = False
+        try:
+            uid = uuid.UUID(req.user_id)
+            u = db.query(models.User).filter(models.User.id == uid).first()
+            allowed = is_age_verified(u)
+        except Exception:
+            allowed = False
+        if not allowed:
+            return JoinRoomResponse(
+                success=False,
+                message="You can't join right now — this is an 18+ room.",
+            )
+
     return JoinRoomResponse(success=True, room=room)
 
 @router.get("/rooms/active")

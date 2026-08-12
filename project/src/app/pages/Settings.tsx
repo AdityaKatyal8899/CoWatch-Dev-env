@@ -1,6 +1,6 @@
 "use client";
 
-import { HardDrive, User, LogOut, Check, Palette, UserCircle, Save } from 'lucide-react';
+import { HardDrive, User, LogOut, Check, Palette, UserCircle, Save, Gift } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { useAuth } from '../lib/auth';
@@ -28,12 +28,16 @@ export default function Settings() {
   
   const [stats, setStats] = useState<UserStats | null>(null);
   const [displayName, setDisplayName] = useState(user?.display_name || '');
+  const [dob, setDob] = useState(user?.date_of_birth || '');
   const [pendingTheme, setPendingTheme] = useState(activeTheme);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [couponCode, setCouponCode] = useState('');
+  const [isRedeeming, setIsRedeeming] = useState(false);
 
   useEffect(() => {
     loadStats();
     if (user?.display_name) setDisplayName(user.display_name);
+    if (user?.date_of_birth) setDob(user.date_of_birth);
     if (activeTheme) setPendingTheme(activeTheme);
   }, [user, activeTheme]);
 
@@ -51,7 +55,8 @@ export default function Settings() {
     try {
       await updateProfile({ 
         display_name: displayName,
-        theme: pendingTheme 
+        theme: pendingTheme,
+        date_of_birth: dob || undefined
       });
       setTheme(pendingTheme);
       
@@ -68,6 +73,29 @@ export default function Settings() {
     }
   };
 
+  const handleRedeemCoupon = async () => {
+    if (!couponCode.trim()) {
+      toast.error('Please enter a coupon code');
+      return;
+    }
+    setIsRedeeming(true);
+    try {
+      const res = await api.redeemCoupon(couponCode.trim());
+      toast.success(res.message || 'Coupon applied successfully!');
+      setCouponCode('');
+      
+      // Reload stats and trigger a page refresh to sync authentication state
+      loadStats();
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to redeem coupon');
+    } finally {
+      setIsRedeeming(false);
+    }
+  };
+
   const handlePreviewTheme = (newTheme: string) => {
     setPendingTheme(newTheme);
     setTheme(newTheme);
@@ -80,6 +108,24 @@ export default function Settings() {
     <DashboardLayout>
       <PageTransition>
         <div className="p-8 max-w-4xl mx-auto space-y-8">
+          {(!user?.plan || user.plan === 'free') && (
+            <motion.div 
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="p-4 rounded-xl bg-gradient-to-r from-[var(--primary)]/10 to-transparent border border-[var(--primary)]/20 flex flex-col sm:flex-row items-center justify-between gap-4"
+            >
+              <div>
+                <p className="text-white font-semibold text-sm">You are currently on the Free plan</p>
+                <p className="text-white/60 text-xs mt-0.5">Upgrade to Pro to unlock custom themes, voice chat, and 10GB+ storage.</p>
+              </div>
+              <button 
+                onClick={() => router.push('/plans')}
+                className="btn-primary py-2.5 px-5 text-xs font-bold shrink-0 rounded-lg"
+              >
+                Upgrade to Pro
+              </button>
+            </motion.div>
+          )}
           <div className="flex items-center justify-between border-b border-white/5 pb-8 mb-4">
             <div>
               <h1 className="text-3xl font-bold text-white mb-2">Settings</h1>
@@ -137,6 +183,15 @@ export default function Settings() {
                       placeholder="Enter display name"
                     />
                   </div>
+                  <div className="space-y-2">
+                    <label className="text-xs uppercase tracking-widest text-[var(--muted)] font-semibold">Date of Birth</label>
+                    <input 
+                      type="date"
+                      value={dob}
+                      onChange={(e) => setDob(e.target.value)}
+                      className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 outline-none focus:border-[var(--primary)] transition-all text-white"
+                    />
+                  </div>
                   <div className="grid grid-cols-2 gap-4 pt-2">
                     <div className="space-y-1">
                       <p className="text-[var(--muted)] text-xs uppercase tracking-widest font-semibold">Email</p>
@@ -168,22 +223,34 @@ export default function Settings() {
                 </div>
 
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                  {PRESETS.map((p) => (
-                    <motion.button
-                      key={p.id}
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      onClick={() => handlePreviewTheme(p.id)}
-                      className={`p-3 rounded-lg border text-left transition-all relative group ${
-                        pendingTheme === p.id 
-                          ? 'border-[var(--primary)] bg-[var(--primary)]/5'
-                          : 'border-white/5 hover:border-white/10 bg-white/[0.02]'
-                      }`}
-                    >
-                      <p className={`text-xs font-semibold ${pendingTheme === p.id ? 'text-[var(--primary)]' : 'text-white/60'}`}>{p.name}</p>
-                      {pendingTheme === p.id && <Check className="w-3 h-3 absolute top-2 right-2 text-[var(--primary)]" />}
-                    </motion.button>
-                  ))}
+                  {PRESETS.map((p) => {
+                    const isLocked = p.id !== 'default-dark' && (!user?.plan || user.plan === 'free');
+                    return (
+                      <motion.button
+                        key={p.id}
+                        whileHover={isLocked ? {} : { scale: 1.02 }}
+                        whileTap={isLocked ? {} : { scale: 0.98 }}
+                        onClick={() => {
+                          if (isLocked) {
+                            toast.error('This theme is only available on paid plans. Please upgrade!');
+                            return;
+                          }
+                          handlePreviewTheme(p.id);
+                        }}
+                        className={`p-3 rounded-lg border text-left transition-all relative group ${
+                          isLocked 
+                            ? 'border-white/5 bg-white/[0.01] opacity-40 cursor-not-allowed'
+                            : pendingTheme === p.id 
+                              ? 'border-[var(--primary)] bg-[var(--primary)]/5'
+                              : 'border-white/5 hover:border-white/10 bg-white/[0.02]'
+                        }`}
+                      >
+                        <p className={`text-xs font-semibold ${pendingTheme === p.id ? 'text-[var(--primary)]' : 'text-white/60'}`}>{p.name}</p>
+                        {isLocked && <span className="absolute top-2 right-2 text-white/40 text-[10px]">🔒</span>}
+                        {!isLocked && pendingTheme === p.id && <Check className="w-3 h-3 absolute top-2 right-2 text-[var(--primary)]" />}
+                      </motion.button>
+                    );
+                  })}
                 </div>
               </motion.div>
             </div>
@@ -213,6 +280,39 @@ export default function Settings() {
                     <span className="text-[var(--muted)]">{formatBytes(stats?.storageUsed || 0)} GB</span>
                     <span className="text-white font-medium">{formatBytes(stats?.storageLimit || 0)} GB total</span>
                   </div>
+                </div>
+              </motion.div>
+              
+              {/* Redeem Coupon Card */}
+              <motion.div 
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                className="glass-card rounded-xl p-6 border border-white/5 space-y-4"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-[var(--primary)]/20 flex items-center justify-center">
+                    <Gift className="w-5 h-5 text-[var(--primary)]" />
+                  </div>
+                  <h2 className="text-lg font-semibold text-white">Redeem Coupon</h2>
+                </div>
+
+                <div className="space-y-3">
+                  <input 
+                    type="text"
+                    value={couponCode}
+                    onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                    placeholder="ENTER CODE (e.g. ABCD-1234)"
+                    className="w-full bg-[#0A0A0C] border border-white/10 rounded-lg px-4 py-2.5 outline-none focus:border-[var(--primary)] transition-all text-white text-sm font-mono tracking-wider placeholder:font-sans placeholder:tracking-normal"
+                  />
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={handleRedeemCoupon}
+                    disabled={isRedeeming || !couponCode.trim()}
+                    className="w-full btn-primary py-2.5 text-xs font-bold rounded-lg flex items-center justify-center gap-2"
+                  >
+                    {isRedeeming ? 'Applying...' : 'Apply Coupon'}
+                  </motion.button>
                 </div>
               </motion.div>
 

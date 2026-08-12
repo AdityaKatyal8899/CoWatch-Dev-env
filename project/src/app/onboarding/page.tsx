@@ -6,7 +6,7 @@ import { useAuth } from '../lib/auth';
 import { useTheme } from '../components/ThemeProvider';
 import { api } from '../lib/api';
 import { useRouter } from 'next/navigation';
-import { Check, ChevronRight, User, Palette, Sparkles, Loader2 } from 'lucide-react';
+import { Check, ChevronRight, User, Palette, Sparkles, Loader2, Info, Lock } from 'lucide-react';
 import { toast } from 'sonner';
 
 const GENRES = [
@@ -38,7 +38,7 @@ export default function OnboardingPage() {
   
   // Step 1 State
   const [displayName, setDisplayName] = useState('');
-  const [age, setAge] = useState<string>('');
+  const [dob, setDob] = useState<string>('');
   const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
   
   // Step 2 State
@@ -90,12 +90,17 @@ export default function OnboardingPage() {
   const handleSubmit = async () => {
     setIsSubmitting(true);
     try {
+      const isPremiumTheme = currentThemeString !== 'default-dark';
       const payload = {
         display_name: displayName,
-        age: age ? parseInt(age) : undefined,
+        date_of_birth: dob || undefined,
         genres: selectedGenres,
-        theme: currentThemeString
+        theme: isPremiumTheme ? 'default-dark' : currentThemeString
       };
+      
+      if (isPremiumTheme) {
+        toast.info("Premium themes require a plan. Your theme was set to Original Dark.");
+      }
       
       const updatedUser = await api.onboardUser(payload);
       await updateProfile(updatedUser);
@@ -185,14 +190,14 @@ export default function OnboardingPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-[var(--muted)] uppercase tracking-wider">Age (Optional)</label>
+                  <label className="text-sm font-medium text-[var(--muted)] uppercase tracking-wider">Date of Birth</label>
                   <input
-                    type="number"
-                    value={age}
-                    onChange={(e) => setAge(e.target.value)}
-                    placeholder="21"
-                    className="w-full bg-[rgba(255,255,255,0.03)] border border-[rgba(255,255,255,0.1)] rounded-lg p-3 outline-none focus:border-[var(--primary)] transition-colors"
+                    type="date"
+                    value={dob}
+                    onChange={(e) => setDob(e.target.value)}
+                    className="w-full bg-[rgba(255,255,255,0.03)] border border-[rgba(255,255,255,0.1)] rounded-lg p-3 outline-none focus:border-[var(--primary)] transition-colors text-white"
                   />
+                  <p className="text-xs text-[var(--muted)]">Required to verify age for 18+ rooms. You must be 18 or older to host or join adult content.</p>
                 </div>
 
                 <div className="space-y-2">
@@ -230,49 +235,81 @@ export default function OnboardingPage() {
               exit={{ opacity: 0, x: -20 }}
               className="space-y-6"
             >
+              {/* Feature Capabilities Guide */}
+              <div className="bg-white/[0.02] border border-white/5 rounded-xl p-4 space-y-3">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-white/40">Free Account Capabilities</h3>
+                <div className="grid grid-cols-2 gap-3 text-xs">
+                  <div className="flex items-center gap-2 text-white/80">
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                    2 GB Video Storage
+                  </div>
+                  <div className="flex items-center gap-2 text-white/80">
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                    720p Quality Capped
+                  </div>
+                  <div className="flex items-center gap-2 text-white/80">
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                    Rooms Capped (6 Max)
+                  </div>
+                  <div className="flex items-center gap-2 text-white/40">
+                    <Lock className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+                    Voice Chat (Plan only)
+                  </div>
+                </div>
+              </div>
+
               <div className="flex justify-between items-end">
                 <div className="space-y-2">
                   <h1 className="text-3xl font-bold tracking-tight">Personalize</h1>
                   <p className="text-[var(--muted)]">Choose a style that fits you.</p>
                 </div>
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-xs uppercase tracking-widest text-[var(--muted)]">Customize</span>
+                <div className="flex items-center gap-2 mb-1 opacity-55">
+                  <span className="text-xs uppercase tracking-widest text-[var(--muted)]">Custom Colors 🔒</span>
                   <button 
-                    onClick={() => setIsCustomMode(!isCustomMode)}
-                    className={`w-10 h-5 rounded-full transition-colors relative ${isCustomMode ? 'bg-[var(--primary)]' : 'bg-[rgba(255,255,255,0.1)]'}`}
+                    disabled={true}
+                    onClick={() => {}}
+                    className="w-10 h-5 rounded-full bg-[rgba(255,255,255,0.05)] cursor-not-allowed relative"
                   >
-                    <motion.div 
-                      className="absolute top-1 left-1 w-3 h-3 bg-white rounded-full"
-                      animate={{ x: isCustomMode ? 20 : 0 }}
-                    />
+                    <div className="absolute top-1 left-1 w-3 h-3 bg-white/20 rounded-full" />
                   </button>
                 </div>
               </div>
 
               {!isCustomMode ? (
                 <div className="grid grid-cols-2 gap-4">
-                  {PRESETS.map(preset => (
-                    <button
-                      key={preset.id}
-                      onClick={() => setTheme(preset.id)}
-                      className={`p-4 rounded-xl border text-left transition-all relative overflow-hidden group ${
-                        theme === preset.id 
-                          ? 'border-[var(--primary)] shadow-[0_0_20px_rgba(var(--primary-rgb),0.2)]'
-                          : 'border-[rgba(255,255,255,0.1)] hover:border-[var(--primary)]'
-                      }`}
-                    >
-                      <span className="text-sm font-semibold">{preset.name}</span>
-                      <div className="mt-2 flex gap-1">
-                        <div className="w-4 h-4 rounded-full border border-[rgba(255,255,255,0.1)]" style={{ background: preset.id === 'default-dark' ? '#0B0B0F' : preset.id === 'neo-purple' ? '#0F0B1A' : preset.id === 'midnight-blue' ? '#070B14' : preset.id === 'cyber-green' ? '#050805' : '#0F0F0F' }} />
-                        <div className="w-4 h-4 rounded-full" style={{ background: preset.id === 'default-dark' ? '#FFFFFF' : preset.id === 'neo-purple' ? '#8B5CF6' : preset.id === 'midnight-blue' ? '#3B82F6' : preset.id === 'cyber-green' ? '#22C55E' : '#F59E0B' }} />
-                      </div>
-                      {theme === preset.id && (
-                        <div className="absolute top-2 right-2">
-                          <Check className="w-4 h-4 text-[var(--primary)]" />
+                  {PRESETS.map(preset => {
+                    const isPresetLocked = preset.id !== 'default-dark';
+                    return (
+                      <button
+                        key={preset.id}
+                        onClick={() => {
+                          setTheme(preset.id);
+                          if (isPresetLocked) {
+                            toast.info("This is a premium theme! You can preview it now, but it will revert to Original Dark on submit.");
+                          }
+                        }}
+                        className={`p-4 rounded-xl border text-left transition-all relative overflow-hidden group ${
+                          theme === preset.id 
+                            ? 'border-[var(--primary)] shadow-[0_0_20px_rgba(var(--primary-rgb),0.2)]'
+                            : 'border-[rgba(255,255,255,0.1)] hover:border-[var(--primary)]'
+                        }`}
+                      >
+                        <span className="text-sm font-semibold flex items-center gap-1.5">
+                          {preset.name}
+                          {isPresetLocked && <Lock className="w-3 h-3 text-purple-400" />}
+                        </span>
+                        <div className="mt-2 flex gap-1">
+                          <div className="w-4 h-4 rounded-full border border-[rgba(255,255,255,0.1)]" style={{ background: preset.id === 'default-dark' ? '#0B0B0F' : preset.id === 'neo-purple' ? '#0F0B1A' : preset.id === 'midnight-blue' ? '#070B14' : preset.id === 'cyber-green' ? '#050805' : '#0F0F0F' }} />
+                          <div className="w-4 h-4 rounded-full" style={{ background: preset.id === 'default-dark' ? '#FFFFFF' : preset.id === 'neo-purple' ? '#8B5CF6' : preset.id === 'midnight-blue' ? '#3B82F6' : preset.id === 'cyber-green' ? '#22C55E' : '#F59E0B' }} />
                         </div>
-                      )}
-                    </button>
-                  ))}
+                        {theme === preset.id && (
+                          <div className="absolute top-2 right-2">
+                            <Check className="w-4 h-4 text-[var(--primary)]" />
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
               ) : (
                 <div className="space-y-6 animate-in fade-in slide-in-from-top-2 duration-300">
@@ -317,6 +354,15 @@ export default function OnboardingPage() {
                       ))}
                     </div>
                   </div>
+                </div>
+              )}
+
+              {theme !== 'default-dark' && (
+                <div className="p-3 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-300 text-xs flex items-start gap-2.5 animate-in fade-in slide-in-from-top-1">
+                  <Info className="w-4 h-4 mt-0.5 shrink-0" />
+                  <p>
+                    <strong>Previewing Premium Theme</strong>: This theme requires a paid plan. Your account will start in Original Dark unless you upgrade.
+                  </p>
                 </div>
               )}
 

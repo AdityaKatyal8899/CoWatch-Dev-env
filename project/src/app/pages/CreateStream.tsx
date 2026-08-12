@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Check, Video as VideoIcon, Play, Search, Folder, Clock, Sparkles } from 'lucide-react';
+import { Check, Video as VideoIcon, Play, Search, Folder, Clock, Sparkles, AlertTriangle } from 'lucide-react';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { api } from '../lib/api';
 import { PageTransition } from '../components/ui/PageTransition';
@@ -26,6 +26,7 @@ export default function CreateStream() {
   const [selectedCollectionId, setSelectedCollectionId] = useState<string>('all');
   const [selectedVideoId, setSelectedVideoId] = useState<string>('');
   const [streamTitle, setStreamTitle] = useState('');
+  const [isAdult, setIsAdult] = useState(false);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
 
@@ -98,7 +99,7 @@ export default function CreateStream() {
           setCreating(false);
           return;
         }
-        const room = await api.createRoom(streamTitle || "YouTube Watch Party", undefined, user.id, youtubeUrl);
+        const room = await api.createRoom(streamTitle || "YouTube Watch Party", undefined, user.id, youtubeUrl, undefined, isAdult);
         toast.success('YouTube Session Ready!');
         router.push(`/room/${room.room_id}`);
       } else {
@@ -136,7 +137,7 @@ export default function CreateStream() {
           }
         }
 
-        const room = await api.createRoom(titleToUse, vidToUse, user.id, undefined, collectionId);
+        const room = await api.createRoom(titleToUse, vidToUse, user.id, undefined, collectionId, isAdult);
         toast.success('Ready to stream!');
         router.push(`/room/${room.room_id}`);
       }
@@ -346,6 +347,38 @@ export default function CreateStream() {
                            className="w-full bg-white/5 border border-white/10 rounded-xl px-5 py-4 text-white focus:border-[var(--primary)]/40 outline-none transition-all font-bold"
                            placeholder="Party Title..."
                         />
+                      </div>
+
+                      {/* 18+ adult content flag */}
+                      <div className={`flex items-center justify-between p-4 rounded-xl border ${isAdult ? 'bg-red-500/[0.06] border-red-500/30' : 'bg-white/[0.02] border-white/5'}`}>
+                        <div className="flex items-start gap-3 pr-4">
+                          <div className="w-9 h-9 rounded-lg bg-red-500/10 border border-red-500/20 flex items-center justify-center shrink-0">
+                            <AlertTriangle className="w-4 h-4 text-red-400" />
+                          </div>
+                          <div>
+                            <p className="text-white text-sm font-semibold">18+ Adult Content</p>
+                            <p className="text-white/40 text-xs mt-0.5 max-w-xs leading-relaxed">
+                              Flag this room as adult. Only age-verified (18+) viewers can join, and you are responsible for flagging correctly.
+                            </p>
+                            {!user?.age_verified && (
+                              <p className="text-red-400/80 text-[11px] mt-1.5">
+                                Add your date of birth in <span className="underline cursor-pointer hover:text-red-300 font-medium" onClick={() => router.push('/settings')}>settings</span> to host 18+ rooms.
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          disabled={!user?.age_verified}
+                          onClick={() => user?.age_verified && setIsAdult((v) => !v)}
+                          className={`w-12 h-6 rounded-full transition-colors relative shrink-0 ${isAdult ? 'bg-red-500' : 'bg-white/10'} ${!user?.age_verified ? 'opacity-40 cursor-not-allowed' : ''}`}
+                        >
+                          <motion.div
+                            className="absolute top-1 left-1 w-4 h-4 bg-white rounded-full"
+                            animate={{ x: isAdult ? 24 : 0 }}
+                            transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                          />
+                        </button>
                       </div>
                    </div>
                 </div>

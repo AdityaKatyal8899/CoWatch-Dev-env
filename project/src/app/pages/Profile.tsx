@@ -17,6 +17,7 @@ export default function Profile() {
   const [formData, setFormData] = useState({
     display_name: user?.display_name || user?.name || '',
     email: user?.email || '',
+    date_of_birth: user?.date_of_birth || '',
   });
   const [isUpdating, setIsUpdating] = useState(false);
 
@@ -25,6 +26,7 @@ export default function Profile() {
       setFormData({
         display_name: user.display_name || user.name || '',
         email: user.email || '',
+        date_of_birth: user.date_of_birth || '',
       });
     }
   }, [user]);
@@ -34,6 +36,7 @@ export default function Profile() {
     try {
       await updateProfile({
         display_name: formData.display_name,
+        date_of_birth: formData.date_of_birth || undefined,
       });
       setEditing(false);
       toast.success('Profile updated successfully!');
@@ -104,6 +107,30 @@ export default function Profile() {
                     className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 min-h-[44px] text-white opacity-40 cursor-not-allowed"
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-[var(--muted)] text-sm font-medium mb-2 uppercase tracking-widest text-[10px]">Date of Birth</label>
+                <input
+                  type="date"
+                  value={formData.date_of_birth}
+                  onChange={(e) => setFormData({ ...formData, date_of_birth: e.target.value })}
+                  disabled={!editing}
+                  className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 min-h-[44px] text-white disabled:opacity-60 focus:outline-none focus:border-[var(--primary)] transition-all"
+                />
+                <p className="text-xs text-[var(--muted)] mt-2">
+                  Required to verify age for 18+ rooms. You must be 18 or older to host or join adult content.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className={`text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full ${
+                  user?.age_verified
+                    ? 'bg-green-500/15 text-green-400 border border-green-500/30'
+                    : 'bg-red-500/15 text-red-400 border border-red-500/30'
+                }`}>
+                  {user?.age_verified ? 'Age Verified (18+)' : 'Not Age Verified'}
+                </span>
               </div>
 
               <div className="flex flex-col sm:flex-row gap-3 pt-4">

@@ -273,7 +273,14 @@ export default function Dashboard() {
                   <h2 className="heading-section">Recent Videos</h2>
                 </div>
                 <button
-                  onClick={() => router.push('/collections')}
+                  onClick={() => {
+                    if (!user?.plan || user.plan === 'free') {
+                      toast.error('Collections is only available on paid plans. Redirecting to plans...');
+                      router.push('/plans');
+                    } else {
+                      router.push('/collections');
+                    }
+                  }}
                   className="link-primary"
                 >
                   View Library

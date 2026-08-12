@@ -11,10 +11,12 @@ import { api } from '../lib/api';
 import { toast } from 'sonner';
 import { Button } from '../components/ui/button';
 import type { Collection } from '../lib/types';
+import { useAuth } from '../lib/auth';
 
 export default function Upload() {
   const router = useRouter();
 
+  const { user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [file, setFile] = useState<File | null>(null);
@@ -430,17 +432,23 @@ export default function Upload() {
                       </div>
                       <div className="space-y-2">
                         <label className="text-[10px] font-black uppercase tracking-widest text-white/30 ml-1">Collection</label>
+                      {(!user?.plan || user.plan === 'free') ? (
+                        <div className="w-full bg-[rgba(255,255,255,0.02)] border border-white/5 rounded-lg px-4 py-3 flex items-center justify-between text-white/30 text-xs">
+                          <span>Adding uploads to collections is a Pro feature</span>
+                          <span className="text-[10px]">🔒</span>
+                        </div>
+                      ) : (
                         <select
                           value={selectedCollectionId}
                           onChange={(e) => setSelectedCollectionId(e.target.value)}
-                          disabled={uploading || processing}
-                          className="w-full bg-[#0F0F0F] border border-white/10 rounded-xl px-4 py-3 text-white focus:border-[var(--primary)]/40 transition-all font-medium appearance-none"
+                          className="w-full bg-[#0A0A0C] border border-white/10 rounded-lg px-4 py-3 outline-none focus:border-[var(--primary)] transition-all text-white text-xs"
                         >
-                          <option value="">Library (General)</option>
+                          <option value="">None (Individual Upload)</option>
                           {collections.map(c => (
                             <option key={c.id} value={c.id}>{c.name}</option>
                           ))}
                         </select>
+                      )}
                       </div>
                     </div>
                     
@@ -519,7 +527,14 @@ export default function Upload() {
                 <motion.button
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
-                  onClick={() => router.push('/collections')}
+                  onClick={() => {
+                    if (!user?.plan || user.plan === 'free') {
+                      toast.error('Collections is only available on paid plans. Redirecting to plans...');
+                      router.push('/plans');
+                    } else {
+                      router.push('/collections');
+                    }
+                  }}
                   className="btn-secondary py-4 text-xs"
                 >
                   View Library

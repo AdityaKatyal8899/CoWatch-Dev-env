@@ -6,7 +6,7 @@ import { Play, Sparkles } from 'lucide-react';
 import { useAuth } from '../lib/auth';
 import { Loader } from '../components/ui/Loader';
 import { toast } from 'sonner';
-import { GoogleLogin } from '@react-oauth/google';
+import { useGoogleLogin } from '@react-oauth/google';
 import { PageTransition } from '../components/ui/PageTransition';
 import { motion } from 'motion/react';
 
@@ -16,26 +16,27 @@ export default function Auth() {
   const { login } = useAuth();
   const [loading, setLoading] = useState(false);
 
-  const handleSuccess = async (credentialResponse: any) => {
-    setLoading(true);
-    try {
-      if (!credentialResponse.credential) {
-        throw new Error('No credential received');
+  const handleGoogleLogin = useGoogleLogin({
+    onSuccess: async (tokenResponse) => {
+      setLoading(true);
+      try {
+        if (!tokenResponse.access_token) {
+          throw new Error('No access token received');
+        }
+        await login("", tokenResponse.access_token);
+        toast.success('Welcome to CoWatch!');
+        router.push('/dashboard');
+      } catch (error) {
+        toast.error('Failed to sign in');
+      } finally {
+        setLoading(false);
       }
-      await login(credentialResponse.credential);
-      toast.success('Welcome to CoWatch!');
-      router.push('/dashboard');
-    } catch (error) {
-      toast.error('Failed to sign in');
-
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleError = () => {
-    toast.error('Google Sign In failed');
-  };
+    },
+    onError: () => {
+      toast.error('Google Sign In failed');
+    },
+    scope: 'openid email profile https://www.googleapis.com/auth/user.birthday.read',
+  });
 
   return (
     <PageTransition>
@@ -48,26 +49,23 @@ export default function Auth() {
 
         {/* Content */}
         <div className="relative z-10 w-full max-w-md">
-          {/* Logo and Branding */}
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.5 }}
-            className="text-center mb-12"
-          >
-            <div className="inline-flex items-center justify-center mb-6">
-              <div className="w-20 h-20 rounded-2xl bg-[var(--primary)] flex items-center justify-center shadow-2xl">
-                <Play className="w-10 h-10 text-[var(--bg)]" fill="currentColor" />
-              </div>
-            </div>
-            
-            <h1 className="text-5xl font-bold text-white mb-3">
-              Co<span className="gradient-text">Watch</span>
-            </h1>
-            <p className="text-white/60 text-lg">
-              Watch together. In sync.
-            </p>
-          </motion.div>
+          <div className="flex flex-col items-center mb-8">
+            <motion.div 
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="w-16 h-16 rounded-2xl bg-[var(--primary)] flex items-center justify-center mb-4 shadow-xl shadow-[var(--primary)]/20"
+            >
+              <Play className="w-8 h-8 text-[var(--bg)] fill-[var(--bg)] translate-x-0.5" />
+            </motion.div>
+            <motion.h1 
+              initial={{ y: 10, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.1 }}
+              className="text-4xl font-black text-white tracking-wider flex items-center gap-1.5"
+            >
+              CO<span className="text-[var(--primary)]">WATCH</span>
+            </motion.h1>
+          </div>
 
           {/* Auth Card */}
           <motion.div 
@@ -81,16 +79,34 @@ export default function Auth() {
               <p className="text-white/60">Sign in to continue to your dashboard</p>
             </div>
 
-            {/* Real Google Sign In Button */}
-            <div className="flex justify-center mb-8">
-              <GoogleLogin
-                onSuccess={handleSuccess}
-                onError={handleError}
-                useOneTap
-                theme="filled_blue"
-                shape="pill"
-                text="continue_with"
-              />
+            {/* Custom Google Sign In Button */}
+            <div className="flex justify-center mb-8 w-full">
+              <motion.button
+                whileHover={{ scale: 1.02, y: -1 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => handleGoogleLogin()}
+                className="w-full py-3.5 px-6 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 transition-all flex items-center justify-center gap-3 font-medium text-white shadow-lg"
+              >
+                <svg className="w-5 h-5" viewBox="0 0 24 24">
+                  <path
+                    fill="#EA4335"
+                    d="M12 5.04c1.67 0 3.2.58 4.38 1.69l3.27-3.27C17.67 1.48 14.99 1 12 1 7.37 1 3.42 3.66 1.44 7.56l3.89 3.02c.92-2.77 3.51-4.78 6.67-4.78z"
+                  />
+                  <path
+                    fill="#4285F4"
+                    d="M23.49 12.27c0-.81-.07-1.59-.2-2.34H12v4.43h6.44c-.28 1.47-1.11 2.71-2.36 3.55l3.82 2.96c2.23-2.06 3.59-5.09 3.59-8.6z"
+                  />
+                  <path
+                    fill="#FBBC05"
+                    d="M5.33 14.58a7.8 7.8 0 0 1 0-5.16L1.44 6.4a11.98 11.98 0 0 0 0 11.2l3.89-3.02z"
+                  />
+                  <path
+                    fill="#34A853"
+                    d="M12 23c3.24 0 5.97-1.07 7.96-2.92l-3.82-2.96c-1.06.71-2.42 1.13-4.14 1.13-3.16 0-5.75-2.01-6.67-4.78L1.44 16.5A11.97 11.97 0 0 0 12 23z"
+                  />
+                </svg>
+                Continue with Google
+              </motion.button>
             </div>
 
             {/* Fullscreen Loading Overlay */}

@@ -2,3 +2,4 @@ __pycache__/
 .env
 storage/
 *.sqlite3
+scratch/generate_coupon.py

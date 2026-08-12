@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Service Level Agreement (SLA) - CoWatch</title>
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            color: #333333;
+            line-height: 1.6;
+            margin: 40px;
+            font-size: 14px;
+        }
+        .header {
+            text-align: center;
+            border-bottom: 2px solid #8B5CF6;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            color: #8B5CF6;
+            margin: 0;
+            font-size: 24px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .header p {
+            margin: 5px 0 0 0;
+            color: #666666;
+            font-size: 12px;
+        }
+        .section {
+            margin-bottom: 25px;
+        }
+        .section-title {
+            font-weight: bold;
+            font-size: 15px;
+            color: #111111;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #E5E7EB;
+            padding-bottom: 5px;
+        }
+        .clause {
+            margin-bottom: 15px;
+        }
+        .clause-title {
+            font-weight: bold;
+            color: #444444;
+        }
+        .footer {
+            margin-top: 50px;
+            border-top: 1px solid #E5E7EB;
+            padding-top: 20px;
+            font-size: 11px;
+            color: #888888;
+            text-align: center;
+        }
+        .signatures {
+            margin-top: 40px;
+            display: flex;
+            justify-content: space-between;
+        }
+        .sig-box {
+            width: 45%;
+            border-top: 1px dashed #999999;
+            padding-top: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>Service Level Agreement</h1>
+        <p>Platform Infrastructure Hosting & Service Availability Agreement</p>
+    </div>
+
+    <div class="section">
+        <div class="section-title">1. Parties & Background</div>
+        <p>This Service Level Agreement ("SLA") is entered into by <strong>Aditya Katyal</strong> ("Service Provider") as the infrastructure operator and software provider of the <strong>CoWatch</strong> platform, and the users of the CoWatch application ("Client"). CoWatch provides private virtual watch party environments leveraging AWS compute, storage, and real-time streaming services.</p>
+    </div>
+
+    <div class="section">
+        <div class="section-title">2. Scope of Service & Infrastructure</div>
+        <div class="clause">
+            <span class="clause-title">2.1 Hosting Infrastructure:</span> The Service Provider manages AWS EC2 (Elastic Compute Cloud) hosting, VPC configuration, and S3 (Simple Storage Service) instances to maintain user authentication, media transcode pipelines, and low-latency watch party synchronization.
+        </div>
+        <div class="clause">
+            <span class="clause-title">2.2 Streaming Services:</span> Support is provided for HLS (HTTP Live Streaming) transcode processing and dynamic watch party sync connections.
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="section-title">3. Service Levels & Availability</div>
+        <div class="clause">
+            <span class="clause-title">3.1 Uptime Target:</span> The Service Provider targets a monthly uptime percentage of <strong>99.5%</strong> for all primary web services and databases, excluding scheduled maintenance windows.
+        </div>
+        <div class="clause">
+            <span class="clause-title">3.2 Maintenance Windows:</span> System upgrades and optimizations are scheduled during off-peak hours (02:00 AM to 04:00 AM IST) and will be notified to users at least 24 hours in advance.
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="section-title">4. Compliance & Content Ownership</div>
+        <div class="clause">
+            <span class="clause-title">4.1 Intermediary Status:</span> CoWatch acts strictly as an intermediary infrastructure provider. The Service Provider does not review, verify, license, or own the copyrighted video files uploaded by the Client. The Client guarantees they possess the required rights or authorizations for any files streamed within their private, password-secured watch rooms.
+        </div>
+        <div class="clause">
+            <span class="clause-title">4.2 Safe Harbor:</span> Any copyrighted content reported through standard channels will be reviewed and removed immediately in compliance with digital intermediary hosting regulations.
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="section-title">5. Support & Incident Response</div>
+        <p>Technical support, infrastructure inquiries, or reports of outages will be addressed within 12 to 24 hours. Tickets or inquiries can be submitted via email directly to the Service Provider's registered support channels.</p>
+    </div>
+
+    <div class="signatures">
+        <div class="sig-box">
+            <strong>Aditya Katyal</strong><br>
+            Infrastructure Provider & Operator
+        </div>
+        <div class="sig-box">
+            <strong>CoWatch User Agreement</strong><br>
+            Accepted upon registration & plan checkout
+        </div>
+    </div>
+
+    <div class="footer">
+        © 2026 CoWatch. All rights reserved. Registered RBI & Gateway compliance document.
+    </div>
+
+</body>
+</html>

@@ -87,7 +87,23 @@ async def onboard_user(
         current_user.theme = DEFAULT_THEME
 
     current_user.display_name = req.display_name.strip()
-    current_user.age = req.age
+
+    # Age capture: prefer explicit date_of_birth (source of truth for the 18+ gate).
+    if req.date_of_birth:
+        try:
+            from datetime import date
+            dob = date.fromisoformat(req.date_of_birth)
+            current_user.date_of_birth = dob
+            today = date.today()
+            computed_age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
+            current_user.age = computed_age
+            current_user.age_verified = computed_age >= 18
+            current_user.age_verification_method = "self_declared"
+        except (ValueError, TypeError):
+            pass
+    elif req.age is not None:
+        current_user.age = req.age
+
     current_user.genres = req.genres
 
     db.commit()
@@ -117,6 +133,19 @@ async def update_profile(
 
     if req.age is not None:
         current_user.age = req.age
+
+    if req.date_of_birth is not None:
+        try:
+            from datetime import date
+            dob = date.fromisoformat(req.date_of_birth)
+            current_user.date_of_birth = dob
+            today = date.today()
+            computed_age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
+            current_user.age = computed_age
+            current_user.age_verified = computed_age >= 18
+            current_user.age_verification_method = "self_declared"
+        except (ValueError, TypeError):
+            pass
     
     if req.genres is not None:
         current_user.genres = req.genres

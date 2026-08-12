@@ -44,6 +44,8 @@ class RoomSchema(BaseModel):
     media_type: str = "hls"
     video_url: Optional[str] = None
     youtube_video_id: Optional[str] = None
+    is_adult: bool = False
+    status: str = "active"
 
 class CreateRoomRequest(BaseModel):
     video_id: Optional[str] = None
@@ -52,6 +54,7 @@ class CreateRoomRequest(BaseModel):
     stream_url: Optional[str] = None
     video_url: Optional[str] = None
     host_id: Optional[str] = None
+    is_adult: Optional[bool] = False  # host must flag 18+ content explicitly
 
 class RoomCreatedResponse(BaseModel):
     room_id: str
