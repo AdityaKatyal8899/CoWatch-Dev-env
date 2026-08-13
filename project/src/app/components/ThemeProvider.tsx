@@ -18,7 +18,7 @@ const PRESET_THEMES: Record<string, ThemeColors> = {
   'default-dark': {
     bg: '#0B0B0F',
     card: '#15151A',
-    primary: '#FFFFFF', // This caused the text visibility issue
+    primary: '#8B5CF6',
     text: '#E5E7EB',
     muted: '#9CA3AF',
     accent: '#22C55E'

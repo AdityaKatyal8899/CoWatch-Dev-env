@@ -222,7 +222,7 @@ export default function OnboardingPage() {
 
               <button
                 onClick={handleNext}
-                className="w-full bg-[var(--primary)] hover:opacity-90 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 group transition-all"
+                className="w-full bg-[var(--primary)] hover:opacity-90 text-[var(--bg)] font-bold py-4 rounded-xl flex items-center justify-center gap-2 group transition-all"
               >
                 Next <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </button>
@@ -376,7 +376,7 @@ export default function OnboardingPage() {
                 <button
                   onClick={handleSubmit}
                   disabled={isSubmitting}
-                  className="flex-[2] bg-[var(--primary)] text-white py-4 rounded-xl font-bold flex items-center justify-center gap-2 hover:opacity-90 disabled:opacity-50 transition-all shadow-[0_4px_20px_rgba(var(--primary-rgb),0.3)]"
+                  className="flex-[2] bg-[var(--primary)] text-[var(--bg)] py-4 rounded-xl font-bold flex items-center justify-center gap-2 hover:opacity-90 disabled:opacity-50 transition-all shadow-[0_4px_20px_rgba(var(--primary-rgb),0.3)]"
                 >
                   {isSubmitting ? (
                     <Loader2 className="w-5 h-5 animate-spin" />
