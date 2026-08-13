@@ -6,7 +6,7 @@ import ProgressBar from './components/ui/ProgressBar';
 import { AuthProvider } from './lib/auth';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 
-const GOOGLE_CLIENT_ID = "248743347580-gu2jrqkl9najo0ar07ek6pnqj8davv92.apps.googleusercontent.com";
+const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "";
 
 const inter = Inter({ subsets: ['latin'] });
 
