@@ -22,6 +22,9 @@ export const metadata: Metadata = {
   ],
   authors: [{ name: 'CoWatch Team' }],
   creator: 'CoWatch',
+  icons: {
+    icon: '/icon.ico',
+  },
   openGraph: {
     type: 'website',
     locale: 'en_US',
