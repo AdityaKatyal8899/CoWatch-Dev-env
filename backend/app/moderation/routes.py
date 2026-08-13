@@ -15,6 +15,7 @@ from app.database import models
 from app.auth.oauth2 import get_current_user
 from app.middleware.limiter import limiter
 from pydantic import BaseModel
+from app.services import email_service
 
 router = APIRouter()
 
@@ -134,6 +135,8 @@ async def dev_sim_unflagged_adult(
     if room.host_id:
         try:
             host_uuid = uuid.UUID(str(room.host_id))
+            host_user = db.query(models.User).filter(models.User.id == host_uuid).first()
+            
             db.add(models.ModerationWarning(
                 user_id=host_uuid,
                 room_id=room.id,
@@ -141,7 +144,19 @@ async def dev_sim_unflagged_adult(
             ))
             db.commit()
             warning_issued = True
-        except Exception:
+            
+            # Send automated moderation alert emails
+            if host_user and host_user.email:
+                email_service.send_room_disbanded_email(
+                    host_user.email, 
+                    room.title or "Private Watch Party", 
+                    "Unflagged adult content detected in a non-18+ room"
+                )
+                email_service.send_user_warning_email(
+                    host_user.email,
+                    "Unflagged adult content detected in your hosted room. Please label adult streams as 18+."
+                )
+        except Exception as e:
             pass
 
     # Disconnect participants.
@@ -174,6 +189,10 @@ async def dev_sim_tier1(req: dict, request: Request, db: Session = Depends(get_d
         status="actioned",
     ))
     db.commit()
+
+    # Dispatch permanent ban notification email
+    if user.email:
+        email_service.send_user_ban_email(user.email, user.banned_reason)
 
     # In production this is where the authority-format export (e.g., NCMEC) is written.
     return {

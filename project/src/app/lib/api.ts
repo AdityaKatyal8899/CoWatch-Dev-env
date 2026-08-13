@@ -288,6 +288,13 @@ export const api = {
     });
   },
 
+  async reportContent(targetType: string, targetId: string, reason: string): Promise<any> {
+    return request('/moderation/report', {
+      method: 'POST',
+      body: JSON.stringify({ target_type: targetType, target_id: targetId, reason }),
+    });
+  },
+
   /**
    * Constructs the full URL for a stream asset by prepending the backend origin.
    */

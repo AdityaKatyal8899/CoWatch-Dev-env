@@ -1,6 +1,7 @@
 "use client";
 
 import { LogOut, Crown, Eye, Link, Play } from './icons';
+import { Flag } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface TopBarProps {
@@ -8,9 +9,10 @@ interface TopBarProps {
   roomName: string;
   isHost: boolean;
   onLeave: () => void;
+  onReport: () => void;
 }
 
-export function TopBar({ roomId, roomName, isHost, onLeave }: TopBarProps) {
+export function TopBar({ roomId, roomName, isHost, onLeave, onReport }: TopBarProps) {
   const copyRoomId = () => {
     navigator.clipboard.writeText(`${window.location.origin}/room/${roomId}`);
     toast.success('Invite link copied!');
@@ -60,6 +62,16 @@ export function TopBar({ roomId, roomName, isHost, onLeave }: TopBarProps) {
           <span className="hidden sm:inline">Copy Link</span>
           <Link className="w-3.5 h-3.5 sm:hidden" />
         </button>
+        {!isHost && (
+          <button
+            onClick={onReport}
+            title="Report Room"
+            className="p-2 sm:px-3 sm:py-[6px] bg-yellow-500/10 hover:bg-yellow-500/20 border border-yellow-500/20 rounded-[8px] text-yellow-500 text-[11px] font-semibold transition-all flex items-center gap-2 justify-center shrink-0"
+          >
+            <Flag className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Report</span>
+          </button>
+        )}
         <button
           onClick={onLeave}
           title="Exit"

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { Send } from './icons';
+import { Flag } from 'lucide-react';
 import type { ChatMessage, Room } from '../lib/types';
 import { InvitePanel } from './InvitePanel';
 
@@ -11,12 +12,14 @@ interface ChatProps {
   currentUsername: string;
   room: Room;
   isHost: boolean;
+  onReportMessage?: (msg: ChatMessage) => void;
 }
 
 export function Chat({ 
   messages, 
   onSendMessage, 
-  currentUsername 
+  currentUsername,
+  onReportMessage
 }: ChatProps) {
   const [inputValue, setInputValue] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -100,19 +103,30 @@ export function Chat({
                       {formatTime(msg.timestamp)}
                     </span>
                   </div>
-                  <div 
-                    className={`max-w-[85%] px-3 py-2 rounded-xl text-sm leading-relaxed transition-all duration-300 ${
-                      isOwnMessage 
-                        ? 'bg-[var(--primary)] text-[var(--bg)]' 
-                        : 'bg-white/[0.03] border border-white/5 text-white/80'
-                    }`}
-                    style={!isOwnMessage && msg.theme ? { 
-                      backgroundColor: `${themeColor}10`, // 10% opacity for others' themes
-                      borderColor: `${themeColor}30`,
-                      color: themeColor 
-                    } : {}}
-                  >
-                    <p className="break-words">{msg.message}</p>
+                  <div className="flex items-center gap-2 max-w-[85%] group/msg w-full justify-start">
+                    <div 
+                      className={`px-3 py-2 rounded-xl text-sm leading-relaxed transition-all duration-300 ${
+                        isOwnMessage 
+                          ? 'bg-[var(--primary)] text-[var(--bg)] font-medium' 
+                          : 'bg-white/[0.03] border border-white/5 text-white/80'
+                      }`}
+                      style={!isOwnMessage && msg.theme ? { 
+                        backgroundColor: `${themeColor}10`, // 10% opacity for others' themes
+                        borderColor: `${themeColor}30`,
+                        color: themeColor 
+                      } : {}}
+                    >
+                      <p className="break-words">{msg.message}</p>
+                    </div>
+                    {!isOwnMessage && (
+                      <button
+                        onClick={() => onReportMessage?.(msg)}
+                        title="Report Message"
+                        className="opacity-0 group-hover/msg:opacity-100 p-1 hover:bg-white/5 rounded text-white/30 hover:text-yellow-500 transition-all cursor-pointer shrink-0"
+                      >
+                        <Flag className="w-3.5 h-3.5" />
+                      </button>
+                    )}
                   </div>
                 </div>
               );

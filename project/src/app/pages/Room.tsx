@@ -54,6 +54,44 @@ export default function Room() {
   const [disbandCountdown, setDisbandCountdown] = useState(5);
   const [newVideoLink, setNewVideoLink] = useState('');
 
+  // Moderation Report States
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportTargetType, setReportTargetType] = useState<'room' | 'message'>('room');
+  const [reportTargetId, setReportTargetId] = useState('');
+  const [reportReason, setReportReason] = useState('Harassment or Hate Speech');
+  const [reportDetails, setReportDetails] = useState('');
+  const [isSubmittingReport, setIsSubmittingReport] = useState(false);
+
+  const handleOpenReportRoom = useCallback(() => {
+    setReportTargetType('room');
+    setReportTargetId(roomId);
+    setReportReason('Explicit / Adult Content');
+    setReportDetails('');
+    setShowReportModal(true);
+  }, [roomId]);
+
+  const handleOpenReportMessage = useCallback((msg: ChatMessage) => {
+    setReportTargetType('message');
+    setReportTargetId(msg.id);
+    setReportReason('Harassment or Hate Speech');
+    setReportDetails('');
+    setShowReportModal(true);
+  }, []);
+
+  const handleSubmitReport = async () => {
+    setIsSubmittingReport(true);
+    try {
+      const finalReason = `${reportReason}${reportDetails ? ` - ${reportDetails}` : ''}`;
+      await api.reportContent(reportTargetType, reportTargetId, finalReason);
+      toast.success('Report submitted successfully! Thank you for keeping CoWatch safe.');
+      setShowReportModal(false);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to submit report');
+    } finally {
+      setIsSubmittingReport(false);
+    }
+  };
+
   const videoRef = useRef<Video | null>(null);
   useEffect(() => {
     videoRef.current = video;
@@ -277,10 +315,21 @@ export default function Room() {
           }
           break;
         }
-        case 'seek':
+        case 'play': {
+          setSyncState((prev) => ({ ...prev, isPlaying: true, currentTime: message.data.currentTime }));
+          setSeekTrigger((prev) => prev + 1);
+          break;
+        }
+        case 'pause': {
+          setSyncState((prev) => ({ ...prev, isPlaying: false, currentTime: message.data.currentTime }));
+          setSeekTrigger((prev) => prev + 1);
+          break;
+        }
+        case 'seek': {
           setSyncState(prev => ({ ...prev, currentTime: message.data.currentTime }));
           setSeekTrigger(Date.now());
           break;
+        }
         case 'sync':
           setSyncState(prev => ({ ...prev, currentTime: message.data.currentTime }));
           if (message.data.participant_count !== undefined) {
@@ -359,6 +408,8 @@ export default function Room() {
               };
             });
           }
+          break;
+        default:
           break;
       }
 
@@ -493,6 +544,7 @@ export default function Room() {
         roomName={room.title}
         isHost={isHost}
         onLeave={handleLeave}
+        onReport={handleOpenReportRoom}
       />
 
       {/* SESSION ENDED OVERLAY */}
@@ -611,10 +663,10 @@ export default function Room() {
                   title="Episodes"
                   aria-label="Episodes"
                   className={cn(
-                    "absolute top-4 right-4 z-20 w-9 h-9 rounded-xl flex items-center justify-center border transition-all",
-                    episodesOpen
-                      ? "bg-[var(--primary)] text-black border-[var(--primary)]/50 shadow-lg shadow-[var(--primary)]/30"
-                      : "bg-black/50 backdrop-blur-xl border-white/10 text-white/70 hover:text-white hover:border-white/25"
+                     "absolute top-4 right-4 z-20 w-9 h-9 rounded-xl flex items-center justify-center border transition-all",
+                     episodesOpen
+                       ? "bg-[var(--primary)] text-black border-[var(--primary)]/50 shadow-lg shadow-[var(--primary)]/30"
+                       : "bg-black/50 backdrop-blur-xl border-white/10 text-white/70 hover:text-white hover:border-white/25"
                   )}
                 >
                   <ListVideo className="w-4 h-4" />
@@ -697,6 +749,7 @@ export default function Room() {
                 currentUsername={currentUser.name}
                 room={room}
                 isHost={isHost}
+                onReportMessage={handleOpenReportMessage}
               />
             ) : activeTab === 'episodes' && room.collection ? (
               <div className="h-full overflow-y-auto scrollbar-thin">
@@ -729,6 +782,74 @@ export default function Room() {
           </div>
         </div>
       </div>
+
+      {/* REPORT CONTENT POPUP MODAL */}
+      {showReportModal && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/60 backdrop-blur-md p-4 animate-in fade-in duration-200">
+          <div className="glass-card max-w-sm w-full p-6 rounded-2xl border border-white/10 shadow-2xl relative space-y-4">
+            <button
+              onClick={() => setShowReportModal(false)}
+              className="absolute top-4 right-4 text-white/30 hover:text-white transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            <div>
+              <h3 className="text-lg font-bold text-white tracking-tight">Report Content</h3>
+              <p className="text-[10px] text-white/30 font-bold uppercase tracking-widest mt-1">
+                Help us keep CoWatch safe and secure
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <label className="text-[10px] font-black uppercase tracking-widest text-white/40 block ml-1">Reason</label>
+              <select
+                value={reportReason}
+                onChange={(e) => setReportReason(e.target.value)}
+                className="w-full bg-[#0A0A0C] border border-white/10 rounded-lg px-4 py-3 outline-none focus:border-yellow-500/40 transition-all text-white text-xs"
+              >
+                <option value="Explicit / Adult Content">Explicit / Adult Content</option>
+                <option value="Harassment or Hate Speech">Harassment or Hate Speech</option>
+                <option value="Violent / Dangerous Content">Violent / Dangerous Content</option>
+                <option value="Spam or Scam">Spam or Scam</option>
+                <option value="Other">Other Violation</option>
+              </select>
+            </div>
+
+            <div className="space-y-3">
+              <label className="text-[10px] font-black uppercase tracking-widest text-white/40 block ml-1">Additional Details (Optional)</label>
+              <textarea
+                value={reportDetails}
+                onChange={(e) => setReportDetails(e.target.value)}
+                placeholder="Provide details to help us investigate..."
+                rows={3}
+                className="w-full bg-white/[0.02] border border-white/5 rounded-lg p-3 text-xs outline-none focus:border-[var(--primary)] transition-all resize-none text-white/80 placeholder:text-white/20"
+              />
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <button
+                disabled={isSubmittingReport}
+                onClick={() => setShowReportModal(false)}
+                className="flex-1 bg-white/[0.03] hover:bg-white/[0.06] text-white/70 py-3 rounded-xl text-xs font-bold transition-all border border-white/5"
+              >
+                Cancel
+              </button>
+              <button
+                disabled={isSubmittingReport}
+                onClick={handleSubmitReport}
+                className="flex-1 bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-500 py-3 rounded-xl text-xs font-bold transition-all border border-yellow-500/20 flex items-center justify-center gap-1.5"
+              >
+                {isSubmittingReport ? (
+                  <div className="w-3.5 h-3.5 border-2 border-yellow-500/20 border-t-yellow-500 rounded-full animate-spin" />
+                ) : (
+                  'Submit Report'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <ConfirmModal 
         isOpen={showEndConfirm}
