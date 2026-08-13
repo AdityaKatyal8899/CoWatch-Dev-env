@@ -11,10 +11,49 @@ const GOOGLE_CLIENT_ID = "248743347580-gu2jrqkl9najo0ar07ek6pnqj8davv92.apps.goo
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'CoWatch - Watch Videos Together',
-  description: 'Synchronized video playback for friends and family.',
-  icons: {
-    icon: '/icon.ico',
+  title: {
+    default: 'CoWatch - Watch Videos Together in Real-Time',
+    template: '%s | CoWatch'
+  },
+  description: 'Synchronized video playback, real-time voice rooms, and chat for friends and communities. Host watch parties instantly.',
+  keywords: [
+    'watch together', 'watch party', 'synchronized video', 'co-watch', 
+    'stream movies with friends', 'virtual cinema', 'youtube sync', 'voice chat watch party'
+  ],
+  authors: [{ name: 'CoWatch Team' }],
+  creator: 'CoWatch',
+  openGraph: {
+    type: 'website',
+    locale: 'en_US',
+    url: 'https://cowatch-theta.vercel.app',
+    siteName: 'CoWatch',
+    title: 'CoWatch - Watch Videos Together in Real-Time',
+    description: 'Synchronize videos, chat, and talk with friends. Free and premium social streaming room hosting.',
+    images: [
+      {
+        url: 'https://cowatch-theta.vercel.app/icon.ico',
+        width: 512,
+        height: 512,
+        alt: 'CoWatch Watch Party Platform',
+      }
+    ],
+  },
+  twitter: {
+    card: 'summary',
+    title: 'CoWatch - Watch Videos Together',
+    description: 'Synchronize videos, chat, and voice chat with your friends in real-time.',
+    images: ['https://cowatch-theta.vercel.app/icon.ico'],
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-video-preview': -1,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+    },
   },
 };
 
