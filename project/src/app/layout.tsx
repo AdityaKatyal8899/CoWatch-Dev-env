@@ -69,31 +69,39 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const content = (
+    <AuthProvider>
+      <ThemeProvider>
+        <BackgroundNotificationListener />
+        <Suspense fallback={null}>
+          <ProgressBar />
+        </Suspense>
+        {children}
+        <Toaster 
+          position="bottom-left"
+          toastOptions={{
+            style: {
+              background: '#1a1a1a',
+              border: '1px solid rgba(124, 58, 237, 0.3)',
+              color: '#fff',
+            },
+            className: 'glass-card',
+          }}
+        />
+      </ThemeProvider>
+    </AuthProvider>
+  );
+
   return (
     <html lang="en">
       <body className={inter.className}>
-        <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
-          <AuthProvider>
-            <ThemeProvider>
-              <BackgroundNotificationListener />
-              <Suspense fallback={null}>
-                <ProgressBar />
-              </Suspense>
-              {children}
-              <Toaster 
-                position="bottom-left"
-                toastOptions={{
-                  style: {
-                    background: '#1a1a1a',
-                    border: '1px solid rgba(124, 58, 237, 0.3)',
-                    color: '#fff',
-                  },
-                  className: 'glass-card',
-                }}
-              />
-            </ThemeProvider>
-          </AuthProvider>
-        </GoogleOAuthProvider>
+        {GOOGLE_CLIENT_ID ? (
+          <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+            {content}
+          </GoogleOAuthProvider>
+        ) : (
+          content
+        )}
       </body>
     </html>
   );
