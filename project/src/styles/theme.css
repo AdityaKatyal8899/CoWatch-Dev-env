@@ -2,18 +2,18 @@
   --font-size: 16px;
   --background: #0B0B0F;
   --foreground: #ffffff;
-  --card: #121218;
+  --card: #15151A;
   --card-foreground: #ffffff;
-  --popover: #121218;
+  --popover: #15151A;
   --popover-foreground: #ffffff;
-  --primary: #9333EA;
-  --primary-foreground: #ffffff;
-  --secondary: #4F46E5;
+  --primary: #FFFFFF;
+  --primary-foreground: #000000;
+  --secondary: #27272A;
   --secondary-foreground: #ffffff;
-  --muted: rgba(255, 255, 255, 0.04);
+  --muted: rgba(255, 255, 255, 0.05);
   --muted-foreground: rgba(255, 255, 255, 0.6);
-  --accent: #9333EA;
-  --accent-foreground: #ffffff;
+  --accent: #FFFFFF;
+  --accent-foreground: #000000;
   --destructive: #ef4444;
   --destructive-foreground: #ffffff;
   --border: rgba(255, 255, 255, 0.08);
@@ -22,7 +22,7 @@
   --switch-background: rgba(255, 255, 255, 0.1);
   --font-weight-medium: 500;
   --font-weight-normal: 400;
-  --ring: #9333EA;
+  --ring: #FFFFFF;
   
   /* Typography Hierarchy */
   --text-page-title: 22px;
@@ -34,7 +34,7 @@
   --radius: 1.25rem;
   --sidebar: #0B0B0F;
   --sidebar-foreground: #ffffff;
-  --sidebar-primary: #9333EA;
+  --sidebar-primary: #FFFFFF;
   --sidebar-accent: rgba(255, 255, 255, 0.04);
   --sidebar-border: rgba(255, 255, 255, 0.08);
 }

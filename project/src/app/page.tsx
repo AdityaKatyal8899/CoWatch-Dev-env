@@ -8,18 +8,18 @@ export default function LandingPage() {
   const router = useRouter();
 
   return (
-    <div className="min-h-screen bg-[#0A0A0A] text-white selection:bg-[#9333EA]/30 selection:text-white overflow-x-hidden">
+    <div className="min-h-screen bg-[#0A0A0A] text-white selection:bg-white/20 selection:text-white overflow-x-hidden">
       {/* Background Orbs */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-[-10%] left-[-10%] w-[40rem] h-[40rem] bg-[var(--primary)]/20 rounded-full blur-[120px] animate-pulse" />
-        <div className="absolute bottom-[20%] right-[-5%] w-[35rem] h-[35rem] bg-[var(--primary)]/10 rounded-full blur-[100px]" />
+        <div className="absolute top-[-10%] left-[-10%] w-[40rem] h-[40rem] bg-white/[0.04] rounded-full blur-[120px] animate-pulse" />
+        <div className="absolute bottom-[20%] right-[-5%] w-[35rem] h-[35rem] bg-white/[0.02] rounded-full blur-[100px]" />
       </div>
 
       {/* Navigation */}
       <nav className="relative z-50 h-20 px-6 md:px-12 flex items-center justify-between border-b border-white/5 backdrop-blur-md bg-black/20">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-[var(--primary)] rounded-xl flex items-center justify-center">
-            <Play className="w-5 h-5 text-[var(--bg)]" fill="currentColor" />
+          <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center">
+            <Play className="w-5 h-5 text-black" fill="currentColor" />
           </div>
           <span className="text-xl font-black uppercase tracking-widest bg-clip-text text-transparent bg-gradient-to-r from-white to-white/50">
             CoWatch
@@ -42,13 +42,13 @@ export default function LandingPage() {
       <section className="relative pt-24 pb-20 px-6 text-center overflow-hidden">
         <div className="max-w-4xl mx-auto relative z-10">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-white/5 border border-white/10 rounded-full mb-8 animate-in fade-in slide-in-from-top-4 duration-1000">
-            <Sparkles className="w-4 h-4 text-[var(--primary)]" />
+            <Sparkles className="w-4 h-4 text-white/80" />
             <span className="text-xs font-bold uppercase tracking-widest text-white/70">Social Streaming Reinvented</span>
           </div>
           
           <h1 className="text-5xl md:text-8xl font-black leading-[1.1] mb-8 tracking-tighter bg-clip-text text-transparent bg-gradient-to-b from-white via-white to-white/20 animate-in fade-in slide-in-from-bottom-8 duration-1000">
             Watch Together, <br className="hidden md:block" />
-            <span className="text-[var(--primary)]">Anywhere</span> in Sync.
+            <span className="bg-gradient-to-r from-white via-white/80 to-white/40 bg-clip-text text-transparent">Anywhere</span> in Sync.
           </h1>
           
           <p className="text-lg md:text-xl text-white/50 mb-12 max-w-2xl mx-auto leading-relaxed animate-in fade-in duration-1000 delay-300">
