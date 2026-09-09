@@ -46,6 +46,7 @@ class VideoBase(BaseModel):
     file_size: int
     duration: Optional[float] = None
     thumbnail_url: Optional[str] = None
+    audio_tracks: Optional[list[dict]] = None
 
 class VideoSchema(VideoBase):
     id: int

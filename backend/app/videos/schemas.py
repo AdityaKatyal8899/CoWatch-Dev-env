@@ -16,6 +16,7 @@ class VideoResponse(VideoBase):
     file_size: int
     duration: Optional[float] = None
     thumbnail_url: Optional[str] = None
+    audio_tracks: Optional[list[dict]] = None
     created_at: datetime
 
     class Config:

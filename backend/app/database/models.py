@@ -68,6 +68,7 @@ class Video(Base):
     file_size = Column(BigInteger)
     duration = Column(Float)
     thumbnail_url = Column(String)
+    audio_tracks = Column(JSON, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     owner = relationship("User", back_populates="videos")
