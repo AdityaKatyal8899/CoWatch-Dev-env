@@ -69,12 +69,14 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [themeName, setThemeName] = useState<ThemeName>('default-dark');
 
-  // Load theme from user profile immediately
+  // Load theme from user profile; free users are strictly enforced to default-dark
   useEffect(() => {
-    if (user?.theme) {
-      setThemeName(user.theme);
+    if (user) {
+      const isPaid = user.plan && user.plan !== 'free';
+      const effectiveTheme = isPaid ? (user.theme || 'default-dark') : 'default-dark';
+      setThemeName(effectiveTheme);
     }
-  }, [user?.theme]);
+  }, [user]);
 
   const parseTheme = (name: string): ThemeColors => {
     if (name.startsWith('custom:')) {
