@@ -10,6 +10,7 @@ interface AuthContextType {
   login: (idToken: string, accessToken?: string) => Promise<void>;
   logout: () => Promise<void>;
   updateProfile: (updates: Partial<User>) => Promise<void>;
+  setUserState: (user: User) => void;
   acceptTerms: () => Promise<void>;
 }
 
@@ -89,6 +90,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('cowatch_user', JSON.stringify(updatedUser));
   };
 
+  const setUserState = (updatedUser: User) => {
+    setUser(updatedUser);
+    localStorage.setItem('cowatch_user', JSON.stringify(updatedUser));
+  };
+
   // Post-login guard: terms acceptance is the FIRST gate, then onboarding.
   useEffect(() => {
     if (isLoading) return;
@@ -106,7 +112,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else if (
         termsAccepted &&
         hasName &&
-        (pathname === '/guidelines' || pathname === '/onboarding')
+        (pathname === '/guidelines' || pathname === '/onboarding' || pathname === '/auth' || pathname === '/')
       ) {
         window.location.href = '/dashboard';
       }
@@ -121,6 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       login,
       logout,
       updateProfile,
+      setUserState,
       acceptTerms,
     }}>
       {children}

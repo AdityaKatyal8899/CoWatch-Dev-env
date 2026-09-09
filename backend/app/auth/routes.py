@@ -7,7 +7,14 @@ from app.auth.jwt import create_access_token
 from app.auth.oauth2 import get_current_user
 from app.schemas import pydantic_model as schema
 from app.middleware.limiter import limiter
-from app.subscriptions.plans import PLAN_VIBERS, get_user_plan, get_user_plan_config, is_owner
+from app.subscriptions.plans import (
+    PLAN_VIBERS,
+    DEFAULT_PLAN,
+    DEFAULT_THEME,
+    get_user_plan,
+    get_user_plan_config,
+    is_owner,
+)
 from pydantic import BaseModel
 from typing import Optional
 
@@ -46,7 +53,9 @@ def google_auth(request: Request, response: Response, token_req: GoogleTokenRequ
             name=name,
             profile_picture=picture,
             provider="google",
-            provider_id=provider_id
+            provider_id=provider_id,
+            plan=DEFAULT_PLAN,
+            theme=DEFAULT_THEME,
         )
         db.add(user)
     else:

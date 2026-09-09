@@ -125,11 +125,11 @@ async def update_profile(
         current_user.display_name = req.display_name.strip()
 
     if req.theme is not None:
-        if not user_allows(current_user, "custom_themes"):
+        if req.theme != DEFAULT_THEME and not user_allows(current_user, "custom_themes"):
             raise HTTPException(status_code=403, detail="Theme customization is available on paid plans")
         if not validate_theme_selection(req.theme):
             raise HTTPException(status_code=400, detail="Invalid theme selection")
-        current_user.theme = req.theme
+        current_user.theme = req.theme if user_allows(current_user, "custom_themes") else DEFAULT_THEME
 
     if req.age is not None:
         current_user.age = req.age
