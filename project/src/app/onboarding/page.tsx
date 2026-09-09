@@ -15,7 +15,7 @@ const GENRES = [
 ];
 
 const PRESETS = [
-  { id: 'default-dark', name: 'Original Dark', tier: 'Default Free', bg: '#0B0B0F', accent: '#8B5CF6' },
+  { id: 'default-dark', name: 'Original Dark', tier: 'Default Free', bg: '#0B0B0F', accent: '#FFFFFF' },
   { id: 'neo-purple', name: 'Neo Purple', tier: 'Pro Plan', bg: '#0F0B1A', accent: '#8B5CF6' },
   { id: 'midnight-blue', name: 'Midnight Blue', tier: 'Pro+ Plan', bg: '#070B14', accent: '#3B82F6' },
   { id: 'cyber-green', name: 'Cyber Green', tier: 'Vibers Plan', bg: '#050805', accent: '#22C55E' },

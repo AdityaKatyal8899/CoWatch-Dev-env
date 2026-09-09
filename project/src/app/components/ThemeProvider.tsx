@@ -18,10 +18,10 @@ const PRESET_THEMES: Record<string, ThemeColors> = {
   'default-dark': {
     bg: '#0B0B0F',
     card: '#15151A',
-    primary: '#8B5CF6',
-    text: '#E5E7EB',
+    primary: '#FFFFFF',
+    text: '#FFFFFF',
     muted: '#9CA3AF',
-    accent: '#22C55E'
+    accent: '#E5E7EB'
   },
   'neo-purple': {
     bg: '#0F0B1A',
