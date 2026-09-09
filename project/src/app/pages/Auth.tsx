@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Play, Sparkles } from 'lucide-react';
 import { useAuth } from '../lib/auth';
@@ -13,29 +13,41 @@ import { motion } from 'motion/react';
 export default function Auth() {
   const router = useRouter();
 
-  const { login } = useAuth();
+  const { user, login } = useAuth();
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      if (!user.terms_accepted_at) {
+        router.push('/guidelines');
+      } else if (!user.display_name) {
+        router.push('/onboarding');
+      } else {
+        router.push('/dashboard');
+      }
+    }
+  }, [user, router]);
 
   const handleGoogleLogin = useGoogleLogin({
     onSuccess: async (tokenResponse) => {
       setLoading(true);
       try {
         if (!tokenResponse.access_token) {
-          throw new Error('No access token received');
+          throw new Error('No access token received from Google');
         }
         await login("", tokenResponse.access_token);
         toast.success('Welcome to CoWatch!');
-        router.push('/dashboard');
-      } catch (error) {
-        toast.error('Failed to sign in');
+      } catch (error: any) {
+        console.error("Google login failure:", error);
+        toast.error(error.message || 'Failed to sign in. Please try again.');
       } finally {
         setLoading(false);
       }
     },
-    onError: () => {
-      toast.error('Google Sign In failed');
+    onError: (errorResponse) => {
+      console.error("Google OAuth error:", errorResponse);
+      toast.error('Google Sign In was cancelled or failed. Please check popup permissions.');
     },
-    scope: 'openid email profile https://www.googleapis.com/auth/user.birthday.read',
   });
 
   return (

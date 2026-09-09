@@ -23,7 +23,7 @@ const PRESETS = [
 ];
 
 export default function OnboardingPage() {
-  const { user, updateProfile } = useAuth();
+  const { user, setUserState } = useAuth();
   const { theme, setTheme } = useTheme();
   const router = useRouter();
   
@@ -92,7 +92,7 @@ export default function OnboardingPage() {
       }
       
       const updatedUser = await api.onboardUser(payload);
-      await updateProfile(updatedUser);
+      setUserState(updatedUser);
       setIsSuccess(true);
       
       setTimeout(() => {
