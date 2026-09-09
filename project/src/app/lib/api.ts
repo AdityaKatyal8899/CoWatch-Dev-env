@@ -69,10 +69,13 @@ export const api = {
     return request('/moderation/accept-terms', { method: 'POST' });
   },
 
-  async reportContent(payload: { target_type: string; target_id: string; reason: string }): Promise<any> {
+  async reportContent(targetTypeOrPayload: string | { target_type: string; target_id: string; reason: string }, targetId?: string, reason?: string): Promise<any> {
+    const body = typeof targetTypeOrPayload === 'string'
+      ? { target_type: targetTypeOrPayload, target_id: targetId, reason }
+      : targetTypeOrPayload;
     return request('/moderation/report', {
       method: 'POST',
-      body: JSON.stringify(payload),
+      body: JSON.stringify(body),
     });
   },
 
@@ -110,7 +113,7 @@ export const api = {
     });
   },
 
-  async onboardUser(data: { display_name: string; age?: number; genres: string[]; theme: string }): Promise<User> {
+  async onboardUser(data: { display_name: string; age?: number; date_of_birth?: string; genres: string[]; theme?: string }): Promise<User> {
     return request('/user/onboarding', {
       method: 'POST',
       body: JSON.stringify(data),
@@ -285,13 +288,6 @@ export const api = {
     return request('/livekit/token', {
       method: 'POST',
       body: JSON.stringify({ room, username, user_id: userId }),
-    });
-  },
-
-  async reportContent(targetType: string, targetId: string, reason: string): Promise<any> {
-    return request('/moderation/report', {
-      method: 'POST',
-      body: JSON.stringify({ target_type: targetType, target_id: targetId, reason }),
     });
   },
 
