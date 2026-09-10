@@ -12,6 +12,10 @@ from app.database.config import SessionLocal
 from app.database.models import Video
 from app.celery_app import celery_app
 
+# Feature flag: Toggle Multi-Language / Multi-Audio HLS extraction.
+# Kept False for standard single-stream HLS transcoding stability.
+ENABLE_MULTI_AUDIO = False
+
 # Comprehensive ISO 639-1 / 639-2 language code mapping
 ISO_LANGUAGES = {
     "eng": ("English", "en"),
@@ -602,9 +606,13 @@ def process_video_to_hls(video_id: str, input_path: str):
         except Exception as e:
             print(f"[Metadata Error] Failed to generate/upload thumbnail: {e}", flush=True)
 
-        # Probe all audio tracks
-        audio_tracks = probe_audio_streams(input_path)
-        print(f"[Audio Tracks] Detected {len(audio_tracks)} audio stream(s): {audio_tracks}", flush=True)
+        # Probe audio streams if multi-audio is enabled
+        if ENABLE_MULTI_AUDIO:
+            audio_tracks = probe_audio_streams(input_path)
+            print(f"[Audio Tracks] Detected {len(audio_tracks)} audio stream(s): {audio_tracks}", flush=True)
+        else:
+            audio_tracks = None
+            print("[Audio Tracks] Multi-Audio feature disabled. Running standard single-stream HLS transcoding.", flush=True)
 
         update_video_metadata(video_id, exact_duration, thumbnail_url, audio_tracks)
 
@@ -617,17 +625,6 @@ def process_video_to_hls(video_id: str, input_path: str):
                     except Exception as e:
                         print(f"[Cleanup Error] Failed to remove old file {f_name}: {e}", flush=True)
 
-        # 3. Pre-create variant folders for FFmpeg segment output
-        os.makedirs(os.path.join(output_dir, "v0"), exist_ok=True)
-        if audio_tracks:
-            for track in audio_tracks:
-                clean_name = re.sub(r'[,:\s]+', '_', track['name'])
-                os.makedirs(os.path.join(output_dir, f"v{clean_name}"), exist_ok=True)
-
-        # 4. Pre-generate and upload master stream.m3u8 at Step 0
-        generate_and_upload_master_playlist(output_dir, video_id, audio_tracks)
-
-        # 5. Prepare Multi-Audio FFmpeg Args
         common_hls_args = [
             "-force_key_frames", "expr:gte(t,n_forced*2)",
             "-hls_time", "4",
@@ -639,27 +636,22 @@ def process_video_to_hls(video_id: str, input_path: str):
             "-avoid_negative_ts", "make_zero",
         ]
 
-        if not audio_tracks:
-            # Video only (no audio tracks)
-            args = [
-                "ffmpeg", "-y", "-i", input_path,
-                "-map", "0:v:0",
-                "-c:v", "libx264", "-preset", "ultrafast", "-tune", "zerolatency",
-            ] + common_hls_args + [
-                "-master_pl_name", "stream.m3u8",
-                "-var_stream_map", "v:0",
-                "-hls_segment_filename", os.path.join(output_dir, "v%v", "seg_%03d.ts"),
-                os.path.join(output_dir, "v%v", "playlist.m3u8")
-            ]
-        else:
-            # Multi-Audio or Single-Audio with dedicated master playlist
+        # 3. Configure FFmpeg (Multi-Audio vs Standard Single-Stream)
+        if ENABLE_MULTI_AUDIO and audio_tracks:
+            # Multi-Audio sub-variant directories and master playlist setup
+            os.makedirs(os.path.join(output_dir, "v0"), exist_ok=True)
+            for track in audio_tracks:
+                clean_name = re.sub(r'[,:\s]+', '_', track['name'])
+                os.makedirs(os.path.join(output_dir, f"v{clean_name}"), exist_ok=True)
+
+            generate_and_upload_master_playlist(output_dir, video_id, audio_tracks)
+
             args = [
                 "ffmpeg", "-y", "-i", input_path,
                 "-map", "0:v:0",
                 "-c:v", "libx264", "-preset", "ultrafast", "-tune", "zerolatency",
             ]
 
-            # Map and configure each audio track
             for idx, track in enumerate(audio_tracks):
                 args += [
                     "-map", f"0:a:{idx}",
@@ -670,7 +662,6 @@ def process_video_to_hls(video_id: str, input_path: str):
 
             args += common_hls_args
 
-            # Build var_stream_map
             v_map = "v:0,agroup:audio,default:yes"
             a_maps = []
             for idx, track in enumerate(audio_tracks):
@@ -686,8 +677,18 @@ def process_video_to_hls(video_id: str, input_path: str):
                 "-hls_segment_filename", os.path.join(output_dir, "v%v", "seg_%03d.ts"),
                 os.path.join(output_dir, "v%v", "playlist.m3u8")
             ]
+        else:
+            # Standard single-stream HLS transcoding: Video + Default Stereo Audio in one manifest
+            args = [
+                "ffmpeg", "-y", "-i", input_path,
+                "-c:v", "libx264", "-preset", "ultrafast", "-tune", "zerolatency",
+                "-c:a", "aac", "-b:a", "128k", "-ac", "2",
+            ] + common_hls_args + [
+                "-hls_segment_filename", os.path.join(output_dir, "seg_%03d.ts"),
+                stream_playlist
+            ]
 
-        # 6. Parallel S3 Sync Thread
+        # 4. Parallel S3 Sync Thread
         sync_thread = threading.Thread(
             target=s3_sync_worker, 
             args=(output_dir, video_id, stop_event, error_container),
@@ -718,7 +719,7 @@ def process_video_to_hls(video_id: str, input_path: str):
                     error_msg = f"Failed to read FFmpeg log: {read_err}"
                 raise Exception(f"FFmpeg failed with exit code {process.returncode}. Details:\n{error_msg}")
 
-        # 7. Finalize S3 Sync
+        # 5. Finalize S3 Sync
         update_video_status(video_id, "uploading")
         stop_event.set()
         sync_thread.join()
@@ -727,10 +728,12 @@ def process_video_to_hls(video_id: str, input_path: str):
         if error_container:
             raise error_container[0]
 
-        # 8. Final Manifests Normalization and Upload
-        normalize_m3u8_playlists(output_dir, audio_tracks)
+        # 6. Final Manifests Normalization and Upload
+        if ENABLE_MULTI_AUDIO and audio_tracks:
+            normalize_m3u8_playlists(output_dir, audio_tracks)
+
         if os.path.exists(stream_playlist):
-            print(f"[Finalizing] Uploading final stream.m3u8 master playlist...", flush=True)
+            print(f"[Finalizing] Uploading final stream.m3u8 playlist...", flush=True)
             upload_file_with_retry(stream_playlist, f"videos/{video_id}/stream.m3u8", "application/x-mpegURL")
         else:
             raise Exception("FFmpeg completed but stream.m3u8 playlist was not generated")
