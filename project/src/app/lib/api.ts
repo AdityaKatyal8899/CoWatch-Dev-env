@@ -5,7 +5,7 @@ const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
 /**
  * Helper to get the token from cookies or localStorage
  */
-const getAuthToken = () => {
+export const getAuthToken = () => {
   if (typeof document === 'undefined') return null;
   const matches = document.cookie.match(new RegExp('(?:^|; )cowatch_auth=([^;]*)'));
   return matches ? decodeURIComponent(matches[1]) : null;
@@ -299,5 +299,14 @@ export const api = {
     if (streamPath.startsWith('http')) return streamPath;
     const origin = BASE_URL.replace('/api', '');
     return `${origin}${streamPath}`;
-  }
+  },
+
+  /**
+   * Returns the backend video upload endpoint URL.
+   */
+  getUploadUrl(): string {
+    return `${BASE_URL}/videos/upload`;
+  },
+
+  getAuthToken
 };

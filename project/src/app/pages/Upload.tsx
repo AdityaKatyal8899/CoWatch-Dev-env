@@ -80,6 +80,13 @@ export default function Upload() {
           doneAudio.play().catch(() => {});
         } catch (e) {}
       };
+
+      // Register callback for Android native upload failure
+      (window as any).onAndroidUploadFailed = (errorMessage: string) => {
+        setUploading(false);
+        setProcessing(false);
+        toast.error(errorMessage || 'Android upload failed. Please try again.');
+      };
     }
 
     return () => {
@@ -234,9 +241,8 @@ export default function Upload() {
     }
 
     if (typeof window !== 'undefined' && (window as any).AndroidUploadBridge) {
-      const cookieMatch = document.cookie.match(/(?:^|; )cowatch_auth=([^;]*)/);
-      const token = cookieMatch ? decodeURIComponent(cookieMatch[1]) : '';
-      const uploadUrl = `${window.location.origin}/api/videos/upload`;
+      const token = api.getAuthToken?.() || '';
+      const uploadUrl = api.getUploadUrl();
 
       (window as any).AndroidUploadBridge.startNativeUpload(
         title,

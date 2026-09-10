@@ -85,19 +85,17 @@ class UploadService : Service() {
                 return
             }
 
-            // Build metadata parts in raw byte buffers
+            // Build metadata parts in raw byte buffers (FastAPI/Starlette expects standard form-data without Content-Type on text fields)
             val titlePart = (
                 "--$boundary\r\n" +
-                "Content-Disposition: form-data; name=\"title\"\r\n" +
-                "Content-Type: text/plain; charset=UTF-8\r\n\r\n" +
+                "Content-Disposition: form-data; name=\"title\"\r\n\r\n" +
                 "$title\r\n"
             ).toByteArray(Charsets.UTF_8)
 
             val descriptionPart = if (description.isNotEmpty()) {
                 (
                     "--$boundary\r\n" +
-                    "Content-Disposition: form-data; name=\"description\"\r\n" +
-                    "Content-Type: text/plain; charset=UTF-8\r\n\r\n" +
+                    "Content-Disposition: form-data; name=\"description\"\r\n\r\n" +
                     "$description\r\n"
                 ).toByteArray(Charsets.UTF_8)
             } else ByteArray(0)
@@ -105,17 +103,17 @@ class UploadService : Service() {
             val collectionPart = if (!collectionId.isNullOrEmpty() && collectionId != "null" && collectionId != "undefined") {
                 (
                     "--$boundary\r\n" +
-                    "Content-Disposition: form-data; name=\"collection_id\"\r\n" +
-                    "Content-Type: text/plain; charset=UTF-8\r\n\r\n" +
+                    "Content-Disposition: form-data; name=\"collection_id\"\r\n\r\n" +
                     "$collectionId\r\n"
                 ).toByteArray(Charsets.UTF_8)
             } else ByteArray(0)
 
+            val mimeType = contentResolver.getType(fileUri) ?: "video/mp4"
             val fileName = getFileName(fileUri) ?: "video.mp4"
             val fileHeaderPart = (
                 "--$boundary\r\n" +
                 "Content-Disposition: form-data; name=\"file\"; filename=\"$fileName\"\r\n" +
-                "Content-Type: video/mp4\r\n\r\n"
+                "Content-Type: $mimeType\r\n\r\n"
             ).toByteArray(Charsets.UTF_8)
 
             val footerPart = "\r\n--$boundary--\r\n".toByteArray(Charsets.UTF_8)
@@ -227,12 +225,27 @@ class UploadService : Service() {
                 val errStr = conn.errorStream?.bufferedReader()?.use { it.readText() } ?: "HTTP $responseCode"
                 Log.e("UploadService", "Server error: $errStr")
                 showFailureNotification("Server returned error: $errStr")
+                android.os.Handler(android.os.Looper.getMainLooper()).post {
+                    val escapedErr = errStr.replace("'", "\\'").replace("\n", " ")
+                    MainActivity.getWebView()?.evaluateJavascript(
+                        "if (typeof window.onAndroidUploadFailed === 'function') { window.onAndroidUploadFailed('$escapedErr'); }",
+                        null
+                    )
+                }
                 stopSelf()
             }
 
         } catch (e: Exception) {
+            val msg = e.message ?: "Connection error"
             Log.e("UploadService", "Upload failed", e)
-            showFailureNotification(e.message ?: "Connection error")
+            showFailureNotification(msg)
+            android.os.Handler(android.os.Looper.getMainLooper()).post {
+                val escapedMsg = msg.replace("'", "\\'").replace("\n", " ")
+                MainActivity.getWebView()?.evaluateJavascript(
+                    "if (typeof window.onAndroidUploadFailed === 'function') { window.onAndroidUploadFailed('$escapedMsg'); }",
+                    null
+                )
+            }
             stopSelf()
         } finally {
             try { inputStream?.close() } catch (exc: Exception) {}
