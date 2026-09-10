@@ -124,8 +124,13 @@ class MainActivity : AppCompatActivity() {
         settings.javaScriptEnabled = true
         settings.domStorageEnabled = true
         
-        // Use a clean, standard mobile User-Agent to bypass Google OAuth WebView blocks and identify the Android app wrapper
-        settings.userAgentString = "Mozilla/5.0 (Linux; Android 13; SM-S901B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Mobile Safari/537.36 CoWatchAndroid"
+        // Use clean standard Chrome Mobile User-Agent (Google OAuth strictly blocks customized UA strings with 'disallowed_useragent')
+        settings.userAgentString = "Mozilla/5.0 (Linux; Android 13; Pixel 7 Pro) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Mobile Safari/537.36"
+        
+        // Enable third-party cookies (critical for Google Identity Services cross-origin authentication)
+        val cookieManager = android.webkit.CookieManager.getInstance()
+        cookieManager.setAcceptCookie(true)
+        cookieManager.setAcceptThirdPartyCookies(webView, true)
         
         // Autoplay and hardware configurations
         settings.mediaPlaybackRequiresUserGesture = false 
@@ -174,9 +179,13 @@ class MainActivity : AppCompatActivity() {
                 
                 popupWebView.settings.javaScriptEnabled = true
                 popupWebView.settings.domStorageEnabled = true
-                popupWebView.settings.userAgentString = view?.settings?.userAgentString
+                popupWebView.settings.userAgentString = "Mozilla/5.0 (Linux; Android 13; Pixel 7 Pro) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Mobile Safari/537.36"
                 popupWebView.settings.setSupportMultipleWindows(true)
                 popupWebView.settings.javaScriptCanOpenWindowsAutomatically = true
+                
+                val popupCookieManager = android.webkit.CookieManager.getInstance()
+                popupCookieManager.setAcceptCookie(true)
+                popupCookieManager.setAcceptThirdPartyCookies(popupWebView, true)
                 
                 val dialog = android.app.Dialog(context, android.R.style.Theme_Black_NoTitleBar_Fullscreen)
                 dialog.setContentView(popupWebView)

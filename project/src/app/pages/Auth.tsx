@@ -48,6 +48,7 @@ export default function Auth() {
       console.error("Google OAuth error:", errorResponse);
       toast.error('Google Sign In was cancelled or failed. Please check popup permissions.');
     },
+    prompt: 'select_account'
   });
 
   return (
@@ -96,7 +97,7 @@ export default function Auth() {
               <motion.button
                 whileHover={{ scale: 1.02, y: -1 }}
                 whileTap={{ scale: 0.98 }}
-                onClick={() => handleGoogleLogin()}
+                onClick={() => handleGoogleLogin({ prompt: 'select_account' })}
                 className="w-full py-3.5 px-6 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 transition-all flex items-center justify-center gap-3 font-medium text-white shadow-lg"
               >
                 <svg className="w-5 h-5" viewBox="0 0 24 24">
