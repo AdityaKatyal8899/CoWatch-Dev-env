@@ -181,3 +181,123 @@ def send_user_ban_email(to_email: str, reason: str):
     """
     html = _get_base_template(subject, body)
     return _send_html_email(to_email, subject, html)
+
+def send_video_ready_email(
+    to_email: str,
+    username: str,
+    video_title: str,
+    duration: float = 0.0,
+    thumbnail_url: str = "",
+    video_id: str = "",
+    frontend_url: str = "https://cowatch-theta.vercel.app"
+):
+    """Send attractive, glassmorphic dark-mode email notifying user their uploaded video is processed and ready to stream."""
+    subject = f"🎬 Your Video \"{video_title}\" is Ready to Stream on CoWatch!"
+    
+    # Format duration
+    mins = int(duration // 60)
+    secs = int(duration % 60)
+    hrs = mins // 60
+    mins = mins % 60
+    if hrs > 0:
+        duration_str = f"{hrs}h {mins}m {secs}s"
+    else:
+        duration_str = f"{mins}m {secs}s"
+
+    action_url = f"{frontend_url.rstrip('/')}/create-stream?video_id={video_id}" if video_id else f"{frontend_url.rstrip('/')}/dashboard"
+    
+    thumbnail_html = ""
+    if thumbnail_url:
+        thumbnail_html = f"""
+        <div style="margin: 20px 0; border-radius: 14px; overflow: hidden; border: 1px solid rgba(139, 92, 246, 0.3); box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
+          <img src="{thumbnail_url}" alt="{video_title}" style="width: 100%; max-height: 260px; object-fit: cover; display: block;" />
+        </div>
+        """
+
+    html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>{subject}</title>
+</head>
+<body style="margin: 0; padding: 40px 15px; background-color: #07070A; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #FFFFFF;">
+  <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width: 580px; background: #0D0D12; border: 1px solid rgba(139, 92, 246, 0.25); border-radius: 24px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(139, 92, 246, 0.25);">
+          
+          <!-- Header -->
+          <tr>
+            <td style="padding: 36px 36px 20px 36px; text-align: center; background: radial-gradient(circle at 50% 0%, rgba(139, 92, 246, 0.25) 0%, transparent 70%);">
+              <table role="presentation" border="0" cellspacing="0" cellpadding="0" style="margin: 0 auto 16px auto;">
+                <tr>
+                  <td style="background: linear-gradient(135deg, #8B5CF6, #EC4899); width: 40px; height: 40px; border-radius: 12px; text-align: center; vertical-align: middle;">
+                    <span style="color: #FFFFFF; font-size: 20px; line-height: 40px;">▶</span>
+                  </td>
+                  <td style="padding-left: 12px; text-align: left;">
+                    <span style="font-size: 18px; font-weight: 800; color: #FFFFFF;">CoWatch</span><br>
+                    <span style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: #A78BFA;">Streaming Platform</span>
+                  </td>
+                </tr>
+              </table>
+
+              <div style="display: inline-block; background: rgba(34, 197, 94, 0.15); border: 1px solid rgba(34, 197, 94, 0.3); padding: 5px 14px; border-radius: 50px; margin-bottom: 14px;">
+                <span style="font-size: 10px; font-weight: 800; color: #4ADE80; text-transform: uppercase; letter-spacing: 1px;">✅ Transcoding Complete</span>
+              </div>
+
+              <h1 style="margin: 0 0 10px 0; font-size: 24px; font-weight: 800; color: #FFFFFF;">
+                Your Video is Ready to Stream!
+              </h1>
+              <p style="margin: 0; font-size: 14px; line-height: 1.6; color: rgba(255, 255, 255, 0.7);">
+                Hey <strong>{username}</strong>, your uploaded video has been optimized into high-speed HLS segments and is now ready for synchronized watch parties.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Video Details Card -->
+          <tr>
+            <td style="padding: 0 36px;">
+              {thumbnail_html}
+
+              <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 16px; padding: 20px; margin-top: 10px;">
+                <div style="font-size: 16px; font-weight: 700; color: #FFFFFF; margin-bottom: 8px;">
+                  {video_title}
+                </div>
+                <div style="font-size: 12px; color: rgba(255, 255, 255, 0.5); line-height: 1.8;">
+                  ⏱️ <strong>Duration:</strong> {duration_str}<br>
+                  ⚡ <strong>Delivery:</strong> Multi-Bitrate HLS Master Stream<br>
+                  🔒 <strong>Status:</strong> Ready for Live Synchronization
+                </div>
+              </div>
+            </td>
+          </tr>
+
+          <!-- CTA Button -->
+          <tr>
+            <td style="padding: 28px 36px 16px 36px; text-align: center;">
+              <a href="{action_url}" style="display: inline-block; padding: 15px 36px; font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px; color: #FFFFFF !important; background: linear-gradient(135deg, #8B5CF6 0%, #EC4899 100%); text-decoration: none; border-radius: 14px; box-shadow: 0 10px 25px rgba(139, 92, 246, 0.45);">
+                ▶ Host Watch Party Now
+              </a>
+              <p style="margin: 12px 0 0 0; font-size: 11px; color: rgba(255, 255, 255, 0.4);">
+                Or access this video anytime in your <a href="{frontend_url.rstrip('/')}/dashboard" style="color: #A78BFA; text-decoration: underline;">Dashboard</a>
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="padding: 20px 36px; text-align: center; border-top: 1px solid rgba(255, 255, 255, 0.05); background: rgba(0, 0, 0, 0.3);">
+              <p style="margin: 0; font-size: 10px; color: rgba(255, 255, 255, 0.3);">
+                CoWatch Video Pipeline • Synchronized Movie Nights & Watch Parties
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+"""
+    return _send_html_email(to_email, subject, html)

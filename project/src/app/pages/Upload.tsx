@@ -74,6 +74,11 @@ export default function Upload() {
         setUploadedVideoId(videoId);
         setUploadComplete(true);
         toast.success('Upload complete! Video is processing in background.');
+        try {
+          const doneAudio = new Audio('/sounds/uploadDone.mp3');
+          doneAudio.volume = 0.6;
+          doneAudio.play().catch(() => {});
+        } catch (e) {}
       };
     }
 
@@ -199,6 +204,13 @@ export default function Upload() {
 
       setUploadComplete(true);
       toast.success('Upload complete! Processing in background.');
+
+      // Play uploadDone sound effect
+      try {
+        const doneAudio = new Audio('/sounds/uploadDone.mp3');
+        doneAudio.volume = 0.6;
+        doneAudio.play().catch(() => {});
+      } catch (e) {}
 
     } catch (error: any) {
       console.error('[Upload] Error:', error);

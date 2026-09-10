@@ -202,6 +202,11 @@ export default function Room() {
           if ((videoData as any).processing_status === 'ready') {
             setVideo(videoData as any);
             toast.success('Video is ready! Enjoy your watch party.');
+            try {
+              const doneAudio = new Audio('/sounds/uploadDone.mp3');
+              doneAudio.volume = 0.6;
+              doneAudio.play().catch(() => {});
+            } catch (e) {}
           }
         }
       } catch (error) {

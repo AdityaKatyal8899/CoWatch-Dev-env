@@ -770,6 +770,25 @@ def process_video_to_hls(video_id: str, input_path: str):
 
         if success and cleanup_succeeded:
             update_video_status(video_id, "ready")
+            # Notify user via email that their uploaded video is processed and ready to stream
+            try:
+                db_notify = SessionLocal()
+                video_obj = db_notify.query(Video).filter(Video.video_id == video_id).first()
+                if video_obj and video_obj.owner and video_obj.owner.email:
+                    from app.services.email_service import send_video_ready_email
+                    frontend_base = os.getenv("FRONTEND_URL", "https://cowatch-theta.vercel.app").split(",")[0].strip()
+                    send_video_ready_email(
+                        to_email=video_obj.owner.email,
+                        username=video_obj.owner.display_name or video_obj.owner.name or "Creator",
+                        video_title=video_obj.title or "Untitled Video",
+                        duration=video_obj.duration or exact_duration,
+                        thumbnail_url=video_obj.thumbnail_url or thumbnail_url,
+                        video_id=video_id,
+                        frontend_url=frontend_base
+                    )
+                db_notify.close()
+            except Exception as notify_err:
+                print(f"[Email Notification Error] Could not send video ready notification: {notify_err}", flush=True)
         elif success:
             update_video_status(video_id, "failed")
 
