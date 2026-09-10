@@ -585,11 +585,11 @@ export default function Room() {
 
         {/* Stream Area */}
         <div className="w-full lg:flex-1 flex flex-col min-w-0 lg:h-full shrink-0 order-1 lg:order-none">
-          <div className="px-4 lg:px-6 py-3 bg-[#0B0B0F] border-b border-white/5 flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between order-2 lg:order-none">
+          <div className="px-4 lg:px-6 py-3 bg-[var(--bg,#0B0B0F)] border-b border-white/5 flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between order-2 lg:order-none transition-colors duration-300">
             <div className="flex items-center gap-4">
                <div className="flex items-center gap-2 px-3 py-1 bg-white/[0.03] border border-white/5 rounded-full">
-                 <div className="w-1.5 h-1.5 bg-[#9333EA] rounded-full animate-pulse" />
-                 <span className="text-[10px] font-bold uppercase text-white/40 tracking-widest">
+                 <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: 'var(--primary, #9333EA)' }} />
+                 <span className="text-[10px] font-bold uppercase text-white/50 tracking-widest">
                    {participantCount} {participantCount === 1 ? 'Viewer' : 'Viewers'}
                  </span>
                </div>
@@ -615,11 +615,12 @@ export default function Room() {
                   placeholder="Paste YouTube URL to load..."
                   value={newVideoLink}
                   onChange={(e) => setNewVideoLink(e.target.value)}
-                  className="bg-white/5 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[var(--primary)] transition-all flex-1"
+                  className="bg-white/5 border border-white/10 rounded-xl px-3.5 py-1.5 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[var(--primary)] transition-all flex-1 font-medium"
                 />
                 <button
                   type="submit"
-                  className="bg-[var(--primary)] hover:bg-[var(--primary)]/90 text-black font-extrabold uppercase tracking-[0.1em] text-[10px] px-4 py-2 rounded-xl transition-all shadow-lg active:scale-95 whitespace-nowrap"
+                  className="font-extrabold uppercase tracking-[0.1em] text-[10px] px-4 py-2 rounded-xl transition-all shadow-lg active:scale-95 whitespace-nowrap hover:scale-105"
+                  style={{ background: 'var(--primary-gradient, var(--primary))', color: 'var(--primary-foreground, #ffffff)' }}
                 >
                   Load Video
                 </button>
@@ -706,15 +707,19 @@ export default function Room() {
         </div>
 
         {/* Sidebar (Chat & Tabs) */}
-        <div className="w-full lg:w-[380px] bg-[#0B0B0F] border-t lg:border-t-0 lg:border-l border-white/5 flex flex-col flex-1 lg:flex-none lg:h-full shrink-0 min-h-0 order-3 lg:order-none">
+        <div className="w-full lg:w-[380px] bg-[var(--bg,#0B0B0F)] border-t lg:border-t-0 lg:border-l border-white/5 flex flex-col flex-1 lg:flex-none lg:h-full shrink-0 min-h-0 order-3 lg:order-none transition-colors duration-300">
           {/* Tabs Header */}
-          <div className="flex border-b border-white/5 p-1.5 gap-1.5">
+          <div className="flex border-b border-white/5 p-2 gap-2 bg-white/[0.01]">
             <button
                onClick={() => setActiveTab('chat')}
                className={cn(
-                 "flex-1 py-2.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all",
-                 activeTab === 'chat' ? "bg-white/5 text-white" : "text-white/20 hover:text-white/40"
+                 "flex-1 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all",
+                 activeTab === 'chat' ? "shadow-md" : "text-white/40 hover:text-white hover:bg-white/[0.03]"
                )}
+               style={activeTab === 'chat' ? {
+                 background: 'var(--primary-gradient, var(--primary))',
+                 color: 'var(--primary-foreground, #ffffff)'
+               } : {}}
             >
               Chat
             </button>
@@ -722,20 +727,28 @@ export default function Room() {
               <button
                  onClick={() => setActiveTab('episodes')}
                  className={cn(
-                   "flex-1 py-2.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all flex items-center justify-center gap-1.5",
-                   activeTab === 'episodes' ? "bg-white/5 text-white" : "text-white/20 hover:text-white/40"
+                   "flex-1 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all flex items-center justify-center gap-1.5",
+                   activeTab === 'episodes' ? "shadow-md" : "text-white/40 hover:text-white hover:bg-white/[0.03]"
                  )}
+                 style={activeTab === 'episodes' ? {
+                   background: 'var(--primary-gradient, var(--primary))',
+                   color: 'var(--primary-foreground, #ffffff)'
+                 } : {}}
               >
-                <ListVideo className="w-3 h-3" />
+                <ListVideo className="w-3.5 h-3.5" />
                 Episodes
               </button>
             )}
             <button
                onClick={() => setActiveTab('invite')}
                className={cn(
-                 "flex-1 py-2.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all",
-                 activeTab === 'invite' ? "bg-white/5 text-white" : "text-white/20 hover:text-white/40"
+                 "flex-1 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all",
+                 activeTab === 'invite' ? "shadow-md" : "text-white/40 hover:text-white hover:bg-white/[0.03]"
                )}
+               style={activeTab === 'invite' ? {
+                 background: 'var(--primary-gradient, var(--primary))',
+                 color: 'var(--primary-foreground, #ffffff)'
+               } : {}}
             >
               Invite
             </button>

@@ -12,7 +12,7 @@ import requests
 from app.database.config import get_db
 from app.database import models
 from app.auth.oauth2 import get_current_user
-from app.subscriptions.plans import get_plan_config
+from app.subscriptions.plans import PlanRegistry, PLAN_PRICING
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +36,7 @@ def get_usd_to_inr_rate() -> float:
     return FALLBACK_USD_TO_INR
 
 class OrderCreateRequest(BaseModel):
-    plan_id: str  # pro | pro_plus
+    plan_id: str  # pro | pro_plus | vibers
     billing: str  # monthly | annual
 
 class OrderCreateResponse(BaseModel):
@@ -70,14 +70,17 @@ async def create_order(
     plan_id = payload.plan_id.strip().lower()
     billing = payload.billing.strip().lower()
 
-    if plan_id not in ["pro", "pro_plus"]:
-        raise HTTPException(status_code=400, detail="Only Pro and Pro+ plans can be purchased via checkout.")
+    target_plan = PlanRegistry.get(plan_id)
+    if target_plan.code not in ["pro", "pro_plus", "vibers"]:
+        raise HTTPException(status_code=400, detail="Only Pro, Pro+, and Vibers plans can be purchased via checkout.")
 
-    # Determine amount in USD based on plans structure
-    if plan_id == "pro":
-        usd_amount = 1.99 if billing == "monthly" else 19.00
-    else:  # pro_plus
-        usd_amount = 5.99 if billing == "monthly" else 59.00
+    try:
+        usd_amount = target_plan.get_billing_price(billing)
+    except ValueError as err:
+        raise HTTPException(status_code=400, detail=str(err))
+
+    if usd_amount <= 0:
+        raise HTTPException(status_code=400, detail=f"Invalid pricing amount for {plan_id} ({billing}).")
 
     # Retrieve dynamic exchange rate and convert to Paise (INR)
     live_rate = get_usd_to_inr_rate()

@@ -5,7 +5,7 @@ from app.database.config import get_db
 from app.database import models
 from app.auth.oauth2 import get_current_user
 from app.services.s3_service import generate_upload_url
-from app.subscriptions.plans import DEFAULT_THEME, get_user_plan_config, user_allows
+from app.subscriptions.plans import DEFAULT_THEME
 from pydantic import BaseModel
 from typing import Any
 
@@ -45,7 +45,7 @@ async def get_user_stats(
 
     return {
         "storageUsed": storage_sum,
-        "storageLimit": get_user_plan_config(current_user)["storage_limit"],
+        "storageLimit": current_user.plan_tier.storage_limit_bytes,
         "totalUploads": total_uploads,
         "activeStreams": active_streams
     }
@@ -59,11 +59,11 @@ def validate_theme_selection(theme: str) -> bool:
     if theme.startswith("custom:"):
         parts = theme.split(":")
         if len(parts) == 4:
-            bg, primary, text = parts[1], parts[2], parts[3]
-            allowed_bg = ["#0B0B0F", "#0F172A", "#111827", "#1A1A2E", "#0A0F1F", "#18181B"]
-            allowed_primary = ["#8B5CF6", "#3B82F6", "#22C55E", "#F59E0B", "#EF4444", "#06B6D4"]
-            allowed_text = ["#FFFFFF", "#E5E7EB", "#D1D5DB"]
-            return bg in allowed_bg and primary in allowed_primary and text in allowed_text
+            return all(p.startswith("#") and len(p) in (4, 7) for p in parts[1:])
+    if theme.startswith("gradient:"):
+        parts = theme.split(":")
+        if len(parts) == 6:
+            return bool(parts[1]) and all(p.startswith("#") and len(p) in (4, 7) for p in parts[2:])
     return False
 
 @router.post("/onboarding", response_model=UserSchema)
@@ -78,8 +78,9 @@ async def onboard_user(
     if not req.display_name or len(req.display_name.strip()) < 2:
         raise HTTPException(status_code=400, detail="Display name must be at least 2 characters")
 
-    # Theme customization requires a paid plan. Free users are locked to the default theme.
-    if user_allows(current_user, "custom_themes"):
+    # Theme customization requires a paid plan. Free users are locked to default theme.
+    if current_user.plan_tier.allows_custom_themes:
+        current_user.plan_tier.validate_theme(req.theme)
         if not validate_theme_selection(req.theme):
             raise HTTPException(status_code=400, detail="Invalid theme selection or custom colors")
         current_user.theme = req.theme
@@ -125,11 +126,10 @@ async def update_profile(
         current_user.display_name = req.display_name.strip()
 
     if req.theme is not None:
-        if req.theme != DEFAULT_THEME and not user_allows(current_user, "custom_themes"):
-            raise HTTPException(status_code=403, detail="Theme customization is available on paid plans")
+        current_user.plan_tier.validate_theme(req.theme)
         if not validate_theme_selection(req.theme):
             raise HTTPException(status_code=400, detail="Invalid theme selection")
-        current_user.theme = req.theme if user_allows(current_user, "custom_themes") else DEFAULT_THEME
+        current_user.theme = req.theme if current_user.plan_tier.allows_custom_themes else DEFAULT_THEME
 
     if req.age is not None:
         current_user.age = req.age

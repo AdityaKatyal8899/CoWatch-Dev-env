@@ -9,7 +9,6 @@ from app.livekit.config import settings
 from app.database.config import get_db
 from app.database import models
 from app.auth.oauth2 import get_current_user_optional
-from app.subscriptions.plans import DEFAULT_PLAN, get_effective_plan, plan_allows
 
 router = APIRouter(tags=["LiveKit Token"])
 
@@ -43,19 +42,19 @@ async def generate_token(
             )
 
         # 2. Voice chat is gated by the ROOM HOST's plan. Guests inherit the host's tier.
-        host_plan = DEFAULT_PLAN
+        allows_voice_chat = False
         if room.host_id:
             try:
                 host_user = db.query(models.User).filter(
                     models.User.id == uuid.UUID(room.host_id)
                 ).first()
                 if host_user:
-                    host_plan = get_effective_plan(host_user)
+                    allows_voice_chat = host_user.plan_tier.allows_voice_chat
             except (ValueError, TypeError):
                 # Guest host (non-UUID host_id) -> no plan -> Free tier
                 pass
 
-        if not plan_allows(host_plan, "voice_chat"):
+        if not allows_voice_chat:
             raise HTTPException(
                 status_code=403,
                 detail="Voice chat is available on Pro and above plans",

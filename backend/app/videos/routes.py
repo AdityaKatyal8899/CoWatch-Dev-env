@@ -3,6 +3,7 @@ import uuid
 import aiofiles
 from fastapi import APIRouter, File, UploadFile, Form, HTTPException, Depends, Request, Response
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from app.streaming.hls_worker import process_video_to_hls
 from app.services.s3_service import get_s3_url, delete_video_folder
 
@@ -11,7 +12,7 @@ from app.database import models
 from app.database.models import User
 from app.auth.oauth2 import get_current_user
 from app.videos.schemas import VideoResponse, BulkDeleteVideos
-from app.subscriptions.plans import get_user_plan_config
+from app.subscriptions.plans import get_user_billing_period_start, probe_video_duration
 from app.middleware.limiter import limiter
 import shutil
 from typing import Optional
@@ -35,24 +36,34 @@ async def upload_video(
     current_user: User = Depends(get_current_user)
 ):
     """
-    Accept a video upload request, save it, and trigger HLS conversion.
-    Also save metadata to SQLite.
+    Accept a video upload request, validate lifetime/billing-period entitlements,
+    measure source duration for processing hours accounting, and trigger HLS conversion.
     """
-    # Enforce maximum upload count limits based on plans
-    from app.subscriptions.plans import get_effective_plan
-    user_plan = get_effective_plan(current_user)
-    existing_uploads_count = db.query(models.Video).filter(models.Video.user_id == current_user.id).count()
+    plan = current_user.plan_tier
 
-    if user_plan == "free" and existing_uploads_count >= 3:
-        raise HTTPException(
-            status_code=403,
-            detail="Free tier accounts are capped at a maximum of 3 video uploads. Upgrade to Pro for more!"
-        )
-    elif user_plan == "pro" and existing_uploads_count >= 5:
-        raise HTTPException(
-            status_code=403,
-            detail="Pro tier accounts are capped at a maximum of 5 video uploads. Upgrade to Pro+ or Vibers for unlimited uploads!"
-        )
+    # 1. Query upload counts and processing usage for the active entitlement scope
+    if plan.upload_period == "lifetime":
+        # Free Tier: Lifetime uploads scope
+        existing_uploads_count = db.query(models.Video).filter(
+            models.Video.user_id == current_user.id
+        ).count()
+        period_processing_hours = 0.0
+    else:
+        # Paid Tiers (Pro, Pro+, Vibers): Current subscription billing period scope
+        period_start = get_user_billing_period_start(current_user)
+        existing_uploads_count = db.query(models.Video).filter(
+            models.Video.user_id == current_user.id,
+            models.Video.created_at >= period_start
+        ).count()
+        
+        sum_duration_sec = db.query(func.sum(models.Video.duration)).filter(
+            models.Video.user_id == current_user.id,
+            models.Video.created_at >= period_start
+        ).scalar() or 0.0
+        period_processing_hours = float(sum_duration_sec) / 3600.0
+
+    # 2. Enforce upload count threshold before processing file
+    plan.validate_upload_count(existing_uploads_count)
 
     video_id = str(uuid.uuid4())
     video_dir = os.path.join(VIDEOS_DIR, video_id)
@@ -65,16 +76,28 @@ async def upload_video(
     async with aiofiles.open(input_path, 'wb') as out_file:
         while content := await file.read(1024 * 1024): # 1MB chunks
             file_size_bytes += len(content)
-            # Enforce the plan's storage quota (single source of truth = plan config)
-            plan_storage_limit = get_user_plan_config(current_user)["storage_limit"]
-            if current_user.storage_used + file_size_bytes > plan_storage_limit:
-                 # Cleanup and abort if limit hit mid-upload
-                 await out_file.close()
-                 os.remove(input_path)
-                 raise HTTPException(status_code=413, detail="Storage limit exceeded.")
+            try:
+                # Enforce storage quota dynamically on active plan domain object
+                plan.validate_storage_quota(current_user.storage_used, file_size_bytes)
+            except HTTPException:
+                # Cleanup and abort if limit hit mid-upload
+                await out_file.close()
+                if os.path.exists(input_path):
+                    os.remove(input_path)
+                raise
             await out_file.write(content)
+
+    # 3. Probe exact video duration & enforce processing hours entitlement
+    probed_duration_sec = probe_video_duration(input_path)
+    new_duration_hours = probed_duration_sec / 3600.0
+    try:
+        plan.validate_processing_hours(period_processing_hours, new_duration_hours)
+    except HTTPException:
+        if os.path.exists(input_path):
+            os.remove(input_path)
+        raise
         
-    # Persist to SQLAlchemy
+    # 4. Persist to SQLAlchemy
     new_video = models.Video(
         video_id=video_id,
         user_id=current_user.id,
@@ -82,7 +105,8 @@ async def upload_video(
         description=description,
         stream_url=None,
         processing_status='pending',
-        file_size=file_size_bytes
+        file_size=file_size_bytes,
+        duration=probed_duration_sec
     )
     
     current_user.storage_used += file_size_bytes

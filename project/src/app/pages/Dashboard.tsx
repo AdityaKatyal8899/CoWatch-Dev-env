@@ -253,7 +253,8 @@ export default function Dashboard() {
                     />
                     <button 
                       type="submit"
-                      className="px-4 bg-[var(--primary)] text-white rounded-xl hover:bg-[var(--primary-hover)] transition-all flex items-center justify-center shrink-0"
+                      className="px-4 text-white rounded-xl transition-all flex items-center justify-center shrink-0 shadow-md hover:scale-105"
+                      style={{ background: 'var(--primary-gradient, var(--primary))', color: 'var(--primary-foreground, #ffffff)' }}
                     >
                       <ChevronRight className="w-4 h-4" />
                     </button>

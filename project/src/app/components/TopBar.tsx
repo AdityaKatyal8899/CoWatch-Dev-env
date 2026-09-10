@@ -19,30 +19,40 @@ export function TopBar({ roomId, roomName, isHost, onLeave, onReport }: TopBarPr
   };
 
   return (
-    <div className="h-14 bg-[#0B0B0F] border-b border-white/5 px-3 sm:px-6 flex items-center justify-between shrink-0">
+    <div className="h-14 bg-[var(--bg,#0B0B0F)] border-b border-white/5 px-3 sm:px-6 flex items-center justify-between shrink-0 transition-colors duration-300">
       {/* Left: Room Info */}
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-gradient-to-br from-[var(--primary)] to-purple-600 shadow-lg shadow-[var(--primary)]/20">
-            <Play className="w-4 h-4 text-white ml-0.5" fill="currentColor" />
+          <div 
+            className="w-8 h-8 rounded-lg flex items-center justify-center shadow-lg transition-transform hover:scale-105"
+            style={{ background: 'var(--primary-gradient, var(--primary))' }}
+          >
+            <Play className="w-4 h-4 ml-0.5" style={{ color: 'var(--primary-foreground, #ffffff)' }} fill="currentColor" />
           </div>
           <div className="min-w-0">
             <h1 className="text-[13px] font-semibold text-white tracking-tight truncate max-w-[120px] sm:max-w-[300px]">{roomName}</h1>
-            <p className="text-[10px] text-white/20 font-medium uppercase tracking-widest">Live Room</p>
+            <p className="text-[10px] text-white/30 font-medium uppercase tracking-widest">Live Room</p>
           </div>
         </div>
       </div>
 
       {/* Center: Status */}
-      <div className={`px-2.5 py-1 rounded-full flex items-center gap-1 sm:gap-2 border ${
-        isHost 
-          ? 'bg-[var(--primary)]/10 border-[var(--primary)]/20 text-[var(--primary)]' 
-          : 'bg-white/5 border-white/10 text-white/40'
-      }`}>
+      <div 
+        className={`px-3 py-1 rounded-full flex items-center gap-1.5 sm:gap-2 border transition-all ${
+          isHost 
+            ? 'shadow-sm' 
+            : 'bg-white/5 border-white/10 text-white/50'
+        }`}
+        style={isHost ? {
+          backgroundColor: 'rgba(var(--primary-rgb, 139, 92, 246), 0.12)',
+          borderColor: 'rgba(var(--primary-rgb, 139, 92, 246), 0.3)',
+          color: 'var(--primary, #FFFFFF)'
+        } : {}}
+      >
         {isHost ? (
           <>
-            <Crown className="w-3 h-3" />
-            <span className="hidden sm:inline text-[10px] font-bold uppercase tracking-widest">Presenter</span>
+            <Crown className="w-3 h-3 text-inherit" />
+            <span className="hidden sm:inline text-[10px] font-bold uppercase tracking-widest text-inherit">Presenter</span>
           </>
         ) : (
           <>

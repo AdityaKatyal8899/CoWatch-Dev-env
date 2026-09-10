@@ -3,11 +3,12 @@
 // Triggering rebuild for production deployment
 import { useEffect, useRef, useState, useCallback } from 'react';
 import Hls from 'hls.js';
-import { Play, Pause, Volume2, VolumeX, Maximize, Settings, Lock, Unlock, RotateCcw, RotateCw } from './icons';
-import type { SyncState } from '../lib/types';
+import { Play, Pause, Volume2, VolumeX, Maximize, Settings, Lock, Unlock, RotateCcw, RotateCw, Languages, Check } from './icons';
+import type { SyncState, AudioTrackInfo } from '../lib/types';
 import { api } from '../lib/api';
 import { cn } from '../lib/utils';
 import { Loader } from './ui/Loader';
+import { toast } from 'sonner';
 
 
 interface VideoPlayerProps {
@@ -51,6 +52,9 @@ export function VideoPlayer({
   const [vReadyState, setVReadyState] = useState(0);
   const [bufferDepth, setBufferDepth] = useState(0);
   const [hostAction, setHostAction] = useState<string | null>(null);
+  const [audioTracks, setAudioTracks] = useState<AudioTrackInfo[]>([]);
+  const [selectedAudioTrack, setSelectedAudioTrack] = useState<number>(0);
+  const [showAudioMenu, setShowAudioMenu] = useState<boolean>(false);
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const actionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -134,8 +138,22 @@ export function VideoPlayer({
 
       hlsRef.current = hls;
 
+      const syncAudioTracks = () => {
+        if (hls.audioTracks && hls.audioTracks.length > 0) {
+          const mapped: AudioTrackInfo[] = hls.audioTracks.map((t, idx) => ({
+            id: idx,
+            name: t.name || t.lang || `Track ${idx + 1}`,
+            language: t.lang || undefined,
+            default: t.default,
+          }));
+          setAudioTracks(mapped);
+          setSelectedAudioTrack(hls.audioTrack >= 0 ? hls.audioTrack : 0);
+        }
+      };
+
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
         setIsStreamReady(true);
+        syncAudioTracks();
 
         // Auto-play from initial sync if available
         if (lastSyncRef.current?.isPlaying && video.paused) {
@@ -144,6 +162,14 @@ export function VideoPlayer({
             video.play().catch(() => { });
           });
         }
+      });
+
+      hls.on(Hls.Events.AUDIO_TRACKS_UPDATED, () => {
+        syncAudioTracks();
+      });
+
+      hls.on(Hls.Events.AUDIO_TRACK_SWITCHED, (event, data) => {
+        setSelectedAudioTrack(data.id);
       });
 
       hls.on(Hls.Events.ERROR, (event, data) => {
@@ -399,7 +425,8 @@ export function VideoPlayer({
     if (isPlaying) {
       controlsTimeoutRef.current = setTimeout(() => {
         setShowControls(false);
-      }, 2000);
+        setShowAudioMenu(false);
+      }, 2500);
     }
   }, [isPlaying]);
 
@@ -623,6 +650,17 @@ export function VideoPlayer({
     }
   }, []);
 
+  const handleAudioTrackChange = useCallback((trackId: number) => {
+    const hls = hlsRef.current;
+    if (hls && trackId >= 0 && trackId < hls.audioTracks.length) {
+      hls.audioTrack = trackId;
+      setSelectedAudioTrack(trackId);
+      setShowAudioMenu(false);
+      const trackName = audioTracks[trackId]?.name || `Track ${trackId + 1}`;
+      toast.success(`Audio language changed to ${trackName}`);
+    }
+  }, [audioTracks]);
+
   // Keyboard Shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -663,7 +701,6 @@ export function VideoPlayer({
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isHost, isLocked, handlePlayPause, stepSeek, volume, handleVolumeChange, toggleMute, toggleFullscreen]);
-
 
   const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
 
@@ -724,7 +761,10 @@ export function VideoPlayer({
         {/* Top Indicators */}
         <div className="absolute top-6 left-6 flex items-center gap-3">
           {isLocked && (
-            <div className="flex items-center gap-2 px-4 py-2 bg-[var(--primary)] text-[var(--bg)] text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl shadow-xl shadow-[var(--primary)]/40 animate-pulse backdrop-blur-md">
+            <div 
+              className="flex items-center gap-2 px-4 py-2 text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl shadow-xl shadow-[var(--primary)]/40 animate-pulse backdrop-blur-md"
+              style={{ background: 'var(--primary-gradient, var(--primary))', color: 'var(--primary-foreground, #ffffff)' }}
+            >
               <Lock className="w-3.5 h-3.5" />
               Controls Locked
             </div>
@@ -760,10 +800,13 @@ export function VideoPlayer({
           <div className={`relative group/progress transition-all duration-300 ${isLocked ? 'opacity-30 pointer-events-none' : ''}`}>
             <div className="h-1.5 bg-white/20 rounded-full overflow-hidden backdrop-blur-sm">
               <div
-                className="h-full bg-[var(--primary)] transition-all duration-100 relative"
-                style={{ width: `${progressPercent}%` }}
+                className="h-full transition-all duration-100 relative"
+                style={{ width: `${progressPercent}%`, background: 'var(--primary-gradient, var(--primary))' }}
               >
-                <div className="absolute right-0 top-1/2 -translate-y-1/2 w-4 h-4 bg-white rounded-full shadow-lg shadow-[var(--primary)]/50" />
+                <div 
+                  className="absolute right-0 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full shadow-lg"
+                  style={{ background: 'var(--primary, #ffffff)', boxShadow: '0 0 10px var(--primary)' }}
+                />
               </div>
             </div>
             {isHost && (
@@ -816,12 +859,75 @@ export function VideoPlayer({
                   onClick={(e) => { e.stopPropagation(); setIsLocked(!isLocked); }}
                   title={isLocked ? "Unlock Controls" : "Lock Controls"}
                   className={`w-7 h-7 shrink-0 rounded-lg flex items-center justify-center transition-all border ${isLocked
-                      ? 'bg-[var(--primary)] border-[var(--primary)]/40 text-black shadow-[0_0_15px_var(--primary)]'
+                      ? 'border-[var(--primary)]/40 shadow-[0_0_15px_var(--primary)]'
                       : 'bg-black/40 border-white/10 text-white/40 hover:text-white hover:bg-white/10'
                     }`}
+                  style={isLocked ? { background: 'var(--primary-gradient, var(--primary))', color: 'var(--primary-foreground, #ffffff)' } : {}}
                 >
                   {isLocked ? <Lock className="w-3 h-3" /> : <Unlock className="w-3 h-3" />}
                 </button>
+              )}
+
+              {/* Multi-Audio Language Selector (Displays if > 1 Audio Track) */}
+              {audioTracks.length > 1 && (
+                <div className="relative">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setShowAudioMenu(!showAudioMenu); }}
+                    title="Audio Language"
+                    className={cn(
+                      "h-7 px-2 shrink-0 rounded-lg flex items-center gap-1.5 transition-all border text-xs font-bold",
+                      showAudioMenu
+                        ? "border-[var(--primary)] shadow-[0_0_15px_var(--primary)]"
+                        : "bg-black/40 border-white/10 text-white/70 hover:text-white hover:bg-white/10"
+                    )}
+                    style={showAudioMenu ? { background: 'var(--primary-gradient, var(--primary))', color: 'var(--primary-foreground, #ffffff)' } : {}}
+                  >
+                    <Languages className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline uppercase text-[10px] tracking-wider">
+                      {audioTracks[selectedAudioTrack]?.language && audioTracks[selectedAudioTrack]?.language !== 'und'
+                        ? audioTracks[selectedAudioTrack]?.language?.toUpperCase()
+                        : audioTracks[selectedAudioTrack]?.name || "Audio"}
+                    </span>
+                  </button>
+
+                  {/* Audio Language Menu Popover */}
+                  {showAudioMenu && (
+                    <div
+                      onClick={(e) => e.stopPropagation()}
+                      className="absolute bottom-9 right-0 z-50 min-w-[200px] p-2 bg-neutral-900/95 backdrop-blur-2xl border border-white/10 rounded-xl shadow-[0_10px_30px_rgba(0,0,0,0.8)] space-y-1 animate-in fade-in slide-in-from-bottom-2 duration-200"
+                    >
+                      <div className="px-2 py-1 text-[10px] font-black uppercase tracking-widest text-white/40 border-b border-white/5 mb-1 flex items-center gap-1.5">
+                        <Languages className="w-3 h-3 text-[var(--primary)]" />
+                        Audio Languages
+                      </div>
+                      {audioTracks.map((track) => {
+                        const isSelected = track.id === selectedAudioTrack;
+                        return (
+                          <button
+                            key={track.id}
+                            onClick={() => handleAudioTrackChange(track.id)}
+                            className={cn(
+                              "w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all text-left",
+                              isSelected
+                                ? "bg-[var(--primary)]/20 text-[var(--primary)] font-bold border border-[var(--primary)]/30"
+                                : "text-white/80 hover:bg-white/10 hover:text-white"
+                            )}
+                          >
+                            <div className="flex items-center gap-2 truncate">
+                              <span>{track.name}</span>
+                              {track.language && track.language !== "und" && (
+                                <span className="text-[9px] px-1 py-0.5 rounded bg-white/10 text-white/50 uppercase font-mono">
+                                  {track.language}
+                                </span>
+                              )}
+                            </div>
+                            {isSelected && <Check className="w-3.5 h-3.5 text-[var(--primary)] shrink-0 ml-2" />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               )}
 
               {/* Fullscreen */}

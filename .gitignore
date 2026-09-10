@@ -1,2 +1,17 @@
 Coupon Gen/
 Coupon-Gen/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.tsbuildinfo
+storage/
+.env
+.venv/
+*/.venv/
+build/
+dist/
+*.egg-info/
+**/.gradle/
+sdk/
+sdk_abr/

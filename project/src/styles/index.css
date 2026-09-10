@@ -55,14 +55,14 @@ input[type="range"]::-webkit-slider-thumb {
 
 /* Base button overrides for consistency */
 .btn-primary {
-  background: var(--primary);
-  color: var(--bg);
+  background: var(--primary-gradient, var(--primary));
+  color: var(--primary-foreground, #ffffff);
   font-size: 0.75rem; /* 12px */
   font-weight: 700;
-  padding: 0.6rem 1.25rem;
-  border-radius: 0.6rem;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  display: flex;
+  padding: 0.65rem 1.35rem;
+  border-radius: 0.65rem;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
@@ -70,24 +70,47 @@ input[type="range"]::-webkit-slider-thumb {
   cursor: pointer;
   text-transform: uppercase;
   letter-spacing: 0.05em;
+  box-shadow: 0 4px 20px rgba(var(--primary-rgb, 139, 92, 246), 0.35);
+  position: relative;
+  overflow: hidden;
 }
 
 .btn-primary:hover {
-  filter: brightness(1.1);
+  filter: brightness(1.12);
   transform: translateY(-1px);
+  box-shadow: 0 6px 26px rgba(var(--primary-rgb, 139, 92, 246), 0.5);
 }
 
 .btn-primary:active {
   transform: translateY(0px);
+  filter: brightness(0.95);
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  filter: grayscale(0.5);
+  box-shadow: none;
+}
+
+.gradient-text {
+  background: var(--primary-gradient, var(--primary));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.gradient-glow-box {
+  box-shadow: 0 0 35px -5px rgba(var(--primary-rgb, 139, 92, 246), 0.3);
 }
 
 .btn-secondary {
   background: rgba(255, 255, 255, 0.03);
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.6);
   font-size: 0.75rem;
   font-weight: 600;
-  padding: 0.6rem 1.25rem;
-  border-radius: 0.6rem;
+  padding: 0.65rem 1.35rem;
+  border-radius: 0.65rem;
   border: 1px solid rgba(255, 255, 255, 0.1);
   transition: all 0.2s ease;
   display: flex;

@@ -31,6 +31,15 @@ import mimetypes
 # SQLAlchemy DB
 from app.database.config import engine
 from app.database import models
+from sqlalchemy import text
+
+models.Base.metadata.create_all(bind=engine)
+try:
+    with engine.connect() as _conn:
+        _conn.execute(text("ALTER TABLE videos ADD COLUMN IF NOT EXISTS audio_tracks JSON;"))
+        _conn.commit()
+except Exception as _e:
+    pass
 
 from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
@@ -111,3 +120,5 @@ async def health():
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)
+
+#OR: uvicorn app.main:app --reload --host 0.0.0.0 --port 8000

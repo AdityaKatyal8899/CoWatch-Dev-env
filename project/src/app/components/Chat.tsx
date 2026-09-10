@@ -50,6 +50,15 @@ export function Chat({
   };
 
   const getThemeColor = (theme?: string) => {
+    if (!theme) return 'var(--primary, #8B5CF6)';
+    if (theme.startsWith('gradient:')) {
+      const parts = theme.split(':');
+      return parts[2] || '#8B5CF6';
+    }
+    if (theme.startsWith('custom:')) {
+      const parts = theme.split(':');
+      return parts[2] || '#8B5CF6';
+    }
     const PRESET_THEMES: Record<string, string> = {
       'default-dark': '#FFFFFF',
       'neo-purple': '#8B5CF6',
@@ -57,11 +66,11 @@ export function Chat({
       'cyber-green': '#22C55E',
       'warm-minimal': '#F59E0B'
     };
-    return PRESET_THEMES[theme || ''] || '#FFFFFF'; // Fallback to white/primary
+    return PRESET_THEMES[theme] || 'var(--primary, #8B5CF6)';
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#0B0B0F] min-h-0">
+    <div className="flex flex-col h-full bg-[var(--bg,#0B0B0F)] min-h-0 transition-colors duration-300">
       <div className="flex-1 overflow-hidden relative flex flex-col min-h-0">
         {/* Messages Area */}
         <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 sm:space-y-4 scrollbar-thin">
@@ -77,7 +86,14 @@ export function Chat({
               if (isSystem) {
                 return (
                   <div key={msg.id} className="flex justify-center w-full my-1 animate-fade-in">
-                    <span className="text-[9px] font-black uppercase tracking-[0.15em] text-white/30 bg-white/[0.02] border border-white/5 px-3 py-1 rounded-full text-center">
+                    <span 
+                      className="text-[9px] font-black uppercase tracking-[0.15em] px-3 py-1 rounded-full text-center border"
+                      style={{
+                        backgroundColor: 'rgba(var(--primary-rgb, 139, 92, 246), 0.08)',
+                        borderColor: 'rgba(var(--primary-rgb, 139, 92, 246), 0.2)',
+                        color: 'var(--primary, #FFFFFF)'
+                      }}
+                    >
                       {msg.message}
                     </span>
                   </div>
@@ -95,28 +111,35 @@ export function Chat({
                   <div className="flex items-center gap-2 px-1">
                     <span 
                       className="text-[10px] font-bold uppercase tracking-widest transition-colors"
-                      style={{ color: isOwnMessage ? 'var(--primary)' : (msg.theme ? themeColor : 'rgba(255, 255, 255, 0.4)') }}
+                      style={{ color: isOwnMessage ? 'var(--primary, #FFFFFF)' : (msg.theme ? themeColor : 'rgba(255, 255, 255, 0.5)') }}
                     >
-                      {msg.username}
+                      {msg.username} {isOwnMessage && <span className="opacity-60 text-[9px] lowercase font-normal">(you)</span>}
                     </span>
-                    <span className="text-[9px] font-medium text-white/20">
+                    <span className="text-[9px] font-medium text-white/30">
                       {formatTime(msg.timestamp)}
                     </span>
                   </div>
-                  <div className="flex items-center gap-2 max-w-[85%] group/msg w-full justify-start">
+                  <div className={`flex items-center gap-2 max-w-[85%] group/msg w-full ${isOwnMessage ? 'justify-end' : 'justify-start'}`}>
                     <div 
-                      className={`px-3 py-2 rounded-xl text-sm leading-relaxed transition-all duration-300 ${
-                        isOwnMessage 
-                          ? 'bg-[var(--primary)] text-[var(--bg)] font-medium' 
-                          : 'bg-white/[0.03] border border-white/5 text-white/80'
-                      }`}
-                      style={!isOwnMessage && msg.theme ? { 
-                        backgroundColor: `${themeColor}10`, // 10% opacity for others' themes
-                        borderColor: `${themeColor}30`,
-                        color: themeColor 
-                      } : {}}
+                      className="px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed transition-all duration-300 shadow-md"
+                      style={isOwnMessage ? {
+                        background: 'var(--primary-gradient, var(--primary))',
+                        color: 'var(--primary-foreground, #FFFFFF)',
+                        boxShadow: '0 4px 16px rgba(var(--primary-rgb, 139, 92, 246), 0.25)'
+                      } : msg.theme ? { 
+                        backgroundColor: `${themeColor}15`,
+                        borderColor: `${themeColor}40`,
+                        borderWidth: '1px',
+                        color: '#FFFFFF',
+                        boxShadow: `0 2px 12px ${themeColor}15`
+                      } : {
+                        backgroundColor: 'rgba(255, 255, 255, 0.04)',
+                        borderColor: 'rgba(255, 255, 255, 0.08)',
+                        borderWidth: '1px',
+                        color: 'rgba(255, 255, 255, 0.9)'
+                      }}
                     >
-                      <p className="break-words">{msg.message}</p>
+                      <p className="break-words font-medium">{msg.message}</p>
                     </div>
                     {!isOwnMessage && (
                       <button
@@ -136,21 +159,22 @@ export function Chat({
         </div>
 
         {/* Input Area */}
-        <form onSubmit={handleSubmit} className="p-3 sm:p-4 border-t border-white/5 bg-[#0B0B0F]">
+        <form onSubmit={handleSubmit} className="p-3 sm:p-4 border-t border-white/5 bg-[var(--bg,#0B0B0F)] transition-colors duration-300">
           <div className="flex gap-2">
             <input
               type="text"
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               placeholder="Message..."
-              className="flex-1 bg-white/[0.03] min-h-[44px] border border-white/5 rounded-lg px-4 py-2 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-[var(--primary)]/40 transition-all font-medium"
+              className="flex-1 bg-white/[0.03] min-h-[44px] border border-white/10 rounded-xl px-4 py-2 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-[var(--primary)] transition-all font-medium"
             />
             <button
               type="submit"
               disabled={!inputValue.trim()}
-              className="p-2.5 min-h-[44px] min-w-[44px] flex items-center justify-center bg-white/5 hover:bg-white/10 rounded-lg transition-all border border-white/5 disabled:opacity-20 group"
+              className="p-2.5 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl transition-all disabled:opacity-20 shadow-md group cursor-pointer"
+              style={{ background: 'var(--primary-gradient, var(--primary))', color: 'var(--primary-foreground, #ffffff)' }}
             >
-              <Send className="w-4 h-4 text-white/40 group-hover:text-white transition-colors" />
+              <Send className="w-4 h-4 text-inherit transition-transform group-hover:scale-110" />
             </button>
           </div>
         </form>

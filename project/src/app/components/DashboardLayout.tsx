@@ -45,7 +45,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   return (
-    <div className="flex h-screen bg-[#0B0B0F] overflow-hidden">
+    <div className="flex h-screen bg-[var(--bg,#0B0B0F)] text-white overflow-hidden transition-colors duration-300">
       {/* Mobile Toggle */}
       <button 
         onClick={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -57,21 +57,24 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       {/* Overlay for mobile */}
       {isSidebarOpen && (
         <div 
-          className="fixed inset-0 bg-black/40 backdrop-blur-sm lg:hidden z-[80] transition-opacity duration-300" 
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm lg:hidden z-[80] transition-opacity duration-300" 
           onClick={() => setIsSidebarOpen(false)}
         />
       )}
 
       {/* Sidebar */}
       <aside className={`
-        fixed inset-y-0 left-0 z-[90] w-60 border-r border-white/5 flex flex-col bg-[#0B0B0F] transition-transform duration-300 lg:relative lg:translate-x-0
+        fixed inset-y-0 left-0 z-[90] w-60 border-r border-white/5 flex flex-col bg-[var(--bg,#0B0B0F)] transition-transform duration-300 lg:relative lg:translate-x-0
         ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
         {/* Logo */}
         <div className="h-16 flex items-center px-6 border-b border-white/5">
           <Link href="/dashboard" className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-[var(--primary)] flex items-center justify-center">
-              <Play className="w-4 h-4 text-[var(--bg)]" fill="currentColor" />
+            <div 
+              className="w-8 h-8 rounded-lg flex items-center justify-center shadow-lg transition-transform hover:scale-105"
+              style={{ background: 'var(--primary-gradient, var(--primary))' }}
+            >
+              <Play className="w-4 h-4 text-[var(--primary-foreground,#ffffff)]" fill="currentColor" />
             </div>
             <h1 className="text-sm font-bold text-white tracking-tight">CoWatch</h1>
           </Link>
@@ -98,11 +101,11 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                 }}
                 className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-all group ${
                   isActive
-                    ? 'bg-white/5 text-white'
-                    : 'text-white/40 hover:text-white/60 hover:bg-white/[0.02]'
+                    ? 'bg-white/10 text-white font-semibold shadow-sm'
+                    : 'text-white/40 hover:text-white/80 hover:bg-white/[0.03]'
                 }`}
               >
-                <Icon className={`w-4 h-4 transition-colors ${isActive ? 'text-white' : 'group-hover:text-white/60'}`} />
+                <Icon className={`w-4 h-4 transition-colors ${isActive ? 'text-[var(--primary)]' : 'group-hover:text-white/80'}`} />
                 <span className="font-medium text-[13px] flex items-center justify-between w-full">
                   <span>{item.label}</span>
                   {isLocked && <span className="text-[10px]">🔒</span>}
@@ -147,7 +150,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-auto bg-[#0B0B0F]">
+      <main className="flex-1 overflow-auto bg-[var(--bg,#0B0B0F)] transition-colors duration-300">
         {children}
       </main>
     </div>

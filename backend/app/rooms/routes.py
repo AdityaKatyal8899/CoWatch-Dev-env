@@ -63,13 +63,9 @@ async def create_room(request: Request, response: Response, req: CreateRoomReque
     test_url = req.video_url or req.stream_url
     extracted_id = extract_youtube_id(test_url)
     if extracted_id:
-        # Enforce monthly YouTube room limits for the host's plan
+        # Enforce monthly YouTube room limits for the host's plan domain model
         if current_user:
-            from app.subscriptions.plans import get_effective_plan, get_plan_config
-            user_plan = get_effective_plan(current_user)
-            plan_config = get_plan_config(user_plan)
-            yt_limit = plan_config.get("yt_rooms_per_month")
-            
+            yt_limit = current_user.plan_tier.yt_rooms_per_month
             if yt_limit is not None:
                 from datetime import datetime, date
                 today = date.today()

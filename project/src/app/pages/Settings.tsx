@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { PageTransition } from '../components/ui/PageTransition';
 import { motion } from 'motion/react';
 import { formatBytes } from '../lib/utils';
+import { VibersCustomColorStudio } from '../components/VibersCustomColorStudio';
 
 const PRESETS = [
   { id: 'default-dark', name: 'Original Dark' },
@@ -154,21 +155,22 @@ export default function Settings() {
             </motion.button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="md:col-span-2 space-y-6">
+          <div className="space-y-8">
+            {/* Top Row: Profile (2 cols) & Account/Storage (1 col) */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Profile Section */}
               <motion.div 
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                className="glass-card rounded-xl p-6 border border-white/5"
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="lg:col-span-2 glass-card rounded-2xl p-6 sm:p-7 border border-white/5 space-y-6"
               >
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="w-10 h-10 rounded-lg bg-[var(--primary)]/20 flex items-center justify-center">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-[var(--primary)]/20 flex items-center justify-center">
                     <UserCircle className="w-5 h-5 text-[var(--primary)]" />
                   </div>
                   <div>
-                    <h2 className="text-lg font-semibold text-white">Profile</h2>
-                    <p className="text-[var(--muted)] text-sm">Update your public information</p>
+                    <h2 className="text-lg font-semibold text-white">Profile Details</h2>
+                    <p className="text-[var(--muted)] text-xs">Update your public account information</p>
                   </div>
                 </div>
 
@@ -179,7 +181,7 @@ export default function Settings() {
                       type="text"
                       value={displayName}
                       onChange={(e) => setDisplayName(e.target.value)}
-                      className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 outline-none focus:border-[var(--primary)] transition-all text-white"
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 outline-none focus:border-[var(--primary)] transition-all text-white text-sm"
                       placeholder="Enter display name"
                     />
                   </div>
@@ -189,40 +191,133 @@ export default function Settings() {
                       type="date"
                       value={dob}
                       onChange={(e) => setDob(e.target.value)}
-                      className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 outline-none focus:border-[var(--primary)] transition-all text-white"
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 outline-none focus:border-[var(--primary)] transition-all text-white text-sm [color-scheme:dark]"
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-4 pt-2">
                     <div className="space-y-1">
                       <p className="text-[var(--muted)] text-xs uppercase tracking-widest font-semibold">Email</p>
-                      <p className="text-white text-sm truncate">{user?.email}</p>
+                      <p className="text-white text-sm truncate font-medium">{user?.email}</p>
                     </div>
                     <div className="space-y-1">
                       <p className="text-[var(--muted)] text-xs uppercase tracking-widest font-semibold">OAuth Provider</p>
-                      <p className="text-white text-sm capitalize">{user?.provider || 'Google'}</p>
+                      <p className="text-white text-sm capitalize font-medium">{user?.provider || 'Google'}</p>
                     </div>
                   </div>
                 </div>
               </motion.div>
 
-              {/* Appearance Section */}
-              <motion.div 
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.1 }}
-                className="glass-card rounded-xl p-6 border border-white/5"
-              >
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="w-10 h-10 rounded-lg bg-[var(--primary)]/20 flex items-center justify-center">
-                    <Palette className="w-5 h-5 text-[var(--primary)]" />
+              {/* Account, Storage & Actions Column */}
+              <div className="space-y-6">
+                {/* Storage Card */}
+                <motion.div 
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.05 }}
+                  className="glass-card rounded-2xl p-6 border border-white/5 space-y-4"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-[var(--primary)]/20 flex items-center justify-center">
+                      <HardDrive className="w-5 h-5 text-[var(--primary)]" />
+                    </div>
+                    <div>
+                      <h2 className="text-base font-semibold text-white">Storage Capacity</h2>
+                      <p className="text-[var(--muted)] text-xs">
+                        Based on {user?.plan ? (user.plan === 'pro_plus' ? 'Pro+' : user.plan === 'vibers' ? 'Vibers' : user.plan === 'pro' ? 'Pro' : 'Free') : 'Free'} plan
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full transition-all duration-1000"
+                        style={{ width: `${Math.min(storagePercent, 100)}%`, background: 'var(--primary-gradient, var(--primary))' }}
+                      />
+                    </div>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-[var(--muted)]">{formatBytes(stats?.storageUsed || 0)}</span>
+                      <span className="text-white font-medium">{formatBytes(stats?.storageLimit || 0)} total</span>
+                    </div>
+                  </div>
+                </motion.div>
+                
+                {/* Redeem Coupon Card */}
+                <motion.div 
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 }}
+                  className="glass-card rounded-2xl p-6 border border-white/5 space-y-4 overflow-hidden"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-[var(--primary)]/20 flex items-center justify-center shrink-0">
+                      <Gift className="w-5 h-5 text-[var(--primary)]" />
+                    </div>
+                    <h2 className="text-base font-semibold text-white">Redeem Coupon</h2>
+                  </div>
+
+                  <div className="relative flex items-center w-full">
+                    <input 
+                      type="text"
+                      value={couponCode}
+                      onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                      placeholder="ENTER CODE"
+                      className="w-full bg-white/5 border border-white/10 rounded-xl pl-3.5 pr-20 py-2.5 outline-none focus:border-[var(--primary)] focus:bg-white/[0.07] transition-all text-white text-xs font-mono tracking-wider placeholder:font-sans placeholder:tracking-normal placeholder:text-white/20"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleRedeemCoupon}
+                      disabled={isRedeeming || !couponCode.trim()}
+                      className={`absolute right-1.5 top-1.5 bottom-1.5 px-3.5 text-[11px] font-bold uppercase tracking-wider rounded-lg transition-all flex items-center justify-center ${
+                        couponCode.trim() && !isRedeeming
+                          ? 'btn-primary shadow-md shadow-[var(--primary)]/20'
+                          : 'bg-white/5 text-white/30 cursor-not-allowed border border-white/5'
+                      }`}
+                    >
+                      {isRedeeming ? (
+                        <div className="w-3 h-3 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                      ) : (
+                        'Apply'
+                      )}
+                    </button>
+                  </div>
+                </motion.div>
+
+                <motion.button
+                  whileHover={{ scale: 1.02, backgroundColor: 'rgba(239, 68, 68, 0.1)' }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={logout}
+                  className="w-full p-3.5 rounded-xl border border-red-500/20 bg-red-500/5 text-red-400 font-bold text-xs transition-all flex items-center justify-center gap-2"
+                >
+                  <LogOut className="w-4 h-4" />
+                  Sign Out of Account
+                </motion.button>
+              </div>
+            </div>
+
+            {/* Bottom Row: Full Width Appearance & Vibers Custom Color Studio */}
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.15 }}
+              className="glass-card rounded-2xl p-6 sm:p-8 border border-white/5 space-y-7"
+            >
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-white/5">
+                <div className="flex items-center gap-3">
+                  <div className="w-11 h-11 rounded-xl bg-[var(--primary)]/20 flex items-center justify-center">
+                    <Palette className="w-6 h-6 text-[var(--primary)]" />
                   </div>
                   <div>
-                    <h2 className="text-lg font-semibold text-white">Appearance</h2>
-                    <p className="text-[var(--muted)] text-sm">Choose your aesthetic (Previews live)</p>
+                    <h2 className="text-xl font-bold text-white tracking-tight">Theme & Appearance</h2>
+                    <p className="text-[var(--muted)] text-xs mt-0.5">Customize your visual interface across the entire CoWatch platform in real-time</p>
                   </div>
                 </div>
+              </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {/* Preset Themes for Paid Users */}
+              <div className="space-y-3">
+                <p className="text-xs uppercase tracking-wider text-white/50 font-bold">Standard Theme Presets</p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
                   {PRESETS.map((p) => {
                     const isLocked = p.id !== 'default-dark' && (!user?.plan || user.plan === 'free');
                     return (
@@ -237,95 +332,55 @@ export default function Settings() {
                           }
                           handlePreviewTheme(p.id);
                         }}
-                        className={`p-3 rounded-lg border text-left transition-all relative group ${
+                        className={`p-3.5 rounded-xl border text-left transition-all relative group ${
                           isLocked 
                             ? 'border-white/5 bg-white/[0.01] opacity-40 cursor-not-allowed'
                             : pendingTheme === p.id 
-                              ? 'border-[var(--primary)] bg-[var(--primary)]/5'
+                              ? 'border-[var(--primary)] bg-[var(--primary)]/10 shadow-md shadow-[var(--primary)]/10'
                               : 'border-white/5 hover:border-white/10 bg-white/[0.02]'
                         }`}
                       >
-                        <p className={`text-xs font-semibold ${pendingTheme === p.id ? 'text-[var(--primary)]' : 'text-white/60'}`}>{p.name}</p>
-                        {isLocked && <span className="absolute top-2 right-2 text-white/40 text-[10px]">🔒</span>}
-                        {!isLocked && pendingTheme === p.id && <Check className="w-3 h-3 absolute top-2 right-2 text-[var(--primary)]" />}
+                        <p className={`text-xs font-semibold ${pendingTheme === p.id ? 'text-[var(--primary)]' : 'text-white/70'}`}>{p.name}</p>
+                        {isLocked && <span className="absolute top-2.5 right-2.5 text-white/40 text-[10px]">🔒</span>}
+                        {!isLocked && pendingTheme === p.id && <Check className="w-3.5 h-3.5 absolute top-2.5 right-2.5 text-[var(--primary)]" />}
                       </motion.button>
                     );
                   })}
                 </div>
-              </motion.div>
-            </div>
+              </div>
 
-            <div className="space-y-6">
-              {/* Storage Card */}
-              <motion.div 
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                className="glass-card rounded-xl p-6 border border-white/5"
-              >
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="w-10 h-10 rounded-lg bg-[var(--primary)]/20 flex items-center justify-center">
-                    <HardDrive className="w-5 h-5 text-[var(--primary)]" />
+              {/* Vibers Exclusive Custom Color & Gradient Studio */}
+              <div className="pt-6 border-t border-white/5 space-y-4">
+                {user?.plan !== 'vibers' ? (
+                  <div className="p-6 rounded-2xl border border-purple-500/20 bg-gradient-to-br from-purple-500/10 via-purple-500/5 to-transparent flex flex-col md:flex-row items-center justify-between gap-6">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <p className="text-base font-bold text-white">Unlock Bespoke Custom Colors & Gradients</p>
+                        <span className="text-[10px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-2 py-0.5 rounded-full font-bold">
+                          VIBERS ONLY
+                        </span>
+                      </div>
+                      <p className="text-xs text-white/60 max-w-xl">
+                        Design your own bespoke dual-tone gradient or vivid color palette with complete 360° angle controls, dark base tones, and live reactive platform illumination.
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => router.push('/plans')}
+                      className="btn-primary bg-gradient-to-r from-purple-500 to-indigo-600 text-white py-3 px-6 text-xs font-bold shrink-0 rounded-xl shadow-lg shadow-purple-500/25"
+                    >
+                      Upgrade to Vibers
+                    </button>
                   </div>
-                  <h2 className="text-lg font-semibold text-white">Storage</h2>
-                </div>
-
-                <div className="space-y-4">
-                  <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden">
-                    <div 
-                      className="h-full bg-[var(--primary)] transition-all duration-1000"
-                      style={{ width: `${Math.min(storagePercent, 100)}%` }}
-                    />
-                  </div>
-                  <div className="flex justify-between text-xs">
-                    <span className="text-[var(--muted)]">{formatBytes(stats?.storageUsed || 0)} GB</span>
-                    <span className="text-white font-medium">{formatBytes(stats?.storageLimit || 0)} GB total</span>
-                  </div>
-                </div>
-              </motion.div>
-              
-              {/* Redeem Coupon Card */}
-              <motion.div 
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                className="glass-card rounded-xl p-6 border border-white/5 space-y-4"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-[var(--primary)]/20 flex items-center justify-center">
-                    <Gift className="w-5 h-5 text-[var(--primary)]" />
-                  </div>
-                  <h2 className="text-lg font-semibold text-white">Redeem Coupon</h2>
-                </div>
-
-                <div className="space-y-3">
-                  <input 
-                    type="text"
-                    value={couponCode}
-                    onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-                    placeholder="ENTER CODE (e.g. ABCD-1234)"
-                    className="w-full bg-[#0A0A0C] border border-white/10 rounded-lg px-4 py-2.5 outline-none focus:border-[var(--primary)] transition-all text-white text-sm font-mono tracking-wider placeholder:font-sans placeholder:tracking-normal"
+                ) : (
+                  <VibersCustomColorStudio
+                    currentTheme={pendingTheme}
+                    onSelectTheme={(themeString) => {
+                      handlePreviewTheme(themeString);
+                    }}
                   />
-                  <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={handleRedeemCoupon}
-                    disabled={isRedeeming || !couponCode.trim()}
-                    className="w-full btn-primary py-2.5 text-xs font-bold rounded-lg flex items-center justify-center gap-2"
-                  >
-                    {isRedeeming ? 'Applying...' : 'Apply Coupon'}
-                  </motion.button>
-                </div>
-              </motion.div>
-
-              <motion.button
-                whileHover={{ scale: 1.02, backgroundColor: 'rgba(239, 68, 68, 0.1)' }}
-                whileTap={{ scale: 0.98 }}
-                onClick={logout}
-                className="w-full p-4 rounded-xl border border-red-500/20 bg-red-500/5 text-red-500 font-bold transition-all flex items-center justify-center gap-2"
-              >
-                <LogOut className="w-4 h-4" />
-                Sign Out
-              </motion.button>
-            </div>
+                )}
+              </div>
+            </motion.div>
           </div>
         </div>
       </PageTransition>

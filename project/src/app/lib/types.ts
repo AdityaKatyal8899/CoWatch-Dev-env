@@ -54,6 +54,14 @@ export interface CollectionPlaylist {
   videos: Video[];
 }
 
+export interface AudioTrackInfo {
+  id: number;
+  name: string;
+  language?: string;
+  codec?: string;
+  default?: boolean;
+}
+
 export interface Video {
   id: number;
   video_id: string;
@@ -64,6 +72,7 @@ export interface Video {
   thumbnail_url?: string;
   duration?: number; // Optional until backend supports it
   file_size: number;
+  audio_tracks?: AudioTrackInfo[];
   user_id: string;
   created_at: string;
 }
