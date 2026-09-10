@@ -4,7 +4,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from app.database.config import Base
 from sqlalchemy.sql import func
 import uuid
-from app.subscriptions.plans import DEFAULT_PLAN
+from app.subscriptions.plans import DEFAULT_PLAN, PlanRegistry, BasePlan
 
 class User(Base):
     __tablename__ = "users"
@@ -34,6 +34,12 @@ class User(Base):
 
     videos = relationship("Video", back_populates="owner")
     collections = relationship("Collection", back_populates="owner")
+
+    @property
+    def plan_tier(self) -> BasePlan:
+        """Returns the active OOP domain plan object for this user."""
+        return PlanRegistry.resolve_for_user(self)
+
 
 class Video(Base):
     __tablename__ = "videos"

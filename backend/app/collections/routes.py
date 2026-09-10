@@ -7,7 +7,6 @@ from app.database.config import get_db
 from app.database import models
 from app.schemas import pydantic_model as schema
 from app.auth.oauth2 import get_current_user
-from app.subscriptions.plans import user_allows
 
 router = APIRouter(
     prefix="/collections",
@@ -20,7 +19,7 @@ def create_collection(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    if not user_allows(current_user, "collections"):
+    if not current_user.plan_tier.allows_collections:
         raise HTTPException(status_code=403, detail="Collections are available on paid plans")
 
     new_collection = models.Collection(

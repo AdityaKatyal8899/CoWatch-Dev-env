@@ -104,21 +104,16 @@ async def room_websocket(websocket: WebSocket, room_id: str, user_id: str):
         }
 
 
-    # Enforce participant limits based on host's plan
-    host_plan = "free"
+    # Enforce participant limits based on host's plan domain model
+    max_participants = 6
     if room.host_id:
         try:
             with SessionLocal() as db_cap:
                 host_user = db_cap.query(models.User).filter(models.User.id == uuid.UUID(room.host_id)).first()
                 if host_user:
-                    from app.subscriptions.plans import get_effective_plan
-                    host_plan = get_effective_plan(host_user)
+                    max_participants = host_user.plan_tier.max_participants
         except Exception:
             pass
-
-    from app.subscriptions.plans import get_plan_config
-    plan_config = get_plan_config(host_plan)
-    max_participants = plan_config.get("max_participants", 6)
 
     # Check active connections count
     current_active = active_connections.get(room_id, {})

@@ -761,7 +761,10 @@ export function VideoPlayer({
         {/* Top Indicators */}
         <div className="absolute top-6 left-6 flex items-center gap-3">
           {isLocked && (
-            <div className="flex items-center gap-2 px-4 py-2 bg-[var(--primary)] text-[var(--bg)] text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl shadow-xl shadow-[var(--primary)]/40 animate-pulse backdrop-blur-md">
+            <div 
+              className="flex items-center gap-2 px-4 py-2 text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl shadow-xl shadow-[var(--primary)]/40 animate-pulse backdrop-blur-md"
+              style={{ background: 'var(--primary-gradient, var(--primary))', color: 'var(--primary-foreground, #ffffff)' }}
+            >
               <Lock className="w-3.5 h-3.5" />
               Controls Locked
             </div>
@@ -797,10 +800,13 @@ export function VideoPlayer({
           <div className={`relative group/progress transition-all duration-300 ${isLocked ? 'opacity-30 pointer-events-none' : ''}`}>
             <div className="h-1.5 bg-white/20 rounded-full overflow-hidden backdrop-blur-sm">
               <div
-                className="h-full bg-[var(--primary)] transition-all duration-100 relative"
-                style={{ width: `${progressPercent}%` }}
+                className="h-full transition-all duration-100 relative"
+                style={{ width: `${progressPercent}%`, background: 'var(--primary-gradient, var(--primary))' }}
               >
-                <div className="absolute right-0 top-1/2 -translate-y-1/2 w-4 h-4 bg-white rounded-full shadow-lg shadow-[var(--primary)]/50" />
+                <div 
+                  className="absolute right-0 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full shadow-lg"
+                  style={{ background: 'var(--primary, #ffffff)', boxShadow: '0 0 10px var(--primary)' }}
+                />
               </div>
             </div>
             {isHost && (
@@ -853,9 +859,10 @@ export function VideoPlayer({
                   onClick={(e) => { e.stopPropagation(); setIsLocked(!isLocked); }}
                   title={isLocked ? "Unlock Controls" : "Lock Controls"}
                   className={`w-7 h-7 shrink-0 rounded-lg flex items-center justify-center transition-all border ${isLocked
-                      ? 'bg-[var(--primary)] border-[var(--primary)]/40 text-black shadow-[0_0_15px_var(--primary)]'
+                      ? 'border-[var(--primary)]/40 shadow-[0_0_15px_var(--primary)]'
                       : 'bg-black/40 border-white/10 text-white/40 hover:text-white hover:bg-white/10'
                     }`}
+                  style={isLocked ? { background: 'var(--primary-gradient, var(--primary))', color: 'var(--primary-foreground, #ffffff)' } : {}}
                 >
                   {isLocked ? <Lock className="w-3 h-3" /> : <Unlock className="w-3 h-3" />}
                 </button>
@@ -870,9 +877,10 @@ export function VideoPlayer({
                     className={cn(
                       "h-7 px-2 shrink-0 rounded-lg flex items-center gap-1.5 transition-all border text-xs font-bold",
                       showAudioMenu
-                        ? "bg-[var(--primary)] border-[var(--primary)] text-black shadow-[0_0_15px_var(--primary)]"
+                        ? "border-[var(--primary)] shadow-[0_0_15px_var(--primary)]"
                         : "bg-black/40 border-white/10 text-white/70 hover:text-white hover:bg-white/10"
                     )}
+                    style={showAudioMenu ? { background: 'var(--primary-gradient, var(--primary))', color: 'var(--primary-foreground, #ffffff)' } : {}}
                   >
                     <Languages className="w-3.5 h-3.5" />
                     <span className="hidden sm:inline uppercase text-[10px] tracking-wider">
