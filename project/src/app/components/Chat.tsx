@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { Send } from './icons';
-import { Flag } from 'lucide-react';
+import { Flag, Volume2, VolumeX } from 'lucide-react';
 import type { ChatMessage, Room } from '../lib/types';
 import { InvitePanel } from './InvitePanel';
 
@@ -22,15 +22,81 @@ export function Chat({
   onReportMessage
 }: ChatProps) {
   const [inputValue, setInputValue] = useState('');
+  const [soundEnabled, setSoundEnabled] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('cowatch_chat_sound_enabled');
+      return saved !== null ? saved === 'true' : true;
+    }
+    return true;
+  });
+  
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const prevMessagesCountRef = useRef<number>(messages.length);
+  const isInitialMountRef = useRef<boolean>(true);
+  const lastSoundTimeRef = useRef<number>(0);
+
+  // Initialize notification sound effect
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const audio = new Audio('/sounds/text.mp3');
+      audio.volume = 0.55;
+      audioRef.current = audio;
+    }
+  }, []);
+
+  // Persist sound toggle preference
+  const toggleSound = () => {
+    setSoundEnabled(prev => {
+      const next = !prev;
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('cowatch_chat_sound_enabled', String(next));
+      }
+      return next;
+    });
+  };
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
+  // Trigger notification sound on new incoming messages from other participants
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+
+    if (isInitialMountRef.current) {
+      isInitialMountRef.current = false;
+      prevMessagesCountRef.current = messages.length;
+      return;
+    }
+
+    if (messages.length > prevMessagesCountRef.current) {
+      const newMessages = messages.slice(prevMessagesCountRef.current);
+      const hasIncomingParticipantText = newMessages.some(
+        msg => msg.userId !== 'system' && msg.username !== currentUsername
+      );
+
+      if (hasIncomingParticipantText && soundEnabled && audioRef.current) {
+        const now = Date.now();
+        if (now - lastSoundTimeRef.current > 250) { // 250ms debounce
+          lastSoundTimeRef.current = now;
+          try {
+            audioRef.current.currentTime = 0;
+            const playPromise = audioRef.current.play();
+            if (playPromise !== undefined) {
+              playPromise.catch(() => {
+                // Ignore browser autoplay restriction if user hasn't interacted yet
+              });
+            }
+          } catch (e) {
+            // Safe fallback
+          }
+        }
+      }
+    }
+
+    prevMessagesCountRef.current = messages.length;
+  }, [messages, currentUsername, soundEnabled]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -160,7 +226,23 @@ export function Chat({
 
         {/* Input Area */}
         <form onSubmit={handleSubmit} className="p-3 sm:p-4 border-t border-white/5 bg-[var(--bg,#0B0B0F)] transition-colors duration-300">
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={toggleSound}
+              title={soundEnabled ? "Chat Notification Sound: Enabled (Click to Mute)" : "Chat Notification Sound: Muted (Click to Enable)"}
+              className={`p-2.5 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl border transition-all cursor-pointer ${
+                soundEnabled 
+                  ? "bg-white/[0.04] border-white/10 text-white/70 hover:text-white hover:bg-white/10" 
+                  : "bg-red-500/10 border-red-500/20 text-red-400 hover:bg-red-500/20"
+              }`}
+            >
+              {soundEnabled ? (
+                <Volume2 className="w-4 h-4" />
+              ) : (
+                <VolumeX className="w-4 h-4" />
+              )}
+            </button>
             <input
               type="text"
               value={inputValue}

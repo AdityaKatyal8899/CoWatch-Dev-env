@@ -53,6 +53,16 @@ export default function Room() {
   const [isDisbanding, setIsDisbanding] = useState(false);
   const [disbandCountdown, setDisbandCountdown] = useState(5);
   const [newVideoLink, setNewVideoLink] = useState('');
+  const joinAudioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Initialize participant joined sound effect
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const audio = new Audio('/sounds/joined.mp3');
+      audio.volume = 0.55;
+      joinAudioRef.current = audio;
+    }
+  }, []);
 
   // Moderation Report States
   const [showReportModal, setShowReportModal] = useState(false);
@@ -373,6 +383,17 @@ export default function Room() {
               timestamp: new Date().toISOString()
             };
             setMessages((prev) => [...prev, joinMsg]);
+
+            // Play entrance sound effect
+            if (joinAudioRef.current) {
+              try {
+                joinAudioRef.current.currentTime = 0;
+                const playPromise = joinAudioRef.current.play();
+                if (playPromise !== undefined) {
+                  playPromise.catch(() => {});
+                }
+              } catch (e) {}
+            }
 
             setRoom((prev) => {
               if (!prev) return null;
