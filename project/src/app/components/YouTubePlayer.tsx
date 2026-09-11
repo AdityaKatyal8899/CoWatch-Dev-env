@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { Play, Pause, Volume2, VolumeX, Maximize, Settings, Lock, Unlock, RotateCcw, RotateCw } from './icons';
 import { cn } from '../lib/utils';
 
@@ -46,14 +47,25 @@ export function YouTubePlayer({
   const [isReady, setIsReady] = useState(false);
   const [showControls, setShowControls] = useState(true);
   const [isLocked, setIsLocked] = useState(false);
+  const [isScrubbing, setIsScrubbing] = useState(false);
   const [hostAction, setHostAction] = useState<string | null>(null);
   const [availableQualities, setAvailableQualities] = useState<string[]>([]);
   const [currentQuality, setCurrentQuality] = useState<string>('default');
   const [showQualityMenu, setShowQualityMenu] = useState(false);
+  const [seekFeedback, setSeekFeedback] = useState<{ type: 'backward' | 'forward'; id: number } | null>(null);
 
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const actionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const seekFeedbackTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastSyncRef = useRef<any>(null);
+
+  const triggerSeekAnimation = useCallback((direction: 'backward' | 'forward') => {
+    if (seekFeedbackTimeoutRef.current) clearTimeout(seekFeedbackTimeoutRef.current);
+    setSeekFeedback({ type: direction, id: Date.now() });
+    seekFeedbackTimeoutRef.current = setTimeout(() => {
+      setSeekFeedback(null);
+    }, 650);
+  }, []);
   const lastInteractionTimeRef = useRef(0);
   const hasInitialSyncRef = useRef(false);
   const isSeekingRef = useRef(false);
@@ -65,7 +77,7 @@ export function YouTubePlayer({
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
-  // Reset controls hide timer
+  // Reset controls hide timer (2s Netflix Dissolve)
   const resetControlsTimer = useCallback(() => {
     setShowControls(true);
     if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
@@ -73,7 +85,7 @@ export function YouTubePlayer({
     controlsTimeoutRef.current = setTimeout(() => {
       setShowControls(false);
       setShowQualityMenu(false);
-    }, 3000);
+    }, 2000);
   }, [isLocked]);
 
   useEffect(() => {
@@ -348,9 +360,10 @@ export function YouTubePlayer({
   // Skip step seeker
   const stepSeek = useCallback((offset: number) => {
     if (!isReady || !playerRef.current) return;
+    triggerSeekAnimation(offset < 0 ? 'backward' : 'forward');
     const nextTime = Math.max(0, Math.min(duration, playerRef.current.getCurrentTime() + offset));
     handleSeek(nextTime);
-  }, [isReady, duration, handleSeek]);
+  }, [isReady, duration, handleSeek, triggerSeekAnimation]);
 
   // Mute / Volume handlers
   const toggleMute = useCallback(() => {
@@ -456,7 +469,7 @@ export function YouTubePlayer({
       {isReady && (
         <div
           className={cn(
-            "absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent transition-all duration-500",
+            "absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent transition-opacity duration-300 ease-out",
             showControls ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
           )}
         >
@@ -482,26 +495,85 @@ export function YouTubePlayer({
             )}
           </div>
 
-          {/* Center Play/Seek Controls (Host Only) */}
+          {/* Center Play/Seek Controls (Host Only - Netflix Style Modular Floating Buttons) */}
           {isHost && !isLocked && (
-            <div className="absolute inset-0 flex items-center justify-center gap-6 sm:gap-12 pointer-events-none">
+            <div className="absolute inset-0 flex items-center justify-center gap-8 sm:gap-16 md:gap-24 pointer-events-none select-none">
+              {/* 10s Rewind with Subtle Spring Micro-Animation */}
               <button
                 onClick={(e) => { e.stopPropagation(); stepSeek(-10); }}
-                className="p-4 sm:p-5 bg-black/20 hover:bg-white/10 rounded-full border border-white/5 backdrop-blur-xl transition-all group active:scale-90 pointer-events-auto shadow-2xl"
+                className="relative group flex flex-col items-center justify-center p-3 text-white/90 hover:text-white hover:scale-110 active:scale-90 transition-all duration-200 cursor-pointer pointer-events-auto filter drop-shadow-[0_4px_16px_rgba(0,0,0,0.85)] focus:outline-none"
+                title="Rewind 10 seconds"
+                aria-label="Rewind 10 seconds"
               >
-                <RotateCcw className="w-5 h-5 sm:w-8 sm:h-8 text-white/70 group-hover:text-white" />
+                <AnimatePresence>
+                  {seekFeedback?.type === 'backward' && (
+                    <motion.div
+                      key={seekFeedback.id}
+                      initial={{ opacity: 0, y: 4, scale: 0.7 }}
+                      animate={{ opacity: 1, y: -22, scale: 1.1 }}
+                      exit={{ opacity: 0, y: -32, scale: 0.85 }}
+                      transition={{ duration: 0.5, ease: 'easeOut' }}
+                      className="absolute -top-3 pointer-events-none px-2 py-0.5 rounded-full bg-white/20 border border-white/25 backdrop-blur-md text-white font-black text-[10px] tracking-tight shadow-[0_0_12px_rgba(255,255,255,0.4)]"
+                    >
+                      -10s
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                <motion.div 
+                  animate={seekFeedback?.type === 'backward' ? { rotate: -40, scale: 1.15 } : { rotate: 0, scale: 1 }}
+                  transition={{ type: 'spring', stiffness: 450, damping: 15 }}
+                  className="relative flex items-center justify-center"
+                >
+                  <RotateCcw className="w-8 h-8 sm:w-11 sm:h-11 md:w-12 md:h-12 text-white stroke-[1.75]" />
+                  <span className="absolute text-[9px] sm:text-[11px] font-black text-white select-none pointer-events-none mt-0.5">10</span>
+                </motion.div>
               </button>
+
+              {/* Center Play/Pause */}
               <button
                 onClick={(e) => { e.stopPropagation(); handlePlayPause(); }}
-                className="w-14 h-14 sm:w-20 sm:h-20 bg-white text-black rounded-full flex items-center justify-center shadow-[0_0_40px_rgba(255,255,255,0.2)] hover:scale-105 active:scale-95 transition-all pointer-events-auto"
+                className="p-3 sm:p-5 text-white hover:text-white hover:scale-110 active:scale-90 transition-all duration-200 cursor-pointer pointer-events-auto filter drop-shadow-[0_6px_24px_rgba(0,0,0,0.9)] focus:outline-none"
+                title={isPlaying ? "Pause" : "Play"}
+                aria-label={isPlaying ? "Pause" : "Play"}
               >
-                {isPlaying ? <Pause className="w-6 h-6 sm:w-10 sm:h-10" fill="black" /> : <Play className="w-6 h-6 sm:w-10 sm:h-10 ml-1" fill="black" />}
+                {isPlaying ? (
+                  <Pause className="w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 text-white fill-white" />
+                ) : (
+                  <Play className="w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 text-white fill-white ml-1.5" />
+                )}
               </button>
+
+              {/* 10s Forward with Subtle Spring Micro-Animation */}
               <button
                 onClick={(e) => { e.stopPropagation(); stepSeek(10); }}
-                className="p-4 sm:p-5 bg-black/20 hover:bg-white/10 rounded-full border border-white/5 backdrop-blur-xl transition-all group active:scale-90 pointer-events-auto shadow-2xl"
+                className="relative group flex flex-col items-center justify-center p-3 text-white/90 hover:text-white hover:scale-110 active:scale-90 transition-all duration-200 cursor-pointer pointer-events-auto filter drop-shadow-[0_4px_16px_rgba(0,0,0,0.85)] focus:outline-none"
+                title="Forward 10 seconds"
+                aria-label="Forward 10 seconds"
               >
-                <RotateCw className="w-5 h-5 sm:w-8 sm:h-8 text-white/70 group-hover:text-white" />
+                <AnimatePresence>
+                  {seekFeedback?.type === 'forward' && (
+                    <motion.div
+                      key={seekFeedback.id}
+                      initial={{ opacity: 0, y: 4, scale: 0.7 }}
+                      animate={{ opacity: 1, y: -22, scale: 1.1 }}
+                      exit={{ opacity: 0, y: -32, scale: 0.85 }}
+                      transition={{ duration: 0.5, ease: 'easeOut' }}
+                      className="absolute -top-3 pointer-events-none px-2 py-0.5 rounded-full bg-white/20 border border-white/25 backdrop-blur-md text-white font-black text-[10px] tracking-tight shadow-[0_0_12px_rgba(255,255,255,0.4)]"
+                    >
+                      +10s
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                <motion.div 
+                  animate={seekFeedback?.type === 'forward' ? { rotate: 40, scale: 1.15 } : { rotate: 0, scale: 1 }}
+                  transition={{ type: 'spring', stiffness: 450, damping: 15 }}
+                  className="relative flex items-center justify-center"
+                >
+                  <RotateCw className="w-8 h-8 sm:w-11 sm:h-11 md:w-12 md:h-12 text-white stroke-[1.75]" />
+                  <span className="absolute text-[9px] sm:text-[11px] font-black text-white select-none pointer-events-none mt-0.5">10</span>
+                </motion.div>
               </button>
             </div>
           )}
@@ -510,6 +582,21 @@ export function YouTubePlayer({
           <div className="absolute bottom-0 left-0 right-0 p-4 lg:p-6 space-y-4">
             {/* Progress Bar Area */}
             <div className={`relative group/progress transition-all duration-300 ${isLocked ? 'opacity-30 pointer-events-none' : ''}`}>
+              {/* Peek Time Indicator */}
+              <AnimatePresence>
+                {isScrubbing && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 8, scale: 0.85 }}
+                    animate={{ opacity: 1, y: -24, scale: 1 }}
+                    exit={{ opacity: 0, y: 4, scale: 0.85 }}
+                    transition={{ duration: 0.15 }}
+                    style={{ left: `${Math.max(4, Math.min(progressPercent, 96))}%` }}
+                    className="absolute -top-1 -translate-x-1/2 pointer-events-none z-30 px-2 py-0.5 rounded-md bg-black/85 backdrop-blur-md border border-white/20 text-white font-mono text-[10px] font-bold shadow-xl"
+                  >
+                    {formatTime(currentTime)}
+                  </motion.div>
+                )}
+              </AnimatePresence>
               <div className="h-1.5 bg-white/20 rounded-full overflow-hidden backdrop-blur-sm">
                 <div
                   className="h-full bg-[var(--primary)] transition-all duration-100 relative"
@@ -524,7 +611,14 @@ export function YouTubePlayer({
                   min="0"
                   max={duration || 100}
                   value={currentTime}
-                  onChange={(e) => handleSeek(parseFloat(e.currentTarget.value))}
+                  onInput={(e) => {
+                    setIsScrubbing(true);
+                    setCurrentTime(parseFloat(e.currentTarget.value));
+                  }}
+                  onChange={(e) => {
+                    setIsScrubbing(false);
+                    handleSeek(parseFloat(e.currentTarget.value));
+                  }}
                   className="absolute inset-0 w-full opacity-0 cursor-pointer"
                 />
               )}

@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
-import { Mic, Headphones, ShieldAlert, Users, Radio, RefreshCw, Menu, X } from "lucide-react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import { Mic, Headphones, ShieldAlert, Users, Radio, RefreshCw, Menu, X, Settings2 } from "lucide-react";
 import { 
   Room, 
   RoomEvent, 
@@ -16,6 +16,7 @@ import { VoiceControls } from "./VoiceControls";
 import { VoiceSettingsModal } from "./VoiceSettingsModal";
 import { cn } from "../lib/utils";
 import { api } from "../lib/api";
+import { VoiceSettings, useVoiceSettings } from "../lib/audioSettings";
 import type { User } from "../lib/types";
 
 interface VoiceSidebarProps {
@@ -37,6 +38,12 @@ export function VoiceSidebar({ currentUser, hostId, isHost, roomId, roomParticip
   const [volume, setVolume] = useState(80);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
+  // Persistent Audio Settings Hook
+  const {
+    settings: voiceSettings,
+    updateSettings: updateVoiceSettings,
+  } = useVoiceSettings();
+
   // Drawer panel trigger state
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
@@ -48,11 +55,13 @@ export function VoiceSidebar({ currentUser, hostId, isHost, roomId, roomParticip
   const isLocalMutedRef = useRef(isLocalMuted);
   const isLocalDeafenedRef = useRef(isLocalDeafened);
   const volumeRef = useRef(volume);
+  const voiceSettingsRef = useRef(voiceSettings);
 
   // Synchronize Refs with state changes
   useEffect(() => { isLocalMutedRef.current = isLocalMuted; }, [isLocalMuted]);
   useEffect(() => { isLocalDeafenedRef.current = isLocalDeafened; }, [isLocalDeafened]);
   useEffect(() => { volumeRef.current = volume; }, [volume]);
+  useEffect(() => { voiceSettingsRef.current = voiceSettings; }, [voiceSettings]);
 
   // Local user display helper
   const localUserName = currentUser?.display_name || currentUser?.name || "Guest User";
@@ -189,8 +198,16 @@ export function VoiceSidebar({ currentUser, hostId, isHost, roomId, roomParticip
           const audioEl = track.attach();
           document.body.appendChild(audioEl);
 
-          // Apply current volume & deafen states
-          const targetVol = isLocalDeafenedRef.current ? 0 : volumeRef.current / 100;
+          // Route audio output device if custom sink specified
+          if (voiceSettingsRef.current.outputDeviceId !== "default" && typeof (audioEl as any).setSinkId === "function") {
+            (audioEl as any).setSinkId(voiceSettingsRef.current.outputDeviceId).catch((err: any) => {
+              console.warn("[VoiceSidebar] setSinkId error on track subscription:", err);
+            });
+          }
+
+          // Apply current volume & deafen states scaled by user voice settings
+          const scaledVolume = (volumeRef.current / 100) * (voiceSettingsRef.current.outputVolume / 100);
+          const targetVol = isLocalDeafenedRef.current ? 0 : Math.max(0, Math.min(1, scaledVolume));
           audioEl.volume = targetVol;
           console.log(`[VoiceSidebar] Audio Playback Started for ${participant.identity} with volume=${targetVol * 100}%`);
         }
@@ -219,9 +236,27 @@ export function VoiceSidebar({ currentUser, hostId, isHost, roomId, roomParticip
       // 5. Connect WebSocket to LiveKit Server
       await room.connect(tokenResponse.url, tokenResponse.token);
 
-      // 6. Publish Local Microphone to the Voice Room
-      await room.localParticipant.setMicrophoneEnabled(true);
-      console.log("[VoiceSidebar] Microphone Enabled (published).");
+      // 6. Set custom output device if configured
+      if (voiceSettingsRef.current.outputDeviceId !== "default") {
+        try {
+          await room.switchActiveDevice("audiooutput", voiceSettingsRef.current.outputDeviceId);
+        } catch (devErr) {
+          console.warn("[VoiceSidebar] Output device selection on connect:", devErr);
+        }
+      }
+
+      // 7. Publish Local Microphone to the Voice Room with custom DSP constraints
+      await room.localParticipant.setMicrophoneEnabled(true, {
+        deviceId: voiceSettingsRef.current.inputDeviceId !== "default" ? voiceSettingsRef.current.inputDeviceId : undefined,
+        echoCancellation: voiceSettingsRef.current.echoCancellation,
+        noiseSuppression: voiceSettingsRef.current.noiseSuppression,
+        autoGainControl: voiceSettingsRef.current.autoGainControl,
+      });
+      console.log("[VoiceSidebar] Microphone Enabled with audio DSP parameters:", {
+        echoCancellation: voiceSettingsRef.current.echoCancellation,
+        noiseSuppression: voiceSettingsRef.current.noiseSuppression,
+        autoGainControl: voiceSettingsRef.current.autoGainControl,
+      });
 
     } catch (err: any) {
       console.error("[VoiceSidebar] Connection Error:", err);
@@ -251,7 +286,12 @@ export function VoiceSidebar({ currentUser, hostId, isHost, roomId, roomParticip
       const room = roomRef.current;
       if (room && room.state === ConnectionState.Connected) {
         try {
-          await room.localParticipant.setMicrophoneEnabled(!isLocalMuted);
+          await room.localParticipant.setMicrophoneEnabled(!isLocalMuted, {
+            deviceId: voiceSettingsRef.current.inputDeviceId !== "default" ? voiceSettingsRef.current.inputDeviceId : undefined,
+            echoCancellation: voiceSettingsRef.current.echoCancellation,
+            noiseSuppression: voiceSettingsRef.current.noiseSuppression,
+            autoGainControl: voiceSettingsRef.current.autoGainControl,
+          });
           console.log(`[VoiceSidebar] Local Mic published state synced to: ${!isLocalMuted}`);
         } catch (e) {
           console.error("[VoiceSidebar] Error syncing local microphone state:", e);
@@ -267,7 +307,8 @@ export function VoiceSidebar({ currentUser, hostId, isHost, roomId, roomParticip
     const syncVolume = () => {
       const room = roomRef.current;
       if (room) {
-        const targetVolume = isLocalDeafened ? 0 : volume / 100;
+        const scaledVolume = (volume / 100) * (voiceSettings.outputVolume / 100);
+        const targetVolume = isLocalDeafened ? 0 : Math.max(0, Math.min(1, scaledVolume));
         
         // Loop over participants and update volume parameters on subscribed audio tracks
         room.remoteParticipants.forEach((participant) => {
@@ -290,7 +331,50 @@ export function VoiceSidebar({ currentUser, hostId, isHost, roomId, roomParticip
       }
     };
     syncVolume();
-  }, [isLocalDeafened, volume]);
+  }, [isLocalDeafened, volume, voiceSettings.outputVolume]);
+
+  // Handle dynamic hardware device switching
+  const handleDeviceSwitch = useCallback(async (kind: "audioinput" | "audiooutput", deviceId: string) => {
+    const room = roomRef.current;
+    if (room && room.state === ConnectionState.Connected) {
+      try {
+        await room.switchActiveDevice(kind, deviceId);
+        console.log(`[VoiceSidebar] Switched active ${kind} device to: ${deviceId}`);
+
+        if (kind === "audiooutput") {
+          // Update all existing remote audio elements sinkId
+          document.querySelectorAll("audio").forEach((el) => {
+            if (typeof (el as any).setSinkId === "function") {
+              (el as any).setSinkId(deviceId).catch((e: any) => console.warn("Sink ID update error:", e));
+            }
+          });
+        }
+      } catch (err) {
+        console.warn(`[VoiceSidebar] Failed to switch ${kind} device:`, err);
+      }
+    }
+  }, []);
+
+  // Handle dynamic DSP constraints modification live during a call
+  const handleSettingsChange = useCallback(async (newSettings: VoiceSettings) => {
+    updateVoiceSettings(newSettings);
+    const room = roomRef.current;
+    if (room && room.state === ConnectionState.Connected && !isLocalMutedRef.current) {
+      try {
+        // Re-apply microphone track with new constraints seamlessly
+        await room.localParticipant.setMicrophoneEnabled(false);
+        await room.localParticipant.setMicrophoneEnabled(true, {
+          deviceId: newSettings.inputDeviceId !== "default" ? newSettings.inputDeviceId : undefined,
+          echoCancellation: newSettings.echoCancellation,
+          noiseSuppression: newSettings.noiseSuppression,
+          autoGainControl: newSettings.autoGainControl,
+        });
+        console.log("[VoiceSidebar] Live audio DSP constraints re-applied:", newSettings);
+      } catch (e) {
+        console.error("[VoiceSidebar] Failed to re-apply microphone constraints:", e);
+      }
+    }
+  }, [updateVoiceSettings]);
 
   // Synchronize deafen states
   const handleToggleDeafen = () => {
@@ -348,154 +432,272 @@ export function VoiceSidebar({ currentUser, hostId, isHost, roomId, roomParticip
           animation: wave-bounce 1.2s ease-in-out infinite;
         }
         .wave-bar:nth-child(2) { animation-delay: 0.15s; height: 26px; opacity: 0.8; }
-        .wave-bar:nth-child(3) { animation-delay: 0.30s; height: 14px; opacity: 0.6; }
-        .wave-bar:nth-child(4) { animation-delay: 0.45s; height: 22px; opacity: 0.8; }
-        .wave-bar:nth-child(5) { animation-delay: 0.60s; height: 10px; opacity: 0.5; }
+        .wave-bar:nth-child(3) { animation-delay: 0.3s; height: 14px; opacity: 0.6; }
       `}</style>
 
-      {/* DESKTOP VIEW: Collapsed 64px Side Dock */}
-      <div className="hidden lg:flex flex-col items-center gap-4 h-full w-full py-4 shrink-0">
-        {/* Symmetrical Hamburger Button */}
-        <button
-          onClick={() => setIsDrawerOpen(!isDrawerOpen)}
-          title={isConnected ? "Open Voice Participants Drawer" : "Join Voice Channel"}
-          className={cn(
-            "w-10 h-10 rounded-lg flex items-center justify-center border transition-all duration-200",
-            isDrawerOpen
-              ? "bg-[var(--primary)]/10 border-[var(--primary)]/30 text-[var(--primary)]"
-              : "bg-white/5 border-white/5 text-white/75 hover:bg-white/10 hover:text-white"
-          )}
-        >
-          <Menu className="w-4 h-4" />
-        </button>
-
-        {/* Connection Indicator Dot */}
-        <div className="flex flex-col items-center gap-2 mt-2">
+      {/* ========================================================================= */}
+      {/* 1. COLLAPSED BAR: Desktop 64px vertical strip / Mobile 48px horizontal bar */}
+      {/* ========================================================================= */}
+      
+      {/* Desktop Vertical Strip */}
+      <div className="hidden lg:flex flex-col items-center justify-between h-full py-4 z-10 w-[64px]">
+        {/* Top: Header Icon & Status Tooltip */}
+        <div className="flex flex-col items-center gap-3">
           <div 
-            className={cn(
-              "w-2 h-2 rounded-full transition-all duration-300",
-              isConnected 
-                ? "bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.8)]" 
-                : "bg-white/20"
-            )} 
-            title={isConnected ? "Voice Connected" : "Voice Disconnected"} 
-          />
-          <span className={cn(
-            "text-[7.5px] font-black uppercase tracking-[0.25em] text-center select-none [writing-mode:vertical-lr] transition-colors duration-300",
-            isConnected ? "text-emerald-500/60" : "text-white/30"
-          )}>
-            {isConnected ? "Connected" : "Disconnected"}
-          </span>
+            onClick={() => setIsDrawerOpen(true)}
+            className="w-10 h-10 rounded-2xl bg-white/[0.04] border border-white/10 flex items-center justify-center text-white/70 hover:text-white hover:bg-white/10 hover:border-purple-500/30 transition-all cursor-pointer group relative"
+            title="Open Voice Chat Panel"
+          >
+            <Radio className={cn("w-5 h-5 transition-transform group-hover:scale-110", isConnected ? "text-emerald-400" : "text-white/70")} />
+            {isConnected && (
+              <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-[#0B0B0F] animate-pulse" />
+            )}
+          </div>
+          
+          {/* Active Voice Indicator Strip */}
+          {isConnected && (
+            <div 
+              onClick={() => setIsDrawerOpen(true)}
+              className="flex items-center gap-0.5 py-1 px-1.5 rounded-full bg-purple-500/10 border border-purple-500/20 cursor-pointer hover:bg-purple-500/20 transition-colors"
+              title="Voice Connected (Click to expand)"
+            >
+              <div className="wave-bar !w-1 !h-3 !bg-emerald-400" />
+              <div className="wave-bar !w-1 !h-4 !bg-emerald-400" />
+              <div className="wave-bar !w-1 !h-2.5 !bg-emerald-400" />
+            </div>
+          )}
         </div>
-      </div>
 
-      {/* MOBILE VIEW: Compact Horizontal Top Header */}
-      <div className="flex lg:hidden items-center justify-between px-4 h-full w-full">
-        <div className="flex items-center gap-2">
-          <span className={cn(
-            "w-2 h-2 rounded-full transition-all duration-300",
-            isConnected ? "bg-emerald-500 animate-pulse" : "bg-white/20"
-          )} />
-          <span className={cn(
-            "text-[10px] font-bold uppercase tracking-wider transition-colors duration-300",
-            isConnected ? "text-white/90" : "text-white/50"
-          )}>
-            {isConnected ? "Voice Connected" : "Voice Chat"}
-          </span>
-        </div>
-        
-        <button
+        {/* Middle: Connected Participants Avatars Stack */}
+        <div 
           onClick={() => setIsDrawerOpen(true)}
-          className="p-1.5 bg-white/5 border border-white/5 text-white/80 rounded-md hover:bg-white/10 hover:text-white transition-all flex items-center justify-center"
+          className="flex flex-col items-center gap-1.5 cursor-pointer py-2 overflow-hidden max-h-[40vh]"
+          title="View Participants"
         >
-          <Menu className="w-4 h-4" />
-        </button>
+          {participantsList.slice(0, 4).map((p) => (
+            <div 
+              key={p.id}
+              className={cn(
+                "w-8 h-8 rounded-full border flex items-center justify-center text-xs font-bold transition-all relative",
+                p.isSpeaking ? "border-emerald-400 scale-105 shadow-[0_0_8px_rgba(52,211,153,0.4)]" : "border-white/10 bg-white/5 text-white/70",
+                p.isMuted && "opacity-50"
+              )}
+            >
+              {p.profilePicture ? (
+                <img src={p.profilePicture} alt={p.name} className="w-full h-full rounded-full object-cover" />
+              ) : (
+                p.name.charAt(0).toUpperCase()
+              )}
+              {p.isMuted && (
+                <div className="absolute -bottom-0.5 -right-0.5 bg-red-500 rounded-full p-0.5 border border-[#0B0B0F]">
+                  <Mic className="w-2 h-2 text-white" />
+                </div>
+              )}
+            </div>
+          ))}
+          {participantsList.length > 4 && (
+            <div className="w-7 h-7 rounded-full bg-purple-600/30 border border-purple-500/40 flex items-center justify-center text-[10px] font-bold text-purple-300">
+              +{participantsList.length - 4}
+            </div>
+          )}
+        </div>
+
+        {/* Bottom: Quick Actions / Expand Button */}
+        <div className="flex flex-col items-center gap-2">
+          {isConnected ? (
+            <button
+              onClick={handleToggleMute}
+              className={cn(
+                "w-9 h-9 rounded-xl flex items-center justify-center transition-all border",
+                isLocalMuted 
+                  ? "bg-red-500/20 border-red-500/30 text-red-400 hover:bg-red-500/30" 
+                  : "bg-white/5 border-white/10 text-white/80 hover:bg-white/10 hover:text-white"
+              )}
+              title={isLocalMuted ? "Unmute Microphone" : "Mute Microphone"}
+            >
+              <Mic className="w-4 h-4" />
+            </button>
+          ) : (
+            <button
+              onClick={() => {
+                setIsDrawerOpen(true);
+                handleJoinVoice();
+              }}
+              disabled={connectionState === 'connecting'}
+              className="w-9 h-9 rounded-xl bg-purple-600/20 border border-purple-500/30 text-purple-300 flex items-center justify-center hover:bg-purple-600 hover:text-white transition-all shadow-sm group"
+              title="Join Voice Channel"
+            >
+              <Mic className="w-4 h-4 group-hover:scale-110 transition-transform" />
+            </button>
+          )}
+
+          <button
+            onClick={() => setIsDrawerOpen(true)}
+            className="w-9 h-9 rounded-xl bg-white/[0.04] border border-white/10 flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 transition-colors"
+            title="Expand Voice Panel"
+          >
+            <Users className="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
-      {/* ================= PARTICIPANTS DRAWER ================= */}
-      {/* Backdrop Blur Overlay */}
+      {/* Mobile Top Bar Strip */}
+      <div className="flex lg:hidden items-center justify-between h-12 px-4 w-full z-10">
+        <div 
+          onClick={() => setIsDrawerOpen(true)}
+          className="flex items-center gap-2.5 cursor-pointer"
+        >
+          <div className="w-7 h-7 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400">
+            <Radio className="w-3.5 h-3.5" />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-white/90">Voice Channel</span>
+            {isConnected ? (
+              <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />
+                {participantsList.length} Connected
+              </span>
+            ) : (
+              <span className="text-[10px] text-white/40">Disconnected</span>
+            )}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {isConnected && (
+            <button
+              onClick={handleToggleMute}
+              className={cn(
+                "p-1.5 rounded-lg border text-xs",
+                isLocalMuted ? "bg-red-500/20 border-red-500/30 text-red-400" : "bg-white/5 border-white/10 text-white/70"
+              )}
+            >
+              <Mic className="w-3.5 h-3.5" />
+            </button>
+          )}
+          <button
+            onClick={() => setIsDrawerOpen(!isDrawerOpen)}
+            className="p-1.5 rounded-lg bg-white/5 border border-white/10 text-white/70 hover:text-white transition-colors"
+          >
+            <Menu className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+
+
+      {/* ========================================================================= */}
+      {/* 2. EXPANDABLE FLOATING / OVERLAY DRAWER PANEL                             */}
+      {/* ========================================================================= */}
+      
+      {/* Backdrop for click outside */}
       {isDrawerOpen && (
         <div 
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[95] transition-opacity duration-300 animate-in fade-in"
           onClick={() => setIsDrawerOpen(false)}
+          className="fixed inset-0 bg-black/50 backdrop-blur-xs z-40 transition-opacity"
         />
       )}
 
-      {/* Drawer slide-out panel */}
+      {/* Drawer Body: Slid out horizontally on desktop from the left bar (64px), slide up on mobile */}
       <div 
         className={cn(
-          "fixed left-0 top-0 h-full w-[300px] bg-[#0A0A0E] border-r border-white/5 z-[100] transition-transform duration-300 ease-out flex flex-col shadow-2xl",
-          isDrawerOpen ? "translate-x-0" : "-translate-x-full"
+          "fixed z-50 bg-[#0E0E14] border-white/10 shadow-2xl flex flex-col transition-all duration-300 ease-out",
+          // Desktop positioning: Slides out from left right next to the 64px strip
+          "lg:top-0 lg:bottom-0 lg:left-[64px] lg:w-72 lg:border-r lg:rounded-none lg:max-h-none",
+          // Mobile positioning: Bottom sheet drawer
+          "max-lg:bottom-0 max-lg:left-0 max-lg:right-0 max-lg:max-h-[85vh] max-lg:rounded-t-2xl max-lg:border-t",
+          isDrawerOpen 
+            ? "translate-y-0 lg:translate-x-0 opacity-100 pointer-events-auto visible" 
+            : "translate-y-full lg:-translate-x-full lg:translate-y-0 opacity-0 pointer-events-none invisible"
         )}
       >
         {/* Drawer Header */}
-        <div className="p-4 border-b border-white/5 flex items-center justify-between bg-[#0B0B0F]">
-          <span className="text-[10px] font-bold uppercase tracking-widest text-white/40 flex items-center gap-1.5">
-            <Users className="w-3.5 h-3.5" /> {isConnected ? `Voice Channels (${participantsList.length})` : "Voice Chat"}
-          </span>
-          <button 
-            onClick={() => setIsDrawerOpen(false)}
-            className="p-1.5 rounded-lg bg-white/5 border border-white/5 hover:bg-white/10 text-white/40 hover:text-white transition-all"
-          >
-            <X className="w-4 h-4" />
-          </button>
+        <div className="p-4 border-b border-white/5 flex items-center justify-between bg-[#12121A]">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400">
+              <Radio className="w-4 h-4" />
+            </div>
+            <div>
+              <h2 className="text-sm font-bold text-white tracking-wide">Voice Channel</h2>
+              <p className="text-[10px] text-white/40 font-medium">Low-latency Spatial WebRTC</p>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-1.5">
+            <button 
+              onClick={() => setIsSettingsOpen(true)}
+              className="w-7 h-7 rounded-lg bg-white/5 hover:bg-white/10 text-white/50 hover:text-white flex items-center justify-center transition-colors"
+              title="Voice & Audio Settings"
+            >
+              <Settings2 className="w-4 h-4" />
+            </button>
+            <button 
+              onClick={() => setIsDrawerOpen(false)}
+              className="w-7 h-7 rounded-lg bg-white/5 hover:bg-white/10 text-white/50 hover:text-white flex items-center justify-center transition-colors"
+              title="Close Panel"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
-        {/* Drawer Content */}
+        {/* Drawer Content Body */}
         {!isConnected ? (
-          /* Disconnected State inside Drawer */
-          <div className="flex-1 flex flex-col justify-center items-center text-center p-6 my-auto select-none">
-            <div className="relative mb-6 flex items-end justify-center gap-1.5 h-10 w-20">
-              <div className="wave-bar !h-5" />
-              <div className="wave-bar !h-8" />
-              <div className="wave-bar !h-10" />
-              <div className="wave-bar !h-6" />
-              <div className="wave-bar !h-4" />
+          /* Disconnected / Join Voice CTA View */
+          <div className="flex-1 flex flex-col items-center justify-center p-6 text-center space-y-4">
+            <div className="relative">
+              <div className="w-16 h-16 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-[var(--primary)] shadow-[0_0_24px_rgba(147,51,234,0.15)]">
+                <Mic className="w-7 h-7 text-[var(--primary)]" />
+              </div>
             </div>
 
-            <h3 className="text-xs font-bold text-white mb-2 tracking-tight uppercase tracking-wider">Talk in Real Time</h3>
-            <p className="text-white/40 text-[10px] font-medium leading-relaxed max-w-[200px] mb-6">
-              Join the room voice channel and talk with other participants in real time.
-            </p>
+            <div className="space-y-1">
+              <h3 className="text-sm font-bold text-white">Voice Channel Ready</h3>
+              <p className="text-xs text-white/40 max-w-[200px] leading-relaxed">
+                Join your room mates to talk, react, and watch together in real time.
+              </p>
+            </div>
 
-            {/* Error Message Box */}
-            {connectionState === 'error' && errorMsg && (
-              <div className="w-full mb-5 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-left flex items-start gap-2.5 animate-in fade-in slide-in-from-top-1 duration-200">
-                <ShieldAlert className="w-3.5 h-3.5 text-red-400 shrink-0 mt-0.5" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-[9px] font-bold text-red-400 uppercase tracking-wider mb-0.5">Connection Error</p>
-                  <p className="text-[9px] text-white/70 leading-normal font-medium">{errorMsg}</p>
-                </div>
+            {errorMsg && (
+              <div className="p-2.5 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs flex items-start gap-2 max-w-[220px] text-left">
+                <ShieldAlert className="w-4 h-4 shrink-0 mt-0.5" />
+                <span className="leading-tight">{errorMsg}</span>
               </div>
             )}
 
             <button
               onClick={handleJoinVoice}
               disabled={connectionState === 'connecting'}
-              className="w-full btn-primary flex items-center justify-center gap-2 py-2 text-xs font-bold rounded-xl"
+              className="btn-primary w-full max-w-[200px] py-2.5 text-xs font-bold shadow-lg shadow-purple-600/20 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
             >
               {connectionState === 'connecting' ? (
                 <>
-                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  <RefreshCw className="w-4 h-4 animate-spin" />
                   <span>Connecting...</span>
                 </>
               ) : (
                 <>
-                  <Headphones className="w-3.5 h-3.5" />
+                  <Mic className="w-4 h-4" />
                   <span>Join Voice</span>
                 </>
               )}
             </button>
           </div>
         ) : (
-          /* Connected State: Responsive Grid/Row Participant list and Controls Footer */
+          /* Connected State: Participants List & Controls */
           <>
-            <div className="flex-1 overflow-y-auto scrollbar-thin p-4">
-              <div 
-                // Desktop: Responsive 3-column grid layout
-                // Mobile: Vertical stack row layout
-                className="grid grid-cols-1 gap-3"
-              >
+            <div className="flex-1 flex flex-col min-h-0">
+              <div className="p-3 bg-emerald-500/5 border-b border-emerald-500/10 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  <span className="text-xs font-semibold text-emerald-400">RTC Connected</span>
+                </div>
+                <span className="text-[10px] text-white/40 font-mono">
+                  {participantsList.length} Active
+                </span>
+              </div>
+
+              {/* Scrollable list of participant tiles */}
+              <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar">
                 {participantsList.map((participant) => {
                   const themeColor = getParticipantThemeColor(participant.id);
                   return (
@@ -526,10 +728,13 @@ export function VoiceSidebar({ currentUser, hostId, isHost, roomId, roomParticip
         )}
       </div>
 
-      {/* Settings Modal overlay */}
+      {/* Settings Modal overlay with real device switching and live WebRTC audio constraints */}
       <VoiceSettingsModal
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
+        activeSettings={voiceSettings}
+        onSettingsChange={handleSettingsChange}
+        onDeviceSwitch={handleDeviceSwitch}
       />
     </div>
   );

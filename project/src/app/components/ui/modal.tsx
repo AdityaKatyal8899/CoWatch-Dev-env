@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import * as Dialog from "@radix-ui/react-dialog";
-import { X } from "../icons";
+import { X } from "lucide-react";
 import { cn } from "./utils";
 import { Button } from "./button";
 
@@ -14,6 +14,7 @@ interface ModalProps {
   children?: React.ReactNode;
   footer?: React.ReactNode;
   variant?: "default" | "destructive";
+  className?: string;
 }
 
 export function Modal({
@@ -24,38 +25,52 @@ export function Modal({
   children,
   footer,
   variant = "default",
+  className,
 }: ModalProps) {
   return (
-    <Dialog.Root open={isOpen} onOpenChange={onClose}>
+    <Dialog.Root open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] animate-in fade-in duration-300" />
+        <Dialog.Overlay className="fixed inset-0 bg-black/85 backdrop-blur-sm z-[100] animate-in fade-in duration-300" />
         <Dialog.Content 
           className={cn(
-            "fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-[#0D0D0D] border border-white/10 p-6 rounded-2xl shadow-2xl z-[101] outline-none animate-in zoom-in-95 fade-in duration-300",
-            variant === "destructive" ? "border-red-500/20 shadow-red-500/5" : "shadow-purple-500/5"
+            "fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[calc(100vw-24px)] max-w-md max-h-[92dvh] flex flex-col bg-[#0E0E14] border border-white/10 p-4 sm:p-6 rounded-2xl shadow-2xl z-[101] outline-none animate-in zoom-in-95 fade-in duration-300",
+            variant === "destructive" ? "border-red-500/20 shadow-red-500/5" : "shadow-purple-500/10",
+            className
           )}
         >
-          <div className="flex items-center justify-between mb-4">
-            <Dialog.Title className="text-xl font-bold text-white tracking-tight">
-              {title}
-            </Dialog.Title>
+          {/* Header - Fixed at top */}
+          <div className="flex items-start justify-between gap-3 shrink-0 pb-3 border-b border-white/5">
+            <div className="min-w-0 pr-2">
+              <Dialog.Title className="text-base sm:text-lg font-bold text-white tracking-tight truncate">
+                {title}
+              </Dialog.Title>
+              {description && (
+                <Dialog.Description className="text-white/50 text-[11px] sm:text-xs mt-0.5 leading-snug">
+                  {description}
+                </Dialog.Description>
+              )}
+            </div>
+            
             <Dialog.Close asChild>
-              <button className="p-2 hover:bg-white/5 rounded-lg transition-colors text-white/40 hover:text-white">
-                <X className="w-5 h-5" />
+              <button 
+                onClick={onClose}
+                className="p-1.5 sm:p-2 bg-white/5 hover:bg-white/10 active:bg-white/15 rounded-xl transition-colors text-white/60 hover:text-white shrink-0 cursor-pointer border border-white/5"
+                title="Close"
+                aria-label="Close modal"
+              >
+                <X className="w-4 h-4 sm:w-5 sm:h-5" />
               </button>
             </Dialog.Close>
           </div>
 
-          {description && (
-            <Dialog.Description className="text-white/60 text-sm mb-6 leading-relaxed">
-              {description}
-            </Dialog.Description>
-          )}
+          {/* Body - Scrollable inside modal if content exceeds mobile screen height */}
+          <div className="flex-1 overflow-y-auto min-h-0 py-3 pr-1 custom-scrollbar">
+            {children}
+          </div>
 
-          <div className="mb-6">{children}</div>
-
+          {/* Footer - Fixed at bottom */}
           {footer && (
-            <div className="flex justify-end gap-3 pt-2">
+            <div className="shrink-0 pt-3 border-t border-white/5 flex items-center justify-between gap-2 bg-[#0E0E14]">
               {footer}
             </div>
           )}
@@ -98,10 +113,10 @@ export function ConfirmModal({
           <Button
             variant={variant === "destructive" ? "destructive" : "default"}
             onClick={onConfirm}
-            loading={isLoading}
+            disabled={isLoading}
             className="font-bold min-w-[100px]"
           >
-            {confirmLabel}
+            {isLoading ? "Processing..." : confirmLabel}
           </Button>
         </>
       }

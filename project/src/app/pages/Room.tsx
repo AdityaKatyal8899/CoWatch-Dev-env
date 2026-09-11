@@ -52,7 +52,6 @@ export default function Room() {
   const unmountingRef = useRef(false);
   const [isDisbanding, setIsDisbanding] = useState(false);
   const [disbandCountdown, setDisbandCountdown] = useState(5);
-  const [newVideoLink, setNewVideoLink] = useState('');
   const joinAudioRef = useRef<HTMLAudioElement | null>(null);
 
   // Initialize participant joined sound effect
@@ -462,30 +461,6 @@ export default function Room() {
   }, [currentUser?.id, roomId, room?.host_id]);
 
 
-  const handleChangeVideoSubmit = useCallback((e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newVideoLink || !ws) return;
-
-    // Parse YouTube Video ID helper
-    const ytIdMatch = newVideoLink.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/i);
-    const parsedId = ytIdMatch ? ytIdMatch[1] : null;
-
-    if (!parsedId) {
-      toast.error('Invalid YouTube link. Please provide a valid URL.');
-      return;
-    }
-
-    // Send change_video WebSocket control message to the backend
-    ws.sendType('change_video', {
-      youtube_video_id: parsedId,
-      video_url: newVideoLink,
-      media_type: 'youtube'
-    });
-
-    setNewVideoLink('');
-    toast.success('Changing room video...');
-  }, [newVideoLink, ws]);
-
   const isHost = useMemo(() => {
     if (!currentUser || !room) return false;
     return currentUser.id === room.host_id;
@@ -611,8 +586,8 @@ export default function Room() {
 
         {/* Stream Area */}
         <div className="w-full lg:flex-1 flex flex-col min-w-0 lg:h-full shrink-0 order-1 lg:order-none">
-          <div className="px-4 lg:px-6 py-3 bg-[var(--bg,#0B0B0F)] border-b border-white/5 flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between order-2 lg:order-none transition-colors duration-300">
-            <div className="flex items-center gap-4">
+          <div className="px-4 lg:px-6 py-2.5 bg-[var(--bg,#0B0B0F)] border-b border-white/5 flex items-center justify-between order-2 lg:order-none transition-colors duration-300">
+            <div className="flex items-center gap-3">
                <div className="flex items-center gap-2 px-3 py-1 bg-white/[0.03] border border-white/5 rounded-full">
                  <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: 'var(--primary, #9333EA)' }} />
                  <span className="text-[10px] font-bold uppercase text-white/50 tracking-widest">
@@ -633,25 +608,6 @@ export default function Room() {
                  {syncState.streamStatus === 'live' ? 'Live' : 'Waiting'}
                </div>
             </div>
-
-            {isHost && (
-              <form onSubmit={handleChangeVideoSubmit} className="flex items-center gap-2 max-w-sm w-full">
-                <input
-                  type="text"
-                  placeholder="Paste YouTube URL to load..."
-                  value={newVideoLink}
-                  onChange={(e) => setNewVideoLink(e.target.value)}
-                  className="bg-white/5 border border-white/10 rounded-xl px-3.5 py-1.5 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[var(--primary)] transition-all flex-1 font-medium"
-                />
-                <button
-                  type="submit"
-                  className="font-extrabold uppercase tracking-[0.1em] text-[10px] px-4 py-2 rounded-xl transition-all shadow-lg active:scale-95 whitespace-nowrap hover:scale-105"
-                  style={{ background: 'var(--primary-gradient, var(--primary))', color: 'var(--primary-foreground, #ffffff)' }}
-                >
-                  Load Video
-                </button>
-              </form>
-            )}
           </div>
 
           <div id="video-player-container" className="w-full aspect-video lg:flex-1 lg:aspect-auto p-0 lg:p-6 overflow-hidden relative bg-black shrink-0 order-1 lg:order-none">
