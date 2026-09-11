@@ -10,13 +10,11 @@ import {
   Settings,
   LogOut,
   Play,
-  Menu,
-  X,
   Gem
 } from 'lucide-react';
-import { useState } from 'react';
 import { useAuth } from '../lib/auth';
 import { toast } from 'sonner';
+import { MobileBottomDock } from './MobileBottomDock';
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -42,31 +40,36 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     { icon: Gem, label: 'Plans', path: '/plans' },
   ];
 
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-
   return (
-    <div className="flex h-screen bg-[var(--bg,#0B0B0F)] text-white overflow-hidden transition-colors duration-300">
-      {/* Mobile Toggle */}
-      <button 
-        onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-        className="fixed top-4 right-4 z-[100] p-2 bg-white/10 text-white rounded-lg lg:hidden backdrop-blur-md border border-white/5"
-      >
-        {isSidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-      </button>
+    <div className="flex flex-col lg:flex-row h-screen bg-[var(--bg,#0B0B0F)] text-white overflow-hidden transition-colors duration-300">
+      {/* Mobile Top Header */}
+      <header className="lg:hidden h-14 flex items-center justify-between px-4 border-b border-white/5 bg-[var(--bg,#0B0B0F)]/80 backdrop-blur-md sticky top-0 z-30 shrink-0">
+        <Link href="/dashboard" className="flex items-center gap-2.5">
+          <div 
+            className="w-7 h-7 rounded-lg flex items-center justify-center shadow-lg"
+            style={{ background: 'var(--primary-gradient, var(--primary))' }}
+          >
+            <Play className="w-3.5 h-3.5 text-[var(--primary-foreground,#ffffff)]" fill="currentColor" />
+          </div>
+          <span className="text-sm font-bold text-white tracking-tight">CoWatch</span>
+        </Link>
+        <Link href="/profile" className="flex items-center gap-2 p-1 rounded-full hover:bg-white/5 transition-colors">
+          <div className="w-7 h-7 rounded-full bg-white/10 border border-white/10 flex items-center justify-center overflow-hidden">
+            {user?.profile_picture ? (
+              <img 
+                src={user.profile_picture} 
+                alt={user.name || 'Profile'} 
+                className="w-full h-full object-cover" 
+              />
+            ) : (
+              <User className="w-3.5 h-3.5 text-white/50" />
+            )}
+          </div>
+        </Link>
+      </header>
 
-      {/* Overlay for mobile */}
-      {isSidebarOpen && (
-        <div 
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm lg:hidden z-[80] transition-opacity duration-300" 
-          onClick={() => setIsSidebarOpen(false)}
-        />
-      )}
-
-      {/* Sidebar */}
-      <aside className={`
-        fixed inset-y-0 left-0 z-[90] w-60 border-r border-white/5 flex flex-col bg-[var(--bg,#0B0B0F)] transition-transform duration-300 lg:relative lg:translate-x-0
-        ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-      `}>
+      {/* Desktop Sidebar */}
+      <aside className="hidden lg:flex w-60 border-r border-white/5 flex-col bg-[var(--bg,#0B0B0F)] shrink-0 z-20">
         {/* Logo */}
         <div className="h-16 flex items-center px-6 border-b border-white/5">
           <Link href="/dashboard" className="flex items-center gap-3">
@@ -92,7 +95,6 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                 key={item.path}
                 href={isLocked ? '/plans' : item.path}
                 onClick={(e) => {
-                  setIsSidebarOpen(false);
                   if (isLocked) {
                     e.preventDefault();
                     toast.error('Collections is only available on paid plans. Redirecting to plans...');
@@ -150,9 +152,16 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-auto bg-[var(--bg,#0B0B0F)] transition-colors duration-300">
-        {children}
+      <main className="flex-1 overflow-y-auto bg-[var(--bg,#0B0B0F)] transition-colors duration-300">
+        <div className="min-h-full flex flex-col justify-between">
+          <div className="flex-1">{children}</div>
+          {/* Dedicated bottom clearance spacer so mobile dock never blocks content or actions */}
+          <div className="h-32 lg:hidden shrink-0 pointer-events-none" />
+        </div>
       </main>
+
+      {/* Mobile Animated Bottom Dock */}
+      <MobileBottomDock />
     </div>
   );
 }
