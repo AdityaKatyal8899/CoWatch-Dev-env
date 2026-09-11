@@ -94,9 +94,19 @@ class MainActivity : AppCompatActivity() {
         }
 
         webView = findViewById(R.id.webView)
-        setupWebView()
+        setupWebView(savedInstanceState)
         setupBackNavigation()
         handleDeepLink(intent)
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        webView.saveState(outState)
+    }
+
+    override fun onRestoreInstanceState(savedInstanceState: Bundle) {
+        super.onRestoreInstanceState(savedInstanceState)
+        webView.restoreState(savedInstanceState)
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -113,11 +123,16 @@ class MainActivity : AppCompatActivity() {
                 val script = "document.cookie = 'cowatch_auth=$token; path=/; max-age=${60 * 60 * 24 * 7}'; window.location.href = '/dashboard';"
                 webView.evaluateJavascript(script, null)
             }
+        } else if (data != null && (data.scheme == "https" || data.scheme == "http") && data.host == "cowatch-theta.vercel.app") {
+            val path = data.path
+            if (!path.isNullOrEmpty() && path != "/") {
+                webView.loadUrl(data.toString())
+            }
         }
     }
 
     @SuppressLint("SetJavaScriptEnabled")
-    private fun setupWebView() {
+    private fun setupWebView(savedInstanceState: Bundle?) {
         val settings = webView.settings
         
         // Critical for Real-time WebSockets, LiveKit, and custom controls
@@ -132,14 +147,14 @@ class MainActivity : AppCompatActivity() {
         cookieManager.setAcceptCookie(true)
         cookieManager.setAcceptThirdPartyCookies(webView, true)
         
-        // Autoplay and hardware configurations
+        // Autoplay, viewport, and hardware configurations
         settings.mediaPlaybackRequiresUserGesture = false 
         settings.allowFileAccess = true
         settings.databaseEnabled = true
         settings.useWideViewPort = true
         settings.loadWithOverviewMode = true
-        settings.cacheMode = WebSettings.LOAD_NO_CACHE
-        webView.clearCache(true)
+        settings.textZoom = 100 // Prevent OS system font scaling from breaking responsive flex layouts
+        settings.cacheMode = WebSettings.LOAD_DEFAULT // Keep session, DOM, and scripts alive during backgrounding
         settings.mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
         
         // Enable popup window support for Google Identity Services popup auth
@@ -315,8 +330,12 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // Load targeted application URL
-        webView.loadUrl("https://cowatch-theta.vercel.app")
+        // Restore previous session/room state if returning from background/recreation, or load root URL on fresh start
+        if (savedInstanceState != null) {
+            webView.restoreState(savedInstanceState)
+        } else {
+            webView.loadUrl("https://cowatch-theta.vercel.app")
+        }
     }
 
     private fun hideFullscreen() {
