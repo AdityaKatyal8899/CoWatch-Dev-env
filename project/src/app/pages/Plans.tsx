@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from 'react';
-import { Check, X, Sparkles, Users, Rocket, Zap, Crown, ArrowRight, HelpCircle } from 'lucide-react';
+import { Check, X, Sparkles, Users, Rocket, Zap, Crown, ArrowRight, HelpCircle, Tag } from 'lucide-react';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { useAuth } from '../lib/auth';
 import { PageTransition } from '../components/ui/PageTransition';
@@ -384,6 +384,7 @@ function PlanCard({
   userPlanId,
   isLoggedIn,
   index,
+  couponCode,
 }: {
   plan: Plan;
   billing: BillingCycle;
@@ -391,6 +392,7 @@ function PlanCard({
   userPlanId: PlanId;
   isLoggedIn: boolean;
   index: number;
+  couponCode?: string;
 }) {
   const router = useRouter();
   const [checkoutLoading, setCheckoutLoading] = useState(false);
@@ -399,10 +401,12 @@ function PlanCard({
   const isUpgrade = isLoggedIn && PLAN_RANKS[plan.id] > PLAN_RANKS[userPlanId];
   const isDowngrade = isLoggedIn && PLAN_RANKS[plan.id] < PLAN_RANKS[userPlanId];
 
+  const isCouponApplied = (couponCode === 'PRO5' || couponCode === 'TEST5' || couponCode === 'COWATCH5') && plan.id === 'pro';
+
   const currConfig = REGIONAL_CURRENCIES[currencyCode] || REGIONAL_CURRENCIES.inr;
   const currentPricing = REGIONAL_PRICES[plan.id][currencyCode] || REGIONAL_PRICES[plan.id].usd;
   const price = billing === 'monthly' ? currentPricing.monthly : currentPricing.annualEffectiveMonthly;
-  const displayPrice = useCountUp(price);
+  const displayPrice = useCountUp(isCouponApplied ? 5 : price);
   const Icon = plan.icon;
   const showAnnualNote = billing === 'annual' && currentPricing.monthly > 0;
   const theme = PLAN_THEMES[plan.id];
@@ -422,7 +426,7 @@ function PlanCard({
   } else if (isCurrent) {
     ctaLabel = 'Current Plan';
   } else if (isUpgrade) {
-    ctaLabel = `Upgrade to ${plan.name}`;
+    ctaLabel = isCouponApplied ? `Upgrade for ${currConfig.symbol}5` : `Upgrade to ${plan.name}`;
   } else if (isDowngrade) {
     ctaLabel = `Downgrade to ${plan.name}`;
   }
@@ -449,7 +453,12 @@ function PlanCard({
     // Process Hosted Checkout (Cashfree UPI/Cards or Stripe)
     setCheckoutLoading(true);
     try {
-      const session = await api.createCheckoutSession(plan.id, billing, currencyCode);
+      const session = await api.createCheckoutSession(
+        plan.id, 
+        billing, 
+        currencyCode, 
+        isCouponApplied ? couponCode : undefined
+      );
       if (!session) {
         throw new Error('No checkout session returned from server.');
       }
@@ -640,15 +649,26 @@ function PlanCard({
         {/* Pricing Block */}
         <div className="mb-6 relative z-10">
           <div className="flex items-baseline gap-1.5 flex-nowrap whitespace-nowrap">
-            <span className={cn('text-3xl lg:text-[32px] font-black tracking-tight leading-none', theme.priceClass)}>
-              {formatPrice(displayPrice)}
+            {isCouponApplied && (
+              <span className="text-xl text-white/40 line-through mr-1 font-semibold">
+                {formatPrice(price)}
+              </span>
+            )}
+            <span className={cn('text-3xl lg:text-[32px] font-black tracking-tight leading-none', isCouponApplied ? 'text-green-400' : theme.priceClass)}>
+              {isCouponApplied ? `${currConfig.symbol}5` : formatPrice(displayPrice)}
             </span>
             <span className="text-xs sm:text-sm text-white/50 font-medium shrink-0 whitespace-nowrap">
               {plan.id === 'free' ? 'forever' : '/ month'}
             </span>
           </div>
 
-          {showAnnualNote ? (
+          {isCouponApplied ? (
+            <div className="mt-2.5 flex items-center gap-2">
+              <span className="text-[11.5px] font-bold text-green-400 bg-green-500/15 border border-green-500/25 px-2 py-0.5 rounded-md flex items-center gap-1">
+                <Tag className="w-3 h-3" /> Coupon {couponCode}: {currConfig.symbol}5 Live Test Checkout
+              </span>
+            </div>
+          ) : showAnnualNote ? (
             <div className="mt-2.5 flex items-center gap-2 flex-wrap">
               <span className="text-[12.5px] text-white/60 font-semibold tracking-wide">
                 {currConfig.symbol}{currentPricing.annual.toLocaleString()} billed annually
@@ -755,6 +775,20 @@ export default function Plans() {
   const current = currentPlanId(user?.plan);
   const isLoggedIn = !!user;
 
+  const [couponInput, setCouponInput] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState('');
+
+  const handleApplyCoupon = () => {
+    const code = couponInput.trim().toUpperCase();
+    if (!code) return;
+    if (code === 'PRO5' || code === 'TEST5' || code === 'COWATCH5') {
+      setAppliedCoupon(code);
+      toast.success(`Coupon "${code}" applied! Pro plan discounted to ₹5.`);
+    } else {
+      toast.error(`Invalid coupon code: "${code}". Use PRO5 to test at ₹5.`);
+    }
+  };
+
   const [activeMobilePlan, setActiveMobilePlan] = useState<PlanId>(() => {
     if (user?.plan && PLANS.some((p) => p.id === user.plan)) {
       return user.plan as PlanId;
@@ -765,7 +799,7 @@ export default function Plans() {
   return (
     <DashboardLayout>
       <PageTransition>
-        <div className="p-6 md:p-10 max-w-7xl mx-auto space-y-12">
+        <div className="p-6 md:p-10 max-w-7xl mx-auto space-y-8">
           {/* Header */}
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-white/5 pb-8">
             <div>
@@ -814,6 +848,47 @@ export default function Plans() {
                   Save ~17%
                 </span>
               </button>
+            </div>
+          </div>
+
+          {/* Interactive Promo / Discount Coupon Bar */}
+          <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 px-4 rounded-2xl bg-white/[0.03] border border-white/10 backdrop-blur-md">
+            <div className="flex items-center gap-2 text-xs text-white/70">
+              <Tag className="w-4 h-4 text-[var(--primary)] shrink-0" />
+              <span>Have a discount coupon? Use <strong className="text-white font-mono bg-white/10 px-1.5 py-0.5 rounded">PRO5</strong> to test the Pro tier at ₹5</span>
+            </div>
+            <div className="flex items-center gap-2">
+              {appliedCoupon ? (
+                <div className="flex items-center gap-2 bg-green-500/10 border border-green-500/25 px-3 py-1.5 rounded-xl">
+                  <span className="text-xs font-bold text-green-400 font-mono">🏷️ {appliedCoupon} APPLIED (₹5 PRO)</span>
+                  <button
+                    type="button"
+                    onClick={() => { setAppliedCoupon(''); setCouponInput(''); toast.info('Coupon removed'); }}
+                    className="text-white/40 hover:text-white text-xs ml-1 font-bold p-0.5"
+                    title="Remove coupon"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    placeholder="Coupon code (e.g. PRO5)"
+                    value={couponInput}
+                    onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
+                    onKeyDown={(e) => { if (e.key === 'Enter') handleApplyCoupon(); }}
+                    className="bg-black/40 border border-white/15 rounded-xl px-3 py-1.5 text-xs text-white placeholder-white/30 uppercase tracking-wider focus:outline-none focus:border-[var(--primary)] transition-all w-48"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleApplyCoupon}
+                    className="px-3.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 text-white border border-white/15 text-xs font-semibold transition-all hover:scale-[1.02]"
+                  >
+                    Apply
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
@@ -900,6 +975,7 @@ export default function Plans() {
                     userPlanId={current}
                     isLoggedIn={isLoggedIn}
                     index={0}
+                    couponCode={appliedCoupon}
                   />
                 </motion.div>
               ))}
@@ -917,6 +993,7 @@ export default function Plans() {
                 userPlanId={current}
                 isLoggedIn={isLoggedIn}
                 index={idx}
+                couponCode={appliedCoupon}
               />
             ))}
           </div>

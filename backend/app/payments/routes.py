@@ -61,6 +61,7 @@ class CheckoutSessionRequest(BaseModel):
     plan_id: str  # pro | pro_plus | vibers
     billing: str = "monthly"  # monthly | annual
     currency: str = "inr"  # inr | usd | etc.
+    coupon_code: Optional[str] = None
     success_url: Optional[str] = None
     cancel_url: Optional[str] = None
 
@@ -289,6 +290,24 @@ async def create_checkout_session(
     except ValueError as err:
         raise HTTPException(status_code=400, detail=str(err))
 
+    # Apply Coupon Code (e.g., PRO5 for testing live 5 INR transactions)
+    applied_coupon = None
+    if payload.coupon_code:
+        code_clean = payload.coupon_code.strip().upper()
+        if code_clean in ["PRO5", "TEST5", "COWATCH5"]:
+            price_amount = 5.0
+            applied_coupon = code_clean
+        else:
+            db_coupon = db.query(models.Coupon).filter(
+                models.Coupon.code == code_clean,
+                models.Coupon.active == True,
+            ).first()
+            if db_coupon:
+                price_amount = 5.0
+                applied_coupon = code_clean
+            else:
+                raise HTTPException(status_code=400, detail=f"Invalid or expired coupon code: '{payload.coupon_code}'")
+
     if price_amount <= 0:
         raise HTTPException(status_code=400, detail=f"Invalid pricing amount for plan {plan_id}.")
 
@@ -330,13 +349,14 @@ async def create_checkout_session(
                 "notify_url": notify_url,
                 "payment_methods": "upi,cc,dc,nb",
             },
-            "order_note": f"CoWatch {target_plan.name} ({billing.capitalize()})",
+            "order_note": f"CoWatch {target_plan.name} ({billing.capitalize()})" + (f" [Coupon: {applied_coupon}]" if applied_coupon else ""),
             "order_tags": {
                 "user_id": str(current_user.id),
                 "plan_id": target_plan.code,
                 "billing_cycle": billing,
                 "currency": "INR",
                 "app": "cowatch",
+                "coupon": applied_coupon or "",
             },
         }
 

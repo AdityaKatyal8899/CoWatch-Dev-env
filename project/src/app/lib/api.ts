@@ -112,7 +112,7 @@ export const api = {
     return request('/payments/detect-region');
   },
 
-  async createCheckoutSession(planId: string, billing: string, currency: string = 'usd'): Promise<{
+  async createCheckoutSession(planId: string, billing: string, currency: string = 'usd', couponCode?: string): Promise<{
     session_id: string;
     url: string;
     amount: number;
@@ -124,7 +124,12 @@ export const api = {
   }> {
     return request('/payments/create-checkout-session', {
       method: 'POST',
-      body: JSON.stringify({ plan_id: planId, billing, currency }),
+      body: JSON.stringify({ 
+        plan_id: planId, 
+        billing, 
+        currency, 
+        coupon_code: couponCode ? couponCode.trim() : undefined 
+      }),
     });
   },
 
