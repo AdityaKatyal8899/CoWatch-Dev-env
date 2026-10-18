@@ -22,4 +22,8 @@ export { default as Info } from 'lucide-react/dist/esm/icons/info';
 export { default as X } from 'lucide-react/dist/esm/icons/x';
 export { default as Languages } from 'lucide-react/dist/esm/icons/languages';
 export { default as Scan } from 'lucide-react/dist/esm/icons/scan';
+export { default as Sun } from 'lucide-react/dist/esm/icons/sun';
+export { default as SunMedium } from 'lucide-react/dist/esm/icons/sun-medium';
+export { default as SunDim } from 'lucide-react/dist/esm/icons/sun-dim';
+export { default as Volume1 } from 'lucide-react/dist/esm/icons/volume-1';
 

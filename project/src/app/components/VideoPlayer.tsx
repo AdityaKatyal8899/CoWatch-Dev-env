@@ -4,7 +4,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import Hls from 'hls.js';
 import { motion, AnimatePresence } from 'motion/react';
-import { Play, Pause, Volume2, VolumeX, Maximize, Settings, Lock, Unlock, RotateCcw, RotateCw, Languages, Check, Scan } from './icons';
+import { Play, Pause, Volume2, VolumeX, Volume1, Maximize, Settings, Lock, Unlock, RotateCcw, RotateCw, Languages, Check, Scan, Sun, SunMedium, SunDim } from './icons';
 import type { SyncState, AudioTrackInfo } from '../lib/types';
 import { api } from '../lib/api';
 import { cn } from '../lib/utils';
@@ -75,14 +75,48 @@ export function VideoPlayer({
       const next: AspectMode = prev === 'contain' ? 'cover' : prev === 'cover' ? 'fill' : 'contain';
       const label = next === 'cover' ? 'Zoom to Fill (Cover)' : next === 'fill' ? 'Stretch (Fill Screen)' : 'Original Fit';
       setAspectBadge(label);
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('cowatch_player_aspect', next);
-      }
       if (aspectBadgeTimer.current) clearTimeout(aspectBadgeTimer.current);
       aspectBadgeTimer.current = setTimeout(() => setAspectBadge(null), 2200);
       return next;
     });
   }, []);
+
+  // Brightness Control (0.2 to 1.5, default 1.0)
+  const [brightness, setBrightness] = useState<number>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('cowatch_player_brightness');
+      return saved ? parseFloat(saved) : 1.0;
+    }
+    return 1.0;
+  });
+
+  // Mobile / Gesture HUD Indicator ('brightness' | 'volume')
+  const [activeGestureHUD, setActiveGestureHUD] = useState<'brightness' | 'volume' | null>(null);
+  const gestureHUDTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const touchStartRef = useRef<{
+    startX: number;
+    startY: number;
+    type: 'brightness' | 'volume' | null;
+    initialVal: number;
+    isDragging: boolean;
+  } | null>(null);
+
+  const showHUD = useCallback((type: 'brightness' | 'volume') => {
+    setActiveGestureHUD(type);
+    if (gestureHUDTimeoutRef.current) clearTimeout(gestureHUDTimeoutRef.current);
+    gestureHUDTimeoutRef.current = setTimeout(() => {
+      setActiveGestureHUD(null);
+    }, 1400);
+  }, []);
+
+  const handleBrightnessChange = useCallback((newVal: number) => {
+    const clamped = Math.max(0.2, Math.min(1.5, Math.round(newVal * 100) / 100));
+    setBrightness(clamped);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('cowatch_player_brightness', clamped.toString());
+    }
+    showHUD('brightness');
+  }, [showHUD]);
 
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const actionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -661,7 +695,8 @@ export function VideoPlayer({
     video.volume = clampedVolume;
     setVolume(clampedVolume);
     setIsMuted(clampedVolume === 0);
-  }, []);
+    showHUD('volume');
+  }, [showHUD]);
 
   const toggleMute = useCallback(() => {
     const video = videoRef.current;
@@ -720,11 +755,19 @@ export function VideoPlayer({
           break;
         case 'ArrowUp':
           e.preventDefault();
-          handleVolumeChange(volume + 0.1);
+          handleVolumeChange(volume + 0.05);
           break;
         case 'ArrowDown':
           e.preventDefault();
-          handleVolumeChange(volume - 0.1);
+          handleVolumeChange(volume - 0.05);
+          break;
+        case 'BracketLeft':
+          e.preventDefault();
+          handleBrightnessChange(brightness - 0.08);
+          break;
+        case 'BracketRight':
+          e.preventDefault();
+          handleBrightnessChange(brightness + 0.08);
           break;
         case 'KeyM':
           e.preventDefault();
@@ -739,29 +782,97 @@ export function VideoPlayer({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isHost, isLocked, handlePlayPause, stepSeek, volume, handleVolumeChange, toggleMute, toggleFullscreen]);
+  }, [isHost, isLocked, handlePlayPause, stepSeek, volume, handleVolumeChange, toggleMute, toggleFullscreen, brightness, handleBrightnessChange]);
+
+  // Touch Swipe Handlers for Dual-Zone Brightness (Left) & Volume (Right)
+  const handleTouchStart = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
+    resetControlsTimer();
+    if (e.touches.length !== 1) return;
+    const touch = e.touches[0];
+    const container = containerRef.current;
+    if (!container) return;
+
+    const rect = container.getBoundingClientRect();
+    const relativeY = touch.clientY - rect.top;
+    const relativeX = touch.clientX - rect.left;
+
+    // Ignore gestures in top 55px (status headers) and bottom 75px (seek bar & control buttons)
+    if (relativeY < 55 || relativeY > rect.height - 75) {
+      touchStartRef.current = null;
+      return;
+    }
+
+    const isLeft = relativeX < rect.width / 2;
+    touchStartRef.current = {
+      startX: touch.clientX,
+      startY: touch.clientY,
+      type: isLeft ? 'brightness' : 'volume',
+      initialVal: isLeft ? brightness : (videoRef.current ? videoRef.current.volume : volume),
+      isDragging: false,
+    };
+  }, [brightness, volume, resetControlsTimer]);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
+    if (!touchStartRef.current || e.touches.length !== 1) return;
+    const touch = e.touches[0];
+    const container = containerRef.current;
+    if (!container) return;
+
+    const deltaY = touchStartRef.current.startY - touch.clientY; // UP is positive
+    const deltaX = Math.abs(touch.clientX - touchStartRef.current.startX);
+
+    // Threshold to engage swipe gesture
+    if (!touchStartRef.current.isDragging) {
+      if (Math.abs(deltaY) > 8 && Math.abs(deltaY) > deltaX) {
+        touchStartRef.current.isDragging = true;
+      } else {
+        return;
+      }
+    }
+
+    const rect = container.getBoundingClientRect();
+    const swipeRange = Math.max(160, rect.height * 0.45);
+    const progressDelta = deltaY / swipeRange;
+
+    if (touchStartRef.current.type === 'brightness') {
+      const newBright = touchStartRef.current.initialVal + progressDelta * 1.3;
+      handleBrightnessChange(newBright);
+    } else if (touchStartRef.current.type === 'volume') {
+      const newVol = touchStartRef.current.initialVal + progressDelta * 1.0;
+      handleVolumeChange(newVol);
+    }
+  }, [handleBrightnessChange, handleVolumeChange]);
+
+  const handleTouchEnd = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
+    const wasDragging = touchStartRef.current?.isDragging;
+    touchStartRef.current = null;
+
+    if (!wasDragging) {
+      const now = Date.now();
+      if (now - lastTouchTapRef.current < 320) {
+        cycleAspectMode();
+      }
+      lastTouchTapRef.current = now;
+    }
+  }, [cycleAspectMode]);
 
   const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   return (
     <div
       ref={containerRef}
-      className="relative w-full h-full bg-black rounded-2xl overflow-hidden group shadow-2xl transition-all duration-500 select-none"
+      className="relative w-full h-full bg-black rounded-2xl overflow-hidden group shadow-2xl transition-all duration-500 select-none touch-none"
       onMouseMove={resetControlsTimer}
       onClick={resetControlsTimer}
-      onTouchStart={resetControlsTimer}
-      onTouchEnd={(e) => {
-        const now = Date.now();
-        if (now - lastTouchTapRef.current < 320) {
-          cycleAspectMode();
-        }
-        lastTouchTapRef.current = now;
-      }}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
       onDoubleClick={cycleAspectMode}
     >
-      {/* Video Element with Dynamic Viewport Aspect Ratio */}
+      {/* Video Element with Dynamic Viewport Aspect Ratio & Brightness Filter */}
       <video
         ref={videoRef}
+        style={{ filter: `brightness(${brightness})` }}
         className={cn(
           "w-full h-full transition-[object-fit] duration-300",
           aspectMode === 'cover' && "object-cover",
@@ -771,6 +882,74 @@ export function VideoPlayer({
         playsInline
         muted={isMuted}
       />
+
+      {/* Floating Brightness HUD (Left Side Gesture Indicator) */}
+      <AnimatePresence>
+        {activeGestureHUD === 'brightness' && (
+          <motion.div
+            initial={{ opacity: 0, x: -24, scale: 0.9 }}
+            animate={{ opacity: 1, x: 0, scale: 1 }}
+            exit={{ opacity: 0, x: -24, scale: 0.9 }}
+            transition={{ type: "spring", stiffness: 420, damping: 26 }}
+            className="absolute left-4 sm:left-8 top-1/2 -translate-y-1/2 z-50 pointer-events-none flex flex-col items-center gap-2.5 px-3 py-4 rounded-2xl bg-black/85 backdrop-blur-2xl border border-amber-500/30 shadow-[0_16px_48px_rgba(0,0,0,0.85),0_0_24px_rgba(245,158,11,0.2)]"
+          >
+            <div className="w-8 h-8 rounded-xl bg-amber-500/15 flex items-center justify-center text-amber-400">
+              {brightness < 0.6 ? (
+                <SunDim className="w-5 h-5" />
+              ) : brightness < 1.1 ? (
+                <SunMedium className="w-5 h-5" />
+              ) : (
+                <Sun className="w-5 h-5 drop-shadow-[0_0_8px_rgba(245,158,11,0.8)]" />
+              )}
+            </div>
+            {/* Vertical Slider Track */}
+            <div className="w-2 sm:w-2.5 h-28 sm:h-32 bg-white/10 rounded-full overflow-hidden flex flex-col justify-end p-0.5 border border-white/5">
+              <div
+                className="w-full rounded-full bg-gradient-to-t from-amber-600 via-amber-400 to-amber-300 transition-all duration-75 shadow-[0_0_12px_rgba(245,158,11,0.7)]"
+                style={{ height: `${Math.max(4, Math.min(100, ((brightness - 0.2) / 1.3) * 100))}%` }}
+              />
+            </div>
+            {/* Value Label */}
+            <span className="text-[10px] sm:text-[11px] font-black text-amber-300 font-mono tracking-tight">
+              {Math.round(brightness * 100)}%
+            </span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Floating Volume HUD (Right Side Gesture Indicator) */}
+      <AnimatePresence>
+        {activeGestureHUD === 'volume' && (
+          <motion.div
+            initial={{ opacity: 0, x: 24, scale: 0.9 }}
+            animate={{ opacity: 1, x: 0, scale: 1 }}
+            exit={{ opacity: 0, x: 24, scale: 0.9 }}
+            transition={{ type: "spring", stiffness: 420, damping: 26 }}
+            className="absolute right-4 sm:right-8 top-1/2 -translate-y-1/2 z-50 pointer-events-none flex flex-col items-center gap-2.5 px-3 py-4 rounded-2xl bg-black/85 backdrop-blur-2xl border border-[var(--primary)]/30 shadow-[0_16px_48px_rgba(0,0,0,0.85),0_0_24px_rgba(139,92,246,0.25)]"
+          >
+            <div className="w-8 h-8 rounded-xl bg-[var(--primary)]/15 flex items-center justify-center text-[var(--primary)]">
+              {isMuted || volume === 0 ? (
+                <VolumeX className="w-5 h-5 text-red-400" />
+              ) : volume < 0.5 ? (
+                <Volume1 className="w-5 h-5" />
+              ) : (
+                <Volume2 className="w-5 h-5 drop-shadow-[0_0_8px_var(--primary)]" />
+              )}
+            </div>
+            {/* Vertical Slider Track */}
+            <div className="w-2 sm:w-2.5 h-28 sm:h-32 bg-white/10 rounded-full overflow-hidden flex flex-col justify-end p-0.5 border border-white/5">
+              <div
+                className="w-full rounded-full bg-gradient-to-t from-indigo-500 via-[var(--primary)] to-purple-300 transition-all duration-75 shadow-[0_0_12px_var(--primary)]"
+                style={{ height: `${isMuted ? 0 : Math.round(volume * 100)}%` }}
+              />
+            </div>
+            {/* Value Label */}
+            <span className="text-[10px] sm:text-[11px] font-black text-purple-300 font-mono tracking-tight">
+              {isMuted ? 'MUTED' : `${Math.round(volume * 100)}%`}
+            </span>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Aspect Mode Feedback Pill Badge */}
       <AnimatePresence>
@@ -974,6 +1153,34 @@ export function VideoPlayer({
             </div>
 
             <div className="flex items-center gap-2">
+              {/* Brightness Group */}
+              <div className="flex items-center gap-0.5 group/brightness bg-black/40 rounded-lg p-0.5 border border-white/5 backdrop-blur-xl">
+                <button
+                  onClick={() => handleBrightnessChange(brightness === 1.0 ? 1.3 : brightness > 1.0 ? 0.7 : 1.0)}
+                  title={`Brightness: ${Math.round(brightness * 100)}% (Click to toggle preset, or hover to slide)`}
+                  className="w-7 h-7 shrink-0 rounded-md hover:bg-white/10 flex items-center justify-center transition-all text-white/60 hover:text-amber-400"
+                >
+                  {brightness < 0.6 ? (
+                    <SunDim className="w-3.5 h-3.5" />
+                  ) : brightness < 1.1 ? (
+                    <SunMedium className="w-3.5 h-3.5" />
+                  ) : (
+                    <Sun className="w-3.5 h-3.5 text-amber-400" />
+                  )}
+                </button>
+                <div className="w-0 group-hover/brightness:w-16 sm:group-hover/brightness:w-20 overflow-hidden transition-all duration-300 flex items-center pr-1.5">
+                  <input
+                    type="range"
+                    min="0.2"
+                    max="1.5"
+                    step="0.05"
+                    value={brightness}
+                    onChange={(e) => handleBrightnessChange(parseFloat(e.target.value))}
+                    className="w-16 sm:w-20 h-1 bg-white/20 rounded-full appearance-none cursor-pointer accent-amber-400"
+                  />
+                </div>
+              </div>
+
               {/* Volume Group */}
               <div className="flex items-center gap-0.5 group/volume bg-black/40 rounded-lg p-0.5 border border-white/5 backdrop-blur-xl">
                 <button
