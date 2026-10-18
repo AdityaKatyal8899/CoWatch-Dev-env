@@ -71,6 +71,7 @@ export const metadata: Metadata = {
 
 import { ThemeProvider } from './components/ThemeProvider';
 import { Suspense } from 'react';
+import Script from 'next/script';
 import { BackgroundNotificationListener } from './components/BackgroundNotificationListener';
 
 export default function RootLayout({
@@ -104,6 +105,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
+        <Script src="https://sdk.cashfree.com/js/v3/cashfree.js" strategy="beforeInteractive" />
         {GOOGLE_CLIENT_ID ? (
           <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
             {content}

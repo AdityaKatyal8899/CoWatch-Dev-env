@@ -301,3 +301,210 @@ def send_video_ready_email(
 </html>
 """
     return _send_html_email(to_email, subject, html)
+
+
+def send_subscription_receipt_email(
+    to_email: str,
+    username: str,
+    plan_name: str,
+    billing_cycle: str,
+    amount: float,
+    currency: str = "USD",
+    transaction_id: str = "",
+    stripe_session_id: str = "",
+    plan_expires_at: str = "",
+    frontend_url: str = "https://cowatch-theta.vercel.app"
+):
+    """
+    Delivers a luxury dark-themed subscription receipt email matching the CoWatch UI.
+    """
+    subject = f"🎉 Welcome to CoWatch {plan_name}! Your Subscription Receipt"
+    plan_lower = plan_name.lower()
+
+    # Plan theme colors
+    if "vibers" in plan_lower:
+        primary_color = "#8B5CF6"
+        gradient = "linear-gradient(135deg, #8B5CF6 0%, #6366F1 100%)"
+        glow_color = "rgba(139, 92, 246, 0.35)"
+        storage_text = "50 GB High-Speed Cloud Storage"
+        quality_text = "2K Quad HD (1440p) Streaming"
+        capacity_text = "Up to 500 Participants / Room"
+        exclusive_feature = """
+        <div style="background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.25); border-radius: 12px; padding: 14px; margin-top: 12px;">
+          <div style="font-size: 12px; font-weight: 700; color: #C4B5FD; margin-bottom: 4px;">🎨 Custom Gradient & Studio Mode Unlocked</div>
+          <div style="font-size: 11px; color: rgba(255, 255, 255, 0.6);">Design your own custom color palettes, CSS gradient glows, and vanity watch party aesthetics.</div>
+        </div>
+        """
+    elif "pro+" in plan_lower or "pro_plus" in plan_lower:
+        primary_color = "#EC4899"
+        gradient = "linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%)"
+        glow_color = "rgba(236, 72, 153, 0.35)"
+        storage_text = "20 GB High-Speed Cloud Storage"
+        quality_text = "1080p Full HD Video Streaming"
+        capacity_text = "Up to 31 Participants / Room"
+        exclusive_feature = ""
+    else:
+        primary_color = "#3B82F6"
+        gradient = "linear-gradient(135deg, #3B82F6 0%, #06B6D4 100%)"
+        glow_color = "rgba(59, 130, 246, 0.35)"
+        storage_text = "10 GB High-Speed Cloud Storage"
+        quality_text = "1080p Full HD Video Streaming"
+        capacity_text = "Up to 16 Participants / Room"
+        exclusive_feature = ""
+
+    action_url = f"{frontend_url.rstrip('/')}/dashboard"
+    settings_url = f"{frontend_url.rstrip('/')}/settings"
+
+    curr_upper = (currency or "USD").upper()
+    curr_symbols = {"INR": "₹", "USD": "$", "GBP": "£", "EUR": "€", "JPY": "¥", "KRW": "₩"}
+    symbol = curr_symbols.get(curr_upper, "$")
+    if curr_upper in ["JPY", "KRW"]:
+        formatted_amount = f"{symbol}{int(round(amount)):,} {curr_upper}"
+    else:
+        formatted_amount = f"{symbol}{amount:.2f} {curr_upper}"
+    formatted_cycle = billing_cycle.capitalize()
+
+    html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{subject}</title>
+</head>
+<body style="margin: 0; padding: 36px 12px; background-color: #07070A; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #FFFFFF;">
+  <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0">
+    <tr>
+      <td align="center">
+        <!-- Main Card Container -->
+        <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width: 580px; background: #0D0D12; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 24px; overflow: hidden; box-shadow: 0 25px 60px -15px {glow_color};">
+          
+          <!-- Top Glow & Hero Header -->
+          <tr>
+            <td style="padding: 40px 36px 20px 36px; text-align: center; background: radial-gradient(circle at 50% 0%, {glow_color} 0%, transparent 75%);">
+              
+              <!-- CoWatch Logo Mark -->
+              <table role="presentation" border="0" cellspacing="0" cellpadding="0" style="margin: 0 auto 20px auto;">
+                <tr>
+                  <td style="background: {gradient}; width: 44px; height: 44px; border-radius: 14px; text-align: center; vertical-align: middle; box-shadow: 0 8px 20px {glow_color};">
+                    <span style="color: #FFFFFF; font-size: 22px; font-weight: 900; line-height: 44px;">▶</span>
+                  </td>
+                  <td style="padding-left: 14px; text-align: left;">
+                    <span style="font-size: 20px; font-weight: 900; letter-spacing: -0.5px; color: #FFFFFF;">CoWatch</span><br>
+                    <span style="font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 2px; color: {primary_color};">Subscription Activated</span>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Verified Status Badge -->
+              <div style="display: inline-block; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.3); padding: 6px 16px; border-radius: 50px; margin-bottom: 16px;">
+                <span style="font-size: 11px; font-weight: 800; color: #34D399; text-transform: uppercase; letter-spacing: 1px;">
+                  🛡️ Payment Verified & Active
+                </span>
+              </div>
+
+              <!-- Main Title -->
+              <h1 style="margin: 0 0 10px 0; font-size: 28px; font-weight: 900; color: #FFFFFF; letter-spacing: -0.5px;">
+                Welcome to {plan_name}!
+              </h1>
+              <p style="margin: 0; font-size: 14px; line-height: 1.6; color: rgba(255, 255, 255, 0.65);">
+                Hey <strong>{username}</strong>, your payment was processed successfully. Your account has been upgraded with elevated streaming capabilities.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Receipt & Invoice Table Box -->
+          <tr>
+            <td style="padding: 10px 36px 20px 36px;">
+              <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 18px; padding: 22px;">
+                
+                <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="border-bottom: 1px solid rgba(255, 255, 255, 0.06); padding-bottom: 12px; margin-bottom: 14px;">
+                  <tr>
+                    <td style="font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px; color: rgba(255, 255, 255, 0.8);">
+                      🧾 Transaction Receipt
+                    </td>
+                    <td align="right" style="font-size: 11px; font-weight: 700; color: #34D399;">
+                      ● PAID
+                    </td>
+                  </tr>
+                </table>
+
+                <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="font-size: 13px; line-height: 2.1;">
+                  <tr>
+                    <td style="color: rgba(255, 255, 255, 0.5);">Plan Subscribed</td>
+                    <td align="right" style="font-weight: 700; color: #FFFFFF;">{plan_name}</td>
+                  </tr>
+                  <tr>
+                    <td style="color: rgba(255, 255, 255, 0.5);">Billing Interval</td>
+                    <td align="right" style="font-weight: 600; color: #FFFFFF;">{formatted_cycle}</td>
+                  </tr>
+                  <tr>
+                    <td style="color: rgba(255, 255, 255, 0.5);">Amount Paid</td>
+                    <td align="right" style="font-weight: 800; color: #FFFFFF; font-size: 14px;">{formatted_amount}</td>
+                  </tr>
+                  {f'<tr><td style="color: rgba(255, 255, 255, 0.5);">Transaction ID</td><td align="right" style="font-family: monospace; font-size: 12px; color: rgba(255, 255, 255, 0.8);">#{transaction_id}</td></tr>' if transaction_id else ''}
+                  {f'<tr><td style="color: rgba(255, 255, 255, 0.5);">Valid Until</td><td align="right" style="font-weight: 600; color: #A78BFA;">{plan_expires_at}</td></tr>' if plan_expires_at else ''}
+                </table>
+
+              </div>
+            </td>
+          </tr>
+
+          <!-- Superpowers Unlocked Showcase -->
+          <tr>
+            <td style="padding: 0 36px 20px 36px;">
+              <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 18px; padding: 22px;">
+                
+                <div style="font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px; color: {primary_color}; margin-bottom: 14px;">
+                  ✨ Unlocked Superpowers
+                </div>
+
+                <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="font-size: 12px; color: rgba(255, 255, 255, 0.85); line-height: 2;">
+                  <tr>
+                    <td style="padding: 3px 0;">⚡ <strong>Quality:</strong> {quality_text}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 3px 0;">💾 <strong>Storage:</strong> {storage_text}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 3px 0;">🎙️ <strong>Voice:</strong> LiveKit Spatial Audio Channels</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 3px 0;">👥 <strong>Capacity:</strong> {capacity_text}</td>
+                  </tr>
+                </table>
+
+                {exclusive_feature}
+              </div>
+            </td>
+          </tr>
+
+          <!-- Primary CTA Button -->
+          <tr>
+            <td style="padding: 10px 36px 30px 36px; text-align: center;">
+              <a href="{action_url}" style="display: inline-block; width: 80%; max-width: 380px; padding: 16px 24px; font-size: 13px; font-weight: 900; text-transform: uppercase; letter-spacing: 1.5px; color: #FFFFFF !important; background: {gradient}; text-decoration: none; border-radius: 14px; box-shadow: 0 12px 30px {glow_color};">
+                ▶ Jump Into Watch Parties
+              </a>
+              <p style="margin: 14px 0 0 0; font-size: 12px; color: rgba(255, 255, 255, 0.45);">
+                Manage your subscription or profile anytime in <a href="{settings_url}" style="color: {primary_color}; text-decoration: underline;">Settings</a>.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="padding: 24px 36px; text-align: center; border-top: 1px solid rgba(255, 255, 255, 0.05); background: rgba(0, 0, 0, 0.35);">
+              <p style="margin: 0; font-size: 11px; color: rgba(255, 255, 255, 0.35); line-height: 1.5;">
+                CoWatch Platform • Real-time Synchronized Video Streaming<br>
+                This email confirms your official receipt for tax and subscription records.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+"""
+    return _send_html_email(to_email, subject, html)

@@ -165,3 +165,56 @@ input[type="range"]::-webkit-slider-thumb {
     opacity: 0.75;
   }
 }
+
+/* Fluid water wave animations for subscription cards */
+@keyframes co-wave-slow {
+  0% {
+    transform: translate3d(0%, 0, 0) scaleY(1);
+  }
+  50% {
+    transform: translate3d(-18%, -10px, 0) scaleY(1.08) scaleX(1.02);
+  }
+  100% {
+    transform: translate3d(0%, 0, 0) scaleY(1);
+  }
+}
+
+@keyframes co-wave-fast {
+  0% {
+    transform: translate3d(-15%, 4px, 0) scaleY(1.05);
+  }
+  50% {
+    transform: translate3d(6%, -7px, 0) scaleY(0.95) scaleX(0.98);
+  }
+  100% {
+    transform: translate3d(-15%, 4px, 0) scaleY(1.05);
+  }
+}
+
+@keyframes co-wave-drift {
+  0% {
+    transform: translate3d(-4%, 6px, 0) rotate(0deg);
+  }
+  50% {
+    transform: translate3d(-24%, -5px, 0) rotate(-0.6deg) scaleY(1.06);
+  }
+  100% {
+    transform: translate3d(-4%, 6px, 0) rotate(0deg);
+  }
+}
+
+.animate-wave-slow {
+  animation: co-wave-slow 16s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+  will-change: transform;
+}
+
+.animate-wave-fast {
+  animation: co-wave-fast 11s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+  will-change: transform;
+}
+
+.animate-wave-drift {
+  animation: co-wave-drift 20s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+  will-change: transform;
+}
+

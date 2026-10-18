@@ -25,11 +25,74 @@ DEFAULT_PLAN = PLAN_FREE
 DEFAULT_THEME = "default-dark"
 
 # Max upload quality vertical resolution pixels.
+QUALITY_480 = 480
 QUALITY_720 = 720
 QUALITY_1080 = 1080
+QUALITY_2K = 1440
 QUALITY_4K = 2160
 
 GB = 1024 ** 3
+
+# ==============================================================================
+# Regional Currencies Configuration (6 Target Markets)
+# ==============================================================================
+
+CURRENCIES: Dict[str, Dict[str, Any]] = {
+    "inr": {
+        "code": "inr",
+        "symbol": "₹",
+        "name": "Indian Rupee",
+        "country": "India",
+        "flag": "🇮🇳",
+        "is_zero_decimal": False,
+        "default": True,
+    },
+    "usd": {
+        "code": "usd",
+        "symbol": "$",
+        "name": "US Dollar",
+        "country": "United States",
+        "flag": "🇺🇸",
+        "is_zero_decimal": False,
+        "default": False,
+    },
+    "gbp": {
+        "code": "gbp",
+        "symbol": "£",
+        "name": "British Pound",
+        "country": "United Kingdom",
+        "flag": "🇬🇧",
+        "is_zero_decimal": False,
+        "default": False,
+    },
+    "eur": {
+        "code": "eur",
+        "symbol": "€",
+        "name": "Euro",
+        "country": "European Union",
+        "flag": "🇪🇺",
+        "is_zero_decimal": False,
+        "default": False,
+    },
+    "jpy": {
+        "code": "jpy",
+        "symbol": "¥",
+        "name": "Japanese Yen",
+        "country": "Japan",
+        "flag": "🇯🇵",
+        "is_zero_decimal": True,
+        "default": False,
+    },
+    "krw": {
+        "code": "krw",
+        "symbol": "₩",
+        "name": "South Korean Won",
+        "country": "South Korea",
+        "flag": "🇰🇷",
+        "is_zero_decimal": True,
+        "default": False,
+    },
+}
 
 
 def _owner_emails() -> set:
@@ -106,6 +169,8 @@ class BasePlan(ABC):
     monthly_processing_hours: Optional[float]  # None for Free, 10.0 for Pro, 50.0 for Pro+/Vibers
     max_participants: int
     yt_rooms_per_month: Optional[int]    # None = unlimited
+    max_audio_tracks: int = 1            # 1 for Free, 2 for Pro, 3 for Pro+/Vibers
+    max_video_duration_hours: float = 4.0 # Max length for a single video file
     allows_collections: bool
     allows_voice_chat: bool
     allows_custom_themes: bool
@@ -116,9 +181,17 @@ class BasePlan(ABC):
         """Backwards compatibility alias for upload_limit."""
         return self.upload_limit
 
-    def get_billing_price(self, billing_cycle: str) -> float:
-        """Return the subscription price for the requested billing interval."""
+    def get_billing_price(self, billing_cycle: str, currency: str = "usd") -> float:
+        """Return the subscription price for the requested billing interval and currency."""
         cycle = (billing_cycle or "").strip().lower()
+        curr = (currency or "usd").strip().lower()
+        if cycle not in ["monthly", "annual"]:
+            raise ValueError(f"Invalid billing cycle '{billing_cycle}'. Must be 'monthly' or 'annual'.")
+
+        regional = getattr(self, "regional_pricing", {})
+        if curr in regional and cycle in regional[curr]:
+            return float(regional[curr][cycle])
+
         if cycle == "monthly":
             return self.monthly_price
         elif cycle == "annual":
@@ -131,6 +204,14 @@ class BasePlan(ABC):
             raise HTTPException(
                 status_code=413,
                 detail="Storage limit exceeded. Upgrade your plan to store more videos."
+            )
+
+    def validate_video_duration(self, duration_hours: float) -> None:
+        """Enforce maximum single video length limit. Raises HTTP 400 if exceeded."""
+        if duration_hours > self.max_video_duration_hours:
+            raise HTTPException(
+                status_code=400,
+                detail=f"{self.name} tier accounts support single video uploads up to {self.max_video_duration_hours} hours. This file is {duration_hours:.2f} hours long."
             )
 
     def validate_upload_count(self, current_uploads_count: int) -> None:
@@ -165,7 +246,8 @@ class BasePlan(ABC):
         current_processing_hours: float = 0.0,
         new_duration_hours: float = 0.0
     ) -> None:
-        """Validate upload count, storage quota, and processing hours."""
+        """Validate upload count, storage quota, processing hours, and file duration."""
+        self.validate_video_duration(new_duration_hours)
         self.validate_upload_count(current_uploads_count)
         storage_used = getattr(user, "storage_used", 0) or 0
         self.validate_storage_quota(storage_used, file_size_bytes)
@@ -201,6 +283,9 @@ class BasePlan(ABC):
             "monthly_processing_hours": self.monthly_processing_hours,
             "max_participants": self.max_participants,
             "yt_rooms_per_month": self.yt_rooms_per_month,
+            "max_audio_tracks": self.max_audio_tracks,
+            "max_video_duration_hours": self.max_video_duration_hours,
+            "regional_pricing": getattr(self, "regional_pricing", {}),
             "collections": self.allows_collections,
             "voice_chat": self.allows_voice_chat,
             "custom_themes": self.allows_custom_themes,
@@ -220,13 +305,23 @@ class FreePlan(BasePlan):
     name = "Free"
     monthly_price = 0.0
     annual_price = 0.0
+    regional_pricing = {
+        "inr": {"monthly": 0.0, "annual": 0.0},
+        "usd": {"monthly": 0.0, "annual": 0.0},
+        "gbp": {"monthly": 0.0, "annual": 0.0},
+        "eur": {"monthly": 0.0, "annual": 0.0},
+        "jpy": {"monthly": 0.0, "annual": 0.0},
+        "krw": {"monthly": 0.0, "annual": 0.0},
+    }
     storage_limit_bytes = 2 * GB
-    max_quality_p = QUALITY_720
+    max_quality_p = QUALITY_480
     upload_limit = 3
     upload_period = "lifetime"
     monthly_processing_hours = None  # Free trial: 3 lifetime uploads, no recurring processing allowance
-    max_participants = 6             # Host + 5 guests
-    yt_rooms_per_month = 20
+    max_participants = 4             # 1 host + 3 guests
+    yt_rooms_per_month = 15          # 15 YouTube watch parties / month
+    max_audio_tracks = 1
+    max_video_duration_hours = 1.0   # Max 1 hour per uploaded video
     allows_collections = False
     allows_voice_chat = False
     allows_custom_themes = False
@@ -236,7 +331,7 @@ class FreePlan(BasePlan):
         if current_uploads_count >= self.upload_limit:
             raise HTTPException(
                 status_code=403,
-                detail="Free tier accounts include 3 lifetime video uploads. You have consumed all 3 uploads. Upgrade to Pro for monthly allowances!"
+                detail=f"Free tier accounts include {self.upload_limit} lifetime video uploads. You have consumed all {self.upload_limit} uploads. Upgrade to Pro for monthly allowances!"
             )
 
 
@@ -245,13 +340,23 @@ class ProPlan(BasePlan):
     name = "Pro"
     monthly_price = 2.99
     annual_price = 29.99
+    regional_pricing = {
+        "inr": {"monthly": 149.0, "annual": 1499.0},
+        "usd": {"monthly": 2.99, "annual": 29.99},
+        "gbp": {"monthly": 2.49, "annual": 24.99},
+        "eur": {"monthly": 2.99, "annual": 29.99},
+        "jpy": {"monthly": 450.0, "annual": 4500.0},
+        "krw": {"monthly": 4000.0, "annual": 40000.0},
+    }
     storage_limit_bytes = 10 * GB
-    max_quality_p = QUALITY_1080
-    upload_limit = 5
+    max_quality_p = QUALITY_720      # 720p HD streaming
+    upload_limit = 8                 # 8 video uploads / month
     upload_period = "billing_period"
     monthly_processing_hours = 10.0
-    max_participants = 16
-    yt_rooms_per_month = None  # Unlimited
+    max_participants = 10            # 1 host + 9 guests
+    yt_rooms_per_month = None        # Unlimited YouTube watch parties
+    max_audio_tracks = 2             # Up to 2 audio tracks
+    max_video_duration_hours = 2.5   # Max 2.5 hours per uploaded video
     allows_collections = True
     allows_voice_chat = True
     allows_custom_themes = True
@@ -261,7 +366,7 @@ class ProPlan(BasePlan):
         if current_uploads_count >= self.upload_limit:
             raise HTTPException(
                 status_code=403,
-                detail="Pro tier accounts are capped at a maximum of 5 video uploads per billing period. Upgrade to Pro+ or Vibers for higher limits!"
+                detail=f"Pro tier accounts are capped at a maximum of {self.upload_limit} video uploads per billing period. Upgrade to Pro+ or Vibers for higher limits!"
             )
 
 
@@ -270,13 +375,23 @@ class ProPlusPlan(BasePlan):
     name = "Pro+"
     monthly_price = 6.99
     annual_price = 69.99
+    regional_pricing = {
+        "inr": {"monthly": 299.0, "annual": 2999.0},
+        "usd": {"monthly": 6.99, "annual": 69.99},
+        "gbp": {"monthly": 5.49, "annual": 54.99},
+        "eur": {"monthly": 6.49, "annual": 64.99},
+        "jpy": {"monthly": 1050.0, "annual": 10500.0},
+        "krw": {"monthly": 9500.0, "annual": 95000.0},
+    }
     storage_limit_bytes = 20 * GB
-    max_quality_p = QUALITY_1080
-    upload_limit = 100
+    max_quality_p = QUALITY_1080     # 1080p Full HD streaming
+    upload_limit = 20
     upload_period = "billing_period"
-    monthly_processing_hours = 50.0
-    max_participants = 31
-    yt_rooms_per_month = None
+    monthly_processing_hours = 25.0
+    max_participants = 25            # 1 host + 24 guests
+    yt_rooms_per_month = None        # Unlimited YouTube watch parties
+    max_audio_tracks = 3             # Up to 3 audio tracks
+    max_video_duration_hours = 4.0   # Max 4.0 hours per video file
     allows_collections = True
     allows_voice_chat = True
     allows_custom_themes = True
@@ -286,7 +401,7 @@ class ProPlusPlan(BasePlan):
         if current_uploads_count >= self.upload_limit:
             raise HTTPException(
                 status_code=403,
-                detail="Pro+ tier accounts are capped at a maximum of 100 video uploads per billing period. Upgrade to Vibers for higher limits!"
+                detail=f"Pro+ tier accounts are capped at a maximum of {self.upload_limit} video uploads per billing period. Upgrade to Vibers for higher limits!"
             )
 
 
@@ -295,23 +410,33 @@ class VibersPlan(BasePlan):
     name = "Vibers"
     monthly_price = 9.99
     annual_price = 99.99
+    regional_pricing = {
+        "inr": {"monthly": 499.0, "annual": 4999.0},
+        "usd": {"monthly": 9.99, "annual": 99.99},
+        "gbp": {"monthly": 7.99, "annual": 79.99},
+        "eur": {"monthly": 9.49, "annual": 94.99},
+        "jpy": {"monthly": 1500.0, "annual": 15000.0},
+        "krw": {"monthly": 13500.0, "annual": 135000.0},
+    }
     storage_limit_bytes = 50 * GB
-    max_quality_p = QUALITY_4K
-    upload_limit = 200
+    max_quality_p = QUALITY_1080     # 1080p Full HD (cost-controlled room ceiling)
+    upload_limit = 40
     upload_period = "billing_period"
-    monthly_processing_hours = 50.0
-    max_participants = 500  # Effectively unlimited
-    yt_rooms_per_month = None
+    monthly_processing_hours = 45.0  # 45.0 hours monthly transcoding allowance
+    max_participants = 51            # Strictly 51: 1 host + 50 viewers only
+    yt_rooms_per_month = None        # Unlimited YouTube watch parties
+    max_audio_tracks = 3             # Up to 3 audio tracks
+    max_video_duration_hours = 4.0   # Max 4.0 hours per video file
     allows_collections = True
     allows_voice_chat = True
     allows_custom_themes = True
-    allows_custom_gradients = True  # Exclusive custom color and gradient selector mode
+    allows_custom_gradients = True   # Exclusive custom color and gradient selector mode
 
     def validate_upload_count(self, current_uploads_count: int) -> None:
         if current_uploads_count >= self.upload_limit:
             raise HTTPException(
                 status_code=403,
-                detail="Vibers tier accounts are capped at a maximum of 200 video uploads per billing period."
+                detail=f"Vibers tier accounts are capped at a maximum of {self.upload_limit} video uploads per billing period."
             )
 
 
@@ -374,6 +499,11 @@ class PlanRegistry:
 
 PLAN_PRICING = {
     plan.code: {"monthly": plan.monthly_price, "annual": plan.annual_price}
+    for plan in PlanRegistry.all()
+}
+
+REGIONAL_PRICING = {
+    plan.code: plan.regional_pricing
     for plan in PlanRegistry.all()
 }
 

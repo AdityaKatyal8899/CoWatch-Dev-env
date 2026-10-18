@@ -100,14 +100,14 @@ os.makedirs(os.path.join("storage", "videos"), exist_ok=True)
 
 # Initialize SQLAlchemy DB Schema
 try:
-    print(f"🔍 Connecting to database...")
+    print("[DB] Connecting to database...")
     models.Base.metadata.create_all(bind=engine)
     db_host = engine.url.host
     is_supabase = "supabase.co" in (db_host or "")
     db_type = "Supabase (Cloud)" if is_supabase else "PostgreSQL (Local)"
-    print(f"✅ Database connected successfully")
+    print(f"[DB] Database connected successfully ({db_type})")
 except Exception as e:
-    print(f"❌ DATABASE CONNECTION ERROR: {e}")
+    print(f"[DB] DATABASE CONNECTION ERROR: {e}")
 
 app.mount("/output/videos", StaticFiles(directory=os.path.join("storage", "videos")), name="videos")
 app.mount("/output", StaticFiles(directory=HLS_OUTPUT_DIR), name="output")
@@ -121,4 +121,4 @@ if __name__ == "__main__":
     import uvicorn
     uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)
 
-#OR: uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+#uvicorn app.main:app --reload --host 0.0.0.0 --port 8000

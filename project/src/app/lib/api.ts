@@ -93,24 +93,72 @@ export const api = {
     });
   },
 
-  async createPaymentOrder(planId: string, billing: string): Promise<{ order_id: string; amount: number; currency: string }> {
-    return request('/payments/create-order', {
+  async getStripeConfig(): Promise<{
+    configured: boolean;
+    publishable_key?: string;
+    is_test_mode: boolean;
+    pricing: any;
+    regional_pricing?: Record<string, Record<string, { monthly: number; annual: number }>>;
+    currencies?: Record<string, any>;
+  }> {
+    return request('/payments/config');
+  },
+
+  async detectRegion(): Promise<{
+    country: string;
+    currency: string;
+    currency_info: any;
+  }> {
+    return request('/payments/detect-region');
+  },
+
+  async createCheckoutSession(planId: string, billing: string, currency: string = 'usd'): Promise<{
+    session_id: string;
+    url: string;
+    amount: number;
+    currency: string;
+    plan_id: string;
+    plan_name: string;
+    payment_session_id?: string;
+    payment_gateway?: string;
+  }> {
+    return request('/payments/create-checkout-session', {
       method: 'POST',
-      body: JSON.stringify({ plan_id: planId, billing }),
+      body: JSON.stringify({ plan_id: planId, billing, currency }),
     });
   },
 
-  async verifyPayment(payload: {
-    razorpay_payment_id: string;
-    razorpay_order_id: string;
-    razorpay_signature: string;
+  async getPaymentSessionStatus(sessionId: string): Promise<{
+    session_id: string;
+    status: string;
+    payment_status: string;
+    amount_total: number;
+    currency: string;
+    customer_email?: string;
+    payment_intent_id?: string;
     plan_id: string;
-    billing: string;
-  }): Promise<{ success: boolean; plan: string; plan_expires_at: string; message: string }> {
-    return request('/payments/verify-payment', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    });
+    plan_name: string;
+    billing_cycle: string;
+    transaction_id?: number;
+    user_plan: string;
+    plan_expires_at?: string;
+  }> {
+    return request(`/payments/session-status/${sessionId}`);
+  },
+
+  async getPaymentHistory(): Promise<Array<{
+    id: number;
+    stripe_session_id: string;
+    payment_intent_id?: string;
+    plan_id: string;
+    billing_cycle: string;
+    amount: number;
+    currency: string;
+    status: string;
+    customer_email?: string;
+    created_at?: string;
+  }>> {
+    return request('/payments/history');
   },
 
   async onboardUser(data: { display_name: string; age?: number; date_of_birth?: string; genres: string[]; theme?: string }): Promise<User> {

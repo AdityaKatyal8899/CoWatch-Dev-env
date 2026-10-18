@@ -87,10 +87,11 @@ async def upload_video(
                 raise
             await out_file.write(content)
 
-    # 3. Probe exact video duration & enforce processing hours entitlement
+    # 3. Probe exact video duration, validate duration limits & enforce processing hours entitlement
     probed_duration_sec = probe_video_duration(input_path)
     new_duration_hours = probed_duration_sec / 3600.0
     try:
+        plan.validate_video_duration(new_duration_hours)
         plan.validate_processing_hours(period_processing_hours, new_duration_hours)
     except HTTPException:
         if os.path.exists(input_path):

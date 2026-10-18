@@ -11,6 +11,7 @@ interface AuthContextType {
   logout: () => Promise<void>;
   updateProfile: (updates: Partial<User>) => Promise<void>;
   setUserState: (user: User) => void;
+  refreshUser: () => Promise<User | null>;
   acceptTerms: () => Promise<void>;
 }
 
@@ -95,6 +96,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('cowatch_user', JSON.stringify(updatedUser));
   };
 
+  const refreshUser = async () => {
+    try {
+      const currentUser = await api.getCurrentUser();
+      if (currentUser) {
+        setUser(currentUser);
+        localStorage.setItem('cowatch_user', JSON.stringify(currentUser));
+      }
+      return currentUser;
+    } catch {
+      return null;
+    }
+  };
+
   // Post-login guard: terms acceptance is the FIRST gate, then onboarding.
   useEffect(() => {
     if (isLoading) return;
@@ -128,6 +142,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logout,
       updateProfile,
       setUserState,
+      refreshUser,
       acceptTerms,
     }}>
       {children}

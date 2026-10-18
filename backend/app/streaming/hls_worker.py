@@ -13,8 +13,8 @@ from app.database.models import Video
 from app.celery_app import celery_app
 
 # Feature flag: Toggle Multi-Language / Multi-Audio HLS extraction.
-# Kept False for standard single-stream HLS transcoding stability.
-ENABLE_MULTI_AUDIO = False
+# Automatically separates audio streams when multiple audio tracks are detected.
+ENABLE_MULTI_AUDIO = True
 
 # Comprehensive ISO 639-1 / 639-2 language code mapping
 ISO_LANGUAGES = {
@@ -564,6 +564,33 @@ def s3_sync_worker(
         executor.shutdown(wait=True)
 
 
+def get_hwaccel_video_encoder_args():
+    """
+    Detects if NVIDIA NVENC hardware acceleration is available.
+    Returns appropriate FFmpeg video encoding arguments.
+    """
+    try:
+        test_cmd = [
+            "ffmpeg", "-y", "-f", "lavfi", "-i", "nullsrc=s=256x256:d=0.1",
+            "-c:v", "h264_nvenc", "-f", "null", "-"
+        ]
+        res = subprocess.run(test_cmd, capture_output=True, timeout=5)
+        if res.returncode == 0:
+            print("[Hardware Acceleration] NVIDIA NVENC GPU Active (RTX 3050) -> Offloading video transcoding to GPU!", flush=True)
+            return [
+                "-c:v", "h264_nvenc",
+                "-preset", "p4",        # High performance & quality balance for NVENC
+                "-tune", "ll",          # Low latency tuning
+                "-pix_fmt", "yuv420p",  # 100% universal browser HLS player compatibility
+                "-forced-idr", "1",     # Forced IDR keyframes for clean HLS chunks
+            ]
+    except Exception as e:
+        print(f"[Hardware Check] NVENC check failed ({e}). Falling back to CPU.", flush=True)
+
+    print("[Transcoder] Using CPU libx264 software encoder.", flush=True)
+    return ["-c:v", "libx264", "-preset", "ultrafast", "-tune", "zerolatency", "-pix_fmt", "yuv420p"]
+
+
 @celery_app.task
 def process_video_to_hls(video_id: str, input_path: str):
     """
@@ -636,8 +663,11 @@ def process_video_to_hls(video_id: str, input_path: str):
             "-avoid_negative_ts", "make_zero",
         ]
 
-        # 3. Configure FFmpeg (Multi-Audio vs Standard Single-Stream)
-        if ENABLE_MULTI_AUDIO and audio_tracks:
+        # 3. Configure FFmpeg (Multi-Audio vs Standard Single-Stream) with GPU Acceleration
+        video_encoder_args = get_hwaccel_video_encoder_args()
+        is_multi_audio = bool(ENABLE_MULTI_AUDIO and audio_tracks and len(audio_tracks) > 1)
+
+        if is_multi_audio:
             # Multi-Audio sub-variant directories and master playlist setup
             os.makedirs(os.path.join(output_dir, "v0"), exist_ok=True)
             for track in audio_tracks:
@@ -649,8 +679,7 @@ def process_video_to_hls(video_id: str, input_path: str):
             args = [
                 "ffmpeg", "-y", "-i", input_path,
                 "-map", "0:v:0",
-                "-c:v", "libx264", "-preset", "ultrafast", "-tune", "zerolatency",
-            ]
+            ] + video_encoder_args
 
             for idx, track in enumerate(audio_tracks):
                 args += [
@@ -681,7 +710,7 @@ def process_video_to_hls(video_id: str, input_path: str):
             # Standard single-stream HLS transcoding: Video + Default Stereo Audio in one manifest
             args = [
                 "ffmpeg", "-y", "-i", input_path,
-                "-c:v", "libx264", "-preset", "ultrafast", "-tune", "zerolatency",
+            ] + video_encoder_args + [
                 "-c:a", "aac", "-b:a", "128k", "-ac", "2",
             ] + common_hls_args + [
                 "-hls_segment_filename", os.path.join(output_dir, "seg_%03d.ts"),
@@ -692,7 +721,7 @@ def process_video_to_hls(video_id: str, input_path: str):
         sync_thread = threading.Thread(
             target=s3_sync_worker, 
             args=(output_dir, video_id, stop_event, error_container),
-            kwargs={"window_size": 10, "duration": exact_duration, "audio_tracks": audio_tracks}
+            kwargs={"window_size": 10, "duration": exact_duration, "audio_tracks": audio_tracks if is_multi_audio else None}
         )
         sync_thread.start()
 
@@ -729,7 +758,7 @@ def process_video_to_hls(video_id: str, input_path: str):
             raise error_container[0]
 
         # 6. Final Manifests Normalization and Upload
-        if ENABLE_MULTI_AUDIO and audio_tracks:
+        if is_multi_audio and audio_tracks:
             normalize_m3u8_playlists(output_dir, audio_tracks)
 
         if os.path.exists(stream_playlist):

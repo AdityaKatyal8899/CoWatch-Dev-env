@@ -34,6 +34,7 @@ class User(Base):
 
     videos = relationship("Video", back_populates="owner")
     collections = relationship("Collection", back_populates="owner")
+    transactions = relationship("PaymentTransaction", back_populates="user", cascade="all, delete-orphan")
 
     @property
     def plan_tier(self) -> BasePlan:
@@ -213,3 +214,22 @@ class ModerationAppeal(Base):
     text = Column(String, nullable=True)
     status = Column(String, default="open", nullable=False)  # open | approved | denied
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class PaymentTransaction(Base):
+    """Stores completed payment records and Stripe transaction metadata."""
+    __tablename__ = "payment_transactions"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    stripe_session_id = Column(String, unique=True, index=True, nullable=False)
+    payment_intent_id = Column(String, index=True, nullable=True)
+    plan_id = Column(String, nullable=False)  # pro, pro_plus, vibers
+    billing_cycle = Column(String, default="monthly", nullable=False)  # monthly, annual
+    amount = Column(Float, nullable=False)
+    currency = Column(String, default="usd", nullable=False)
+    status = Column(String, default="succeeded", nullable=False)  # succeeded, pending, failed
+    customer_email = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    user = relationship("User", back_populates="transactions")
