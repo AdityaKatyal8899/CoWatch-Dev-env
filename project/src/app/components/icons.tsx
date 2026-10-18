@@ -21,4 +21,5 @@ export { default as QrCode } from 'lucide-react/dist/esm/icons/qr-code';
 export { default as Info } from 'lucide-react/dist/esm/icons/info';
 export { default as X } from 'lucide-react/dist/esm/icons/x';
 export { default as Languages } from 'lucide-react/dist/esm/icons/languages';
+export { default as Scan } from 'lucide-react/dist/esm/icons/scan';
 

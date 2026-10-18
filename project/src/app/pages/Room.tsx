@@ -586,7 +586,7 @@ export default function Room() {
 
         {/* Stream Area */}
         <div className="w-full lg:flex-1 flex flex-col min-w-0 lg:h-full shrink-0 order-1 lg:order-none">
-          <div className="px-4 lg:px-6 py-2.5 bg-[var(--bg,#0B0B0F)] border-b border-white/5 flex items-center justify-between order-2 lg:order-none transition-colors duration-300">
+          <div className="px-4 lg:px-6 py-2.5 bg-[var(--bg,#0B0B0F)] border-b border-white/5 flex items-center justify-between order-2 lg:order-none transition-colors duration-300 landscape:hidden lg:landscape:flex">
             <div className="flex items-center gap-3">
                <div className="flex items-center gap-2 px-3 py-1 bg-white/[0.03] border border-white/5 rounded-full">
                  <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: 'var(--primary, #9333EA)' }} />
@@ -610,7 +610,7 @@ export default function Room() {
             </div>
           </div>
 
-          <div id="video-player-container" className="w-full aspect-video lg:flex-1 lg:aspect-auto p-0 lg:p-6 overflow-hidden relative bg-black shrink-0 order-1 lg:order-none">
+          <div id="video-player-container" className="w-full aspect-video lg:flex-1 lg:aspect-auto p-0 lg:p-6 overflow-hidden relative bg-black shrink-0 order-1 lg:order-none landscape:aspect-auto landscape:flex-1 landscape:h-full landscape:p-0">
             {room.media_type === 'youtube' ? (
               <YouTubePlayer
                 key={room.youtube_video_id || "default"}

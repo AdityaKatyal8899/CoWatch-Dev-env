@@ -19,6 +19,7 @@ import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import android.view.WindowManager
 
 class MainActivity : AppCompatActivity() {
 
@@ -74,6 +75,12 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         instance = this
         setContentView(R.layout.activity_main)
+
+        // Enable edge-to-edge display into camera cutout / notch in landscape
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            window.attributes.layoutInDisplayCutoutMode =
+                WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+        }
 
         // Request notification permission for Android 13+ background updates
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -316,6 +323,12 @@ class MainActivity : AppCompatActivity() {
                 // Set orientation to landscape utilizing the device's IMU sensors
                 requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
                 
+                // Allow layout to extend across display cutouts / notches
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    window.attributes.layoutInDisplayCutoutMode =
+                        WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+                }
+
                 // Hide system UI (immersive fullscreen)
                 window.decorView.systemUiVisibility = (
                     android.view.View.SYSTEM_UI_FLAG_FULLSCREEN or

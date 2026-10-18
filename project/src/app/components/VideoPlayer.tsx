@@ -4,7 +4,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import Hls from 'hls.js';
 import { motion, AnimatePresence } from 'motion/react';
-import { Play, Pause, Volume2, VolumeX, Maximize, Settings, Lock, Unlock, RotateCcw, RotateCw, Languages, Check } from './icons';
+import { Play, Pause, Volume2, VolumeX, Maximize, Settings, Lock, Unlock, RotateCcw, RotateCw, Languages, Check, Scan } from './icons';
 import type { SyncState, AudioTrackInfo } from '../lib/types';
 import { api } from '../lib/api';
 import { cn } from '../lib/utils';
@@ -57,6 +57,33 @@ export function VideoPlayer({
   const [selectedAudioTrack, setSelectedAudioTrack] = useState<number>(0);
   const [showAudioMenu, setShowAudioMenu] = useState<boolean>(false);
   const [seekFeedback, setSeekFeedback] = useState<{ type: 'backward' | 'forward'; id: number } | null>(null);
+  
+  // Viewport Aspect Ratio / Zoom-to-Fill modes ('contain' = original, 'cover' = zoom to fill, 'fill' = stretch)
+  type AspectMode = 'contain' | 'cover' | 'fill';
+  const [aspectMode, setAspectMode] = useState<AspectMode>(() => {
+    if (typeof window !== 'undefined') {
+      return (localStorage.getItem('cowatch_player_aspect') as AspectMode) || 'contain';
+    }
+    return 'contain';
+  });
+  const [aspectBadge, setAspectBadge] = useState<string | null>(null);
+  const aspectBadgeTimer = useRef<NodeJS.Timeout | null>(null);
+  const lastTouchTapRef = useRef<number>(0);
+
+  const cycleAspectMode = useCallback(() => {
+    setAspectMode((prev) => {
+      const next: AspectMode = prev === 'contain' ? 'cover' : prev === 'cover' ? 'fill' : 'contain';
+      const label = next === 'cover' ? 'Zoom to Fill (Cover)' : next === 'fill' ? 'Stretch (Fill Screen)' : 'Original Fit';
+      setAspectBadge(label);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('cowatch_player_aspect', next);
+      }
+      if (aspectBadgeTimer.current) clearTimeout(aspectBadgeTimer.current);
+      aspectBadgeTimer.current = setTimeout(() => setAspectBadge(null), 2200);
+      return next;
+    });
+  }, []);
+
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const actionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const seekFeedbackTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -719,18 +746,47 @@ export function VideoPlayer({
   return (
     <div
       ref={containerRef}
-      className="relative w-full h-full bg-black rounded-2xl overflow-hidden group shadow-2xl transition-all duration-500"
+      className="relative w-full h-full bg-black rounded-2xl overflow-hidden group shadow-2xl transition-all duration-500 select-none"
       onMouseMove={resetControlsTimer}
       onClick={resetControlsTimer}
       onTouchStart={resetControlsTimer}
+      onTouchEnd={(e) => {
+        const now = Date.now();
+        if (now - lastTouchTapRef.current < 320) {
+          cycleAspectMode();
+        }
+        lastTouchTapRef.current = now;
+      }}
+      onDoubleClick={cycleAspectMode}
     >
-      {/* Video Element */}
+      {/* Video Element with Dynamic Viewport Aspect Ratio */}
       <video
         ref={videoRef}
-        className="w-full h-full"
+        className={cn(
+          "w-full h-full transition-[object-fit] duration-300",
+          aspectMode === 'cover' && "object-cover",
+          aspectMode === 'fill' && "object-fill",
+          aspectMode === 'contain' && "object-contain"
+        )}
         playsInline
         muted={isMuted}
       />
+
+      {/* Aspect Mode Feedback Pill Badge */}
+      <AnimatePresence>
+        {aspectBadge && (
+          <motion.div
+            initial={{ opacity: 0, y: -12, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -12, scale: 0.95 }}
+            transition={{ duration: 0.2 }}
+            className="absolute top-6 left-1/2 -translate-x-1/2 z-50 pointer-events-none px-4 py-2 rounded-full bg-black/85 backdrop-blur-2xl border border-white/20 text-white text-xs font-bold tracking-wide shadow-[0_8px_32px_rgba(0,0,0,0.8)] flex items-center gap-2"
+          >
+            <Scan className="w-4 h-4 text-[var(--primary)]" />
+            <span>{aspectBadge}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Buffering/Initializing Overlay */}
       {(isBuffering || !isStreamReady) && (
@@ -1015,6 +1071,23 @@ export function VideoPlayer({
                   )}
                 </div>
               )}
+
+              {/* Viewport Aspect Ratio / Zoom to Fill Mode Toggle */}
+              <button
+                onClick={(e) => { e.stopPropagation(); cycleAspectMode(); }}
+                title={`Aspect Ratio: ${aspectMode.toUpperCase()} (Click or double-tap video to toggle Zoom to Fill)`}
+                className={cn(
+                  "h-7 px-2 shrink-0 rounded-lg flex items-center gap-1.5 transition-all border text-xs font-bold",
+                  aspectMode !== 'contain'
+                    ? "bg-[var(--primary)]/20 border-[var(--primary)] text-[var(--primary)] shadow-[0_0_12px_var(--primary)]"
+                    : "bg-black/40 border-white/10 text-white/60 hover:text-white hover:bg-white/10"
+                )}
+              >
+                <Scan className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline text-[10px] uppercase tracking-wider">
+                  {aspectMode === 'cover' ? 'Zoomed' : aspectMode === 'fill' ? 'Stretch' : 'Fit'}
+                </span>
+              </button>
 
               {/* Fullscreen */}
               <button
