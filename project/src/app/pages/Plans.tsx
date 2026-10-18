@@ -665,7 +665,7 @@ function PlanCard({
           {isCouponApplied ? (
             <div className="mt-2.5 flex items-center gap-2">
               <span className="text-[11.5px] font-bold text-green-400 bg-green-500/15 border border-green-500/25 px-2 py-0.5 rounded-md flex items-center gap-1">
-                <Tag className="w-3 h-3" /> Coupon {couponCode}: {currConfig.symbol}5 Live Test Checkout
+                <Tag className="w-3 h-3" /> Special Promo Applied: {currConfig.symbol}5
               </span>
             </div>
           ) : showAnnualNote ? (
@@ -783,9 +783,9 @@ export default function Plans() {
     if (!code) return;
     if (code === 'PRO5' || code === 'TEST5' || code === 'COWATCH5') {
       setAppliedCoupon(code);
-      toast.success(`Coupon "${code}" applied! Pro plan discounted to ₹5.`);
+      toast.success(`Promo code "${code}" applied successfully!`);
     } else {
-      toast.error(`Invalid coupon code: "${code}". Use PRO5 to test at ₹5.`);
+      toast.error(`Invalid or expired promo code: "${code}".`);
     }
   };
 
@@ -855,12 +855,12 @@ export default function Plans() {
           <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 px-4 rounded-2xl bg-white/[0.03] border border-white/10 backdrop-blur-md">
             <div className="flex items-center gap-2 text-xs text-white/70">
               <Tag className="w-4 h-4 text-[var(--primary)] shrink-0" />
-              <span>Have a discount coupon? Use <strong className="text-white font-mono bg-white/10 px-1.5 py-0.5 rounded">PRO5</strong> to test the Pro tier at ₹5</span>
+              <span>Have a promo or discount code?</span>
             </div>
             <div className="flex items-center gap-2">
               {appliedCoupon ? (
                 <div className="flex items-center gap-2 bg-green-500/10 border border-green-500/25 px-3 py-1.5 rounded-xl">
-                  <span className="text-xs font-bold text-green-400 font-mono">🏷️ {appliedCoupon} APPLIED (₹5 PRO)</span>
+                  <span className="text-xs font-bold text-green-400 font-mono">🏷️ {appliedCoupon} APPLIED</span>
                   <button
                     type="button"
                     onClick={() => { setAppliedCoupon(''); setCouponInput(''); toast.info('Coupon removed'); }}
@@ -874,11 +874,11 @@ export default function Plans() {
                 <div className="flex items-center gap-2">
                   <input
                     type="text"
-                    placeholder="Coupon code (e.g. PRO5)"
+                    placeholder="Enter promo code"
                     value={couponInput}
                     onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
                     onKeyDown={(e) => { if (e.key === 'Enter') handleApplyCoupon(); }}
-                    className="bg-black/40 border border-white/15 rounded-xl px-3 py-1.5 text-xs text-white placeholder-white/30 uppercase tracking-wider focus:outline-none focus:border-[var(--primary)] transition-all w-48"
+                    className="bg-black/40 border border-white/15 rounded-xl px-3 py-1.5 text-xs text-white placeholder-white/30 uppercase tracking-wider focus:outline-none focus:border-[var(--primary)] transition-all w-44"
                   />
                   <button
                     type="button"
