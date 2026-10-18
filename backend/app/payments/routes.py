@@ -567,10 +567,25 @@ async def get_session_status(
             amount_val = float(cf_order.get("order_amount", 149.0))
             cust_details = cf_order.get("customer_details") or {}
 
+            # Precise status mapping for Cashfree orders
+            if is_paid:
+                status_mapped = "complete"
+                payment_status_mapped = "paid"
+            elif order_status == "CANCELLED":
+                status_mapped = "cancelled"
+                payment_status_mapped = "cancelled"
+            elif order_status in ["EXPIRED", "TERMINATED", "FAILED"]:
+                status_mapped = "failed"
+                payment_status_mapped = "failed"
+            else:
+                status_mapped = "pending"
+                payment_status_mapped = "unpaid"
+
             return {
                 "session_id": session_id,
-                "status": "complete" if is_paid else "pending",
-                "payment_status": "paid" if is_paid else "unpaid",
+                "status": status_mapped,
+                "payment_status": payment_status_mapped,
+                "raw_order_status": order_status,
                 "amount_total": amount_val,
                 "currency": (cf_order.get("order_currency") or "INR").upper(),
                 "customer_email": cust_details.get("customer_email") or current_user.email,

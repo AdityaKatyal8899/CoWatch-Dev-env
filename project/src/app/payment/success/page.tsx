@@ -103,15 +103,28 @@ function PaymentSuccessContent() {
     async function verify() {
       try {
         const res = await api.getPaymentSessionStatus(sessionId!);
-        if (isMounted) {
+        if (!isMounted) return;
+
+        const isSuccess = res.payment_status === 'paid' || res.status === 'complete';
+
+        if (isSuccess) {
           setData(res);
           if (refreshUser) {
             await refreshUser();
           }
+        } else if (res.payment_status === 'failed' || res.status === 'failed') {
+          router.replace(`/payment/failure?session_id=${encodeURIComponent(sessionId || '')}&reason=${encodeURIComponent('Payment authorization failed or was rejected.')}`);
+          return;
+        } else {
+          // Cancelled, expired, or unpaid
+          router.replace(`/payment/cancel?session_id=${encodeURIComponent(sessionId || '')}`);
+          return;
         }
       } catch (err: any) {
         console.error('Session verification error:', err);
         toast.error(err.message || 'Failed to verify payment session.');
+        router.replace(`/payment/failure?session_id=${encodeURIComponent(sessionId || '')}&reason=${encodeURIComponent(err.message || 'Verification failed')}`);
+        return;
       } finally {
         if (isMounted) setLoading(false);
       }
@@ -121,7 +134,7 @@ function PaymentSuccessContent() {
     return () => {
       isMounted = false;
     };
-  }, [sessionId, refreshUser]);
+  }, [sessionId, refreshUser, router]);
 
   const planKey = (data?.plan_id || 'pro').toLowerCase();
   const theme = PLAN_THEMES[planKey] || PLAN_THEMES.pro;
@@ -135,7 +148,7 @@ function PaymentSuccessContent() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  if (loading) {
+  if (loading || !data || (data.payment_status !== 'paid' && data.status !== 'complete')) {
     return (
       <div className="min-h-[70vh] flex flex-col items-center justify-center space-y-6 text-center">
         <div className="relative">
@@ -145,7 +158,7 @@ function PaymentSuccessContent() {
         <div className="space-y-2">
           <h2 className="text-xl font-bold text-white tracking-tight">Confirming Your Subscription...</h2>
           <p className="text-sm text-white/50 max-w-sm">
-            Verifying cryptographic payment intent with Stripe and configuring your new streaming tier.
+            Verifying secure payment session and configuring your new streaming tier.
           </p>
         </div>
       </div>
