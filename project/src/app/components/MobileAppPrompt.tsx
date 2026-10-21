@@ -5,7 +5,6 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Smartphone, Download, X, Sparkles, CheckCircle2 } from 'lucide-react';
 
 const APP_URL = "https://katyalstore.vercel.app/app/cowatch";
-const STORAGE_KEY = "cowatch_app_prompt_dismissed";
 
 export function MobileAppPrompt() {
   const [isOpen, setIsOpen] = useState(false);
@@ -20,13 +19,7 @@ export function MobileAppPrompt() {
       return; // Never show inside the Android WebView
     }
 
-    // 3. Check if user already dismissed the prompt in this browsing session
-    const isDismissed = sessionStorage.getItem(STORAGE_KEY) === 'true';
-    if (isDismissed) {
-      return;
-    }
-
-    // 4. Check if client is on a mobile device or small viewport
+    // 3. Check if client is on a mobile device or small viewport
     const checkIsMobile = () => {
       const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera || '';
       const isMobileUA = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
@@ -35,21 +28,17 @@ export function MobileAppPrompt() {
     };
 
     if (checkIsMobile()) {
-      // Small 750ms delay for graceful initial page hydration
+      // Graceful 650ms delay for smooth initial page hydration
       const timer = setTimeout(() => {
         setIsOpen(true);
-      }, 750);
+      }, 650);
       return () => clearTimeout(timer);
     }
   }, []);
 
   const handleDismiss = () => {
+    // Dismiss for the current page view; reappears on refresh/reload/login
     setIsOpen(false);
-    try {
-      sessionStorage.setItem(STORAGE_KEY, 'true');
-    } catch {
-      // Ignore storage quota errors
-    }
   };
 
   const handleOpenApp = () => {
