@@ -73,6 +73,7 @@ import { ThemeProvider } from './components/ThemeProvider';
 import { Suspense } from 'react';
 import Script from 'next/script';
 import { BackgroundNotificationListener } from './components/BackgroundNotificationListener';
+import { MobileAppPrompt } from './components/MobileAppPrompt';
 
 export default function RootLayout({
   children,
@@ -87,6 +88,7 @@ export default function RootLayout({
           <ProgressBar />
         </Suspense>
         {children}
+        <MobileAppPrompt />
         <Toaster 
           position="bottom-left"
           toastOptions={{
