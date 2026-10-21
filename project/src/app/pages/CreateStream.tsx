@@ -350,35 +350,40 @@ export default function CreateStream() {
                       </div>
 
                       {/* 18+ adult content flag */}
-                      <div className={`flex items-center justify-between p-4 rounded-xl border ${isAdult ? 'bg-red-500/[0.06] border-red-500/30' : 'bg-white/[0.02] border-white/5'}`}>
-                        <div className="flex items-start gap-3 pr-4">
-                          <div className="w-9 h-9 rounded-lg bg-red-500/10 border border-red-500/20 flex items-center justify-center shrink-0">
-                            <AlertTriangle className="w-4 h-4 text-red-400" />
+                      <div className={`p-4 sm:p-5 rounded-2xl border transition-all ${isAdult ? 'bg-red-500/[0.08] border-red-500/30 shadow-lg shadow-red-500/5' : 'bg-white/[0.02] border-white/5'}`}>
+                        {/* Top row: Icon + Title + Toggle */}
+                        <div className="flex items-center justify-between gap-3 mb-2.5">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="w-8 h-8 rounded-lg bg-red-500/10 border border-red-500/20 flex items-center justify-center shrink-0">
+                              <AlertTriangle className="w-4 h-4 text-red-400" />
+                            </div>
+                            <p className="text-white text-xs sm:text-sm font-semibold truncate">18+ Adult Content</p>
                           </div>
-                          <div>
-                            <p className="text-white text-sm font-semibold">18+ Adult Content</p>
-                            <p className="text-white/40 text-xs mt-0.5 max-w-xs leading-relaxed">
-                              Flag this room as adult. Only age-verified (18+) viewers can join, and you are responsible for flagging correctly.
-                            </p>
-                            {!user?.age_verified && (
-                              <p className="text-red-400/80 text-[11px] mt-1.5">
-                                Add your date of birth in <span className="underline cursor-pointer hover:text-red-300 font-medium" onClick={() => router.push('/settings')}>settings</span> to host 18+ rooms.
-                              </p>
-                            )}
-                          </div>
+
+                          <button
+                            type="button"
+                            disabled={!user?.age_verified}
+                            onClick={() => user?.age_verified && setIsAdult((v) => !v)}
+                            className={`w-11 h-6 rounded-full transition-colors relative shrink-0 ${isAdult ? 'bg-red-500' : 'bg-white/10'} ${!user?.age_verified ? 'opacity-40 cursor-not-allowed' : ''}`}
+                            title={!user?.age_verified ? "Age verification required in Settings" : "Toggle 18+ content"}
+                          >
+                            <motion.div
+                              className="absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow-sm"
+                              animate={{ x: isAdult ? 20 : 0 }}
+                              transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                            />
+                          </button>
                         </div>
-                        <button
-                          type="button"
-                          disabled={!user?.age_verified}
-                          onClick={() => user?.age_verified && setIsAdult((v) => !v)}
-                          className={`w-12 h-6 rounded-full transition-colors relative shrink-0 ${isAdult ? 'bg-red-500' : 'bg-white/10'} ${!user?.age_verified ? 'opacity-40 cursor-not-allowed' : ''}`}
-                        >
-                          <motion.div
-                            className="absolute top-1 left-1 w-4 h-4 bg-white rounded-full"
-                            animate={{ x: isAdult ? 24 : 0 }}
-                            transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-                          />
-                        </button>
+
+                        {/* Description: full width, compact font size */}
+                        <p className="text-white/45 text-[11px] sm:text-xs leading-relaxed">
+                          Flag this room as adult. Only age-verified (18+) viewers can join, and you are responsible for flagging correctly.
+                        </p>
+                        {!user?.age_verified && (
+                          <p className="text-red-400/90 text-[10px] sm:text-[11px] mt-2 pt-2 border-t border-white/5">
+                            Add your date of birth in <span className="underline cursor-pointer hover:text-red-300 font-medium" onClick={() => router.push('/settings')}>settings</span> to host 18+ rooms.
+                          </p>
+                        )}
                       </div>
                    </div>
                 </div>
