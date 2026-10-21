@@ -843,18 +843,32 @@ export function VideoPlayer({
     }
   }, [handleBrightnessChange, handleVolumeChange]);
 
+  // Double Click / Double Tap Action: Left side = Rewind 10s, Right side = Seek 10s forward
+  const handleDoubleAction = useCallback((clientX: number) => {
+    const container = containerRef.current;
+    if (!container) return;
+    const rect = container.getBoundingClientRect();
+    const isRight = (clientX - rect.left) > rect.width / 2;
+    if (isRight) {
+      stepSeek(10);
+    } else {
+      stepSeek(-10);
+    }
+  }, [stepSeek]);
+
   const handleTouchEnd = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
     const wasDragging = touchStartRef.current?.isDragging;
+    const startX = touchStartRef.current?.startX ?? (e.changedTouches?.[0]?.clientX || 0);
     touchStartRef.current = null;
 
     if (!wasDragging) {
       const now = Date.now();
       if (now - lastTouchTapRef.current < 320) {
-        cycleAspectMode();
+        handleDoubleAction(startX);
       }
       lastTouchTapRef.current = now;
     }
-  }, [cycleAspectMode]);
+  }, [handleDoubleAction]);
 
   const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
 
@@ -867,7 +881,7 @@ export function VideoPlayer({
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
-      onDoubleClick={cycleAspectMode}
+      onDoubleClick={(e) => handleDoubleAction(e.clientX)}
     >
       {/* Video Element with Dynamic Viewport Aspect Ratio & Brightness Filter */}
       <video
@@ -1282,7 +1296,7 @@ export function VideoPlayer({
               {/* Viewport Aspect Ratio / Zoom to Fill Mode Toggle */}
               <button
                 onClick={(e) => { e.stopPropagation(); cycleAspectMode(); }}
-                title={`Aspect Ratio: ${aspectMode.toUpperCase()} (Click or double-tap video to toggle Zoom to Fill)`}
+                title={`Aspect Ratio: ${aspectMode.toUpperCase()} (Click to toggle Zoom to Fill)`}
                 className={cn(
                   "h-6 sm:h-7 px-1.5 sm:px-2 shrink-0 rounded-md sm:rounded-lg flex items-center gap-1 transition-all border text-[9px] sm:text-xs font-bold",
                   aspectMode !== 'contain'

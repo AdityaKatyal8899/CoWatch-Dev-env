@@ -441,14 +441,42 @@ export function YouTubePlayer({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isHost, isLocked, handlePlayPause, stepSeek, volume, handleVolumeChange, toggleMute, toggleFullscreen]);
 
+  // Double Click / Double Tap Action: Left side = Rewind 10s, Right side = Seek 10s forward
+  const lastTouchTapRef = useRef<number>(0);
+  const handleDoubleAction = useCallback((clientX: number) => {
+    const container = containerRef.current;
+    if (!container) return;
+    const rect = container.getBoundingClientRect();
+    const isRight = (clientX - rect.left) > rect.width / 2;
+    if (isRight) {
+      stepSeek(10);
+    } else {
+      stepSeek(-10);
+    }
+  }, [stepSeek]);
+
+  const handleTouchEnd = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
+    resetControlsTimer();
+    const touch = e.changedTouches?.[0];
+    if (!touch) return;
+    const now = Date.now();
+    if (now - lastTouchTapRef.current < 320) {
+      handleDoubleAction(touch.clientX);
+    }
+    lastTouchTapRef.current = now;
+  }, [handleDoubleAction, resetControlsTimer]);
+
   const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   return (
     <div
       ref={containerRef}
-      className="relative w-full h-full bg-black rounded-2xl overflow-hidden group shadow-2xl transition-all duration-500"
+      className="relative w-full h-full bg-black rounded-2xl overflow-hidden group shadow-2xl transition-all duration-500 select-none touch-none"
       onMouseMove={resetControlsTimer}
       onClick={resetControlsTimer}
+      onTouchStart={resetControlsTimer}
+      onTouchEnd={handleTouchEnd}
+      onDoubleClick={(e) => handleDoubleAction(e.clientX)}
     >
       {/* YouTube Iframe element container */}
       <div className="w-full h-full pointer-events-none">
