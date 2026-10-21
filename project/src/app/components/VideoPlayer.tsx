@@ -887,30 +887,30 @@ export function VideoPlayer({
       <AnimatePresence>
         {activeGestureHUD === 'brightness' && (
           <motion.div
-            initial={{ opacity: 0, x: -24, scale: 0.9 }}
-            animate={{ opacity: 1, x: 0, scale: 1 }}
-            exit={{ opacity: 0, x: -24, scale: 0.9 }}
+            initial={{ opacity: 0, x: -24, y: '-50%', scale: 0.9 }}
+            animate={{ opacity: 1, x: 0, y: '-50%', scale: 1 }}
+            exit={{ opacity: 0, x: -24, y: '-50%', scale: 0.9 }}
             transition={{ type: "spring", stiffness: 420, damping: 26 }}
-            className="absolute left-4 sm:left-8 top-1/2 -translate-y-1/2 z-50 pointer-events-none flex flex-col items-center gap-2.5 px-3 py-4 rounded-2xl bg-black/85 backdrop-blur-2xl border border-amber-500/30 shadow-[0_16px_48px_rgba(0,0,0,0.85),0_0_24px_rgba(245,158,11,0.2)]"
+            className="absolute left-3 sm:left-8 top-1/2 z-50 pointer-events-none flex flex-col items-center gap-2 sm:gap-2.5 px-2.5 sm:px-3 py-3 sm:py-4 rounded-2xl bg-black/85 backdrop-blur-2xl border border-amber-500/30 shadow-[0_16px_48px_rgba(0,0,0,0.85),0_0_24px_rgba(245,158,11,0.2)]"
           >
-            <div className="w-8 h-8 rounded-xl bg-amber-500/15 flex items-center justify-center text-amber-400">
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-amber-500/15 flex items-center justify-center text-amber-400">
               {brightness < 0.6 ? (
-                <SunDim className="w-5 h-5" />
+                <SunDim className="w-4 h-4 sm:w-5 sm:h-5" />
               ) : brightness < 1.1 ? (
-                <SunMedium className="w-5 h-5" />
+                <SunMedium className="w-4 h-4 sm:w-5 sm:h-5" />
               ) : (
-                <Sun className="w-5 h-5 drop-shadow-[0_0_8px_rgba(245,158,11,0.8)]" />
+                <Sun className="w-4 h-4 sm:w-5 sm:h-5 drop-shadow-[0_0_8px_rgba(245,158,11,0.8)]" />
               )}
             </div>
             {/* Vertical Slider Track */}
-            <div className="w-2 sm:w-2.5 h-28 sm:h-32 bg-white/10 rounded-full overflow-hidden flex flex-col justify-end p-0.5 border border-white/5">
+            <div className="w-2 sm:w-2.5 h-20 sm:h-28 bg-white/10 rounded-full overflow-hidden flex flex-col justify-end p-0.5 border border-white/5">
               <div
                 className="w-full rounded-full bg-gradient-to-t from-amber-600 via-amber-400 to-amber-300 transition-all duration-75 shadow-[0_0_12px_rgba(245,158,11,0.7)]"
                 style={{ height: `${Math.max(4, Math.min(100, ((brightness - 0.2) / 1.3) * 100))}%` }}
               />
             </div>
             {/* Value Label */}
-            <span className="text-[10px] sm:text-[11px] font-black text-amber-300 font-mono tracking-tight">
+            <span className="text-[9px] sm:text-[11px] font-black text-amber-300 font-mono tracking-tight">
               {Math.round(brightness * 100)}%
             </span>
           </motion.div>
@@ -921,30 +921,30 @@ export function VideoPlayer({
       <AnimatePresence>
         {activeGestureHUD === 'volume' && (
           <motion.div
-            initial={{ opacity: 0, x: 24, scale: 0.9 }}
-            animate={{ opacity: 1, x: 0, scale: 1 }}
-            exit={{ opacity: 0, x: 24, scale: 0.9 }}
+            initial={{ opacity: 0, x: 24, y: '-50%', scale: 0.9 }}
+            animate={{ opacity: 1, x: 0, y: '-50%', scale: 1 }}
+            exit={{ opacity: 0, x: 24, y: '-50%', scale: 0.9 }}
             transition={{ type: "spring", stiffness: 420, damping: 26 }}
-            className="absolute right-4 sm:right-8 top-1/2 -translate-y-1/2 z-50 pointer-events-none flex flex-col items-center gap-2.5 px-3 py-4 rounded-2xl bg-black/85 backdrop-blur-2xl border border-[var(--primary)]/30 shadow-[0_16px_48px_rgba(0,0,0,0.85),0_0_24px_rgba(139,92,246,0.25)]"
+            className="absolute right-3 sm:right-8 top-1/2 z-50 pointer-events-none flex flex-col items-center gap-2 sm:gap-2.5 px-2.5 sm:px-3 py-3 sm:py-4 rounded-2xl bg-black/85 backdrop-blur-2xl border border-[var(--primary)]/30 shadow-[0_16px_48px_rgba(0,0,0,0.85),0_0_24px_rgba(139,92,246,0.25)]"
           >
-            <div className="w-8 h-8 rounded-xl bg-[var(--primary)]/15 flex items-center justify-center text-[var(--primary)]">
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-[var(--primary)]/15 flex items-center justify-center text-[var(--primary)]">
               {isMuted || volume === 0 ? (
-                <VolumeX className="w-5 h-5 text-red-400" />
+                <VolumeX className="w-4 h-4 sm:w-5 sm:h-5 text-red-400" />
               ) : volume < 0.5 ? (
-                <Volume1 className="w-5 h-5" />
+                <Volume1 className="w-4 h-4 sm:w-5 sm:h-5" />
               ) : (
-                <Volume2 className="w-5 h-5 drop-shadow-[0_0_8px_var(--primary)]" />
+                <Volume2 className="w-4 h-4 sm:w-5 sm:h-5 drop-shadow-[0_0_8px_var(--primary)]" />
               )}
             </div>
             {/* Vertical Slider Track */}
-            <div className="w-2 sm:w-2.5 h-28 sm:h-32 bg-white/10 rounded-full overflow-hidden flex flex-col justify-end p-0.5 border border-white/5">
+            <div className="w-2 sm:w-2.5 h-20 sm:h-28 bg-white/10 rounded-full overflow-hidden flex flex-col justify-end p-0.5 border border-white/5">
               <div
                 className="w-full rounded-full bg-gradient-to-t from-indigo-500 via-[var(--primary)] to-purple-300 transition-all duration-75 shadow-[0_0_12px_var(--primary)]"
                 style={{ height: `${isMuted ? 0 : Math.round(volume * 100)}%` }}
               />
             </div>
             {/* Value Label */}
-            <span className="text-[10px] sm:text-[11px] font-black text-purple-300 font-mono tracking-tight">
+            <span className="text-[9px] sm:text-[11px] font-black text-purple-300 font-mono tracking-tight">
               {isMuted ? 'MUTED' : `${Math.round(volume * 100)}%`}
             </span>
           </motion.div>

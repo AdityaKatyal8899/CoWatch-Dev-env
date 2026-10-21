@@ -170,10 +170,10 @@ export default function CreateStream() {
   return (
     <DashboardLayout>
       <PageTransition>
-        <div className="p-8 max-w-7xl mx-auto">
-          <div className="mb-10 text-center flex flex-col items-center">
-            <h1 className="text-4xl font-black text-white mb-2 tracking-tight">Create <span className="text-[var(--primary)]">Session</span></h1>
-            <p className="text-[var(--muted)] font-medium mb-8">Initialize a private room for synchronized viewing.</p>
+        <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full min-w-0">
+          <div className="mb-8 sm:mb-10 text-center flex flex-col items-center">
+            <h1 className="text-3xl sm:text-4xl font-black text-white mb-2 tracking-tight">Create <span className="text-[var(--primary)]">Session</span></h1>
+            <p className="text-[var(--muted)] text-sm sm:text-base font-medium mb-6 sm:mb-8">Initialize a private room for synchronized viewing.</p>
 
             {/* Stream Type Tabs */}
             <div className="flex bg-white/5 border border-white/5 p-1 rounded-2xl w-full max-w-md">
@@ -209,7 +209,7 @@ export default function CreateStream() {
                {[...Array(6)].map((_, i) => <VideoCardSkeleton key={i} />)}
             </div>
           ) : streamType === 'library' && videos.length === 0 ? (
-            <div className="glass-card rounded-[2.5rem] p-20 text-center border-dashed border-2 border-white/5">
+            <div className="glass-card rounded-[2.5rem] p-10 sm:p-20 text-center border-dashed border-2 border-white/5">
               <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center mx-auto mb-6">
                  <VideoIcon className="w-8 h-8 text-white/20" />
               </div>
@@ -227,20 +227,20 @@ export default function CreateStream() {
               </motion.button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10">
               {/* Left Column: Selection */}
-              <div className="lg:col-span-8 space-y-8">
+              <div className="lg:col-span-8 space-y-8 min-w-0">
                 {streamType === 'library' ? (
                   <>
-                    <div className="flex items-center justify-between">
-                       <div className="flex items-center gap-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 min-w-0">
+                       <div className="flex items-center gap-3 shrink-0">
                          <Folder className="w-5 h-5 text-white/20" />
                          <h2 className="heading-section">Choose Content</h2>
                        </div>
-                       <div className="flex gap-2">
+                       <div className="flex gap-2 overflow-x-auto pb-1 max-w-full scrollbar-none items-center">
                           <button
                             onClick={() => selectCollection('all')}
-                            className={`px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all border ${
+                            className={`px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all border shrink-0 whitespace-nowrap ${
                               selectedCollectionId === 'all' ? 'bg-white text-black border-white' : 'bg-white/5 text-white/40 border-white/5 hover:border-white/10'
                             }`}
                           >
@@ -250,7 +250,7 @@ export default function CreateStream() {
                             <button
                               key={c.id}
                               onClick={() => selectCollection(String(c.id))}
-                              className={`px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all border ${
+                              className={`px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all border shrink-0 whitespace-nowrap ${
                                 selectedCollectionId === String(c.id) ? 'bg-white text-black border-white' : 'bg-white/5 text-white/40 border-white/5 hover:border-white/10'
                               }`}
                             >
@@ -335,7 +335,7 @@ export default function CreateStream() {
                   </div>
                 )}
 
-                <div className="glass-card rounded-[2.5rem] p-10 border border-white/5 bg-white/[0.01]">
+                <div className="glass-card rounded-2xl sm:rounded-[2.5rem] p-5 sm:p-8 lg:p-10 border border-white/5 bg-white/[0.01]">
                    <h3 className="heading-section mb-6">Room Configuration</h3>
                    <div className="space-y-6">
                       <div className="space-y-2">
@@ -389,7 +389,7 @@ export default function CreateStream() {
                  <motion.div 
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
-                    className="glass-card rounded-[2.5rem] p-8 border border-white/5 bg-white/[0.01] sticky top-4"
+                    className="glass-card rounded-2xl sm:rounded-[2.5rem] p-5 sm:p-8 border border-white/5 bg-white/[0.01] sticky top-4"
                  >
                     <div className="aspect-video rounded-3xl bg-[#080808] border border-white/5 overflow-hidden relative mb-8">
                        {streamType === 'youtube' ? (

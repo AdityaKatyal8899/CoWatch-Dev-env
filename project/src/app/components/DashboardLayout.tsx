@@ -152,9 +152,9 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-y-auto bg-[var(--bg,#0B0B0F)] transition-colors duration-300">
+      <main className="flex-1 overflow-y-auto overflow-x-hidden min-w-0 max-w-full bg-[var(--bg,#0B0B0F)] transition-colors duration-300">
         <div className="min-h-full flex flex-col justify-between">
-          <div className="flex-1">{children}</div>
+          <div className="flex-1 min-w-0">{children}</div>
           {/* Dedicated bottom clearance spacer so mobile dock never blocks content or actions */}
           <div className="h-32 lg:hidden shrink-0 pointer-events-none" />
         </div>
