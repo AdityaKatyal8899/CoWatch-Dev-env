@@ -4,7 +4,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import Hls from 'hls.js';
 import { motion, AnimatePresence } from 'motion/react';
-import { Play, Pause, Volume2, VolumeX, Volume1, Maximize, Settings, Lock, Unlock, RotateCcw, RotateCw, Languages, Check, Scan, Sun, SunMedium, SunDim } from './icons';
+import { Play, Pause, Volume2, VolumeX, Volume1, Maximize2, Minimize2, RectangleHorizontal, Settings, Lock, Unlock, RotateCcw, RotateCw, Languages, Check, Scan, Sun, SunMedium, SunDim } from './icons';
 import type { SyncState, AudioTrackInfo } from '../lib/types';
 import { api } from '../lib/api';
 import { cn } from '../lib/utils';
@@ -711,6 +711,16 @@ export function VideoPlayer({
     }
   }, [isMuted, volume]);
 
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  useEffect(() => {
+    const handleFsChange = () => {
+      setIsFullscreen(Boolean(document.fullscreenElement));
+    };
+    document.addEventListener('fullscreenchange', handleFsChange);
+    return () => document.removeEventListener('fullscreenchange', handleFsChange);
+  }, []);
+
   const toggleFullscreen = useCallback(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -1258,24 +1268,29 @@ export function VideoPlayer({
                 onClick={(e) => { e.stopPropagation(); cycleAspectMode(); }}
                 title={`Aspect Ratio: ${aspectMode.toUpperCase()} (Click to toggle Zoom to Fill)`}
                 className={cn(
-                  "h-6 sm:h-7 px-1.5 sm:px-2 shrink-0 rounded-md sm:rounded-lg flex items-center gap-1 transition-all border text-[9px] sm:text-xs font-bold",
+                  "h-6 sm:h-7 px-1.5 sm:px-2 shrink-0 rounded-md sm:rounded-lg flex items-center gap-1 transition-all border text-[8.5px] sm:text-xs font-bold",
                   aspectMode !== 'contain'
                     ? "bg-[var(--primary)]/20 border-[var(--primary)] text-[var(--primary)] shadow-[0_0_12px_var(--primary)]"
                     : "bg-black/50 border-white/10 text-white/60 hover:text-white hover:bg-white/10"
                 )}
               >
-                <Scan className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-                <span className="hidden sm:inline text-[10px] uppercase tracking-wider">
-                  {aspectMode === 'cover' ? 'Zoomed' : aspectMode === 'fill' ? 'Stretch' : 'Fit'}
+                <RectangleHorizontal className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
+                <span className="font-mono uppercase font-black tracking-tight text-[8px] sm:text-[9.5px]">
+                  {aspectMode === 'cover' ? 'Zoom' : aspectMode === 'fill' ? 'Fill' : 'Fit'}
                 </span>
               </button>
 
-              {/* Fullscreen */}
+              {/* Fullscreen Toggle */}
               <button
                 onClick={toggleFullscreen}
+                title={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
                 className="w-6 h-6 sm:w-7 sm:h-7 shrink-0 rounded-md sm:rounded-lg bg-black/50 border border-white/10 text-white/60 hover:text-[var(--primary)] hover:border-[var(--primary)] flex items-center justify-center transition-all"
               >
-                <Maximize className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                {isFullscreen ? (
+                  <Minimize2 className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                ) : (
+                  <Maximize2 className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                )}
               </button>
             </div>
           </div>

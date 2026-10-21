@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Play, Pause, Volume2, VolumeX, Maximize, Settings, Lock, Unlock, RotateCcw, RotateCw } from './icons';
+import { Play, Pause, Volume2, VolumeX, Maximize2, Minimize2, Settings, Lock, Unlock, RotateCcw, RotateCw } from './icons';
 import { cn } from '../lib/utils';
 
 declare global {
@@ -388,6 +388,16 @@ export function YouTubePlayer({
     }
   }, [isReady, isMuted]);
 
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  useEffect(() => {
+    const handleFsChange = () => {
+      setIsFullscreen(Boolean(document.fullscreenElement));
+    };
+    document.addEventListener('fullscreenchange', handleFsChange);
+    return () => document.removeEventListener('fullscreenchange', handleFsChange);
+  }, []);
+
   // Fullscreen Handler
   const toggleFullscreen = useCallback(() => {
     const container = containerRef.current;
@@ -762,12 +772,17 @@ export function YouTubePlayer({
                   )}
                 </div>
 
-                {/* Fullscreen */}
+                {/* Fullscreen Toggle */}
                 <button
                   onClick={toggleFullscreen}
+                  title={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
                   className="w-6 h-6 sm:w-7 sm:h-7 shrink-0 rounded-md sm:rounded-lg bg-black/50 border border-white/10 text-white/60 hover:text-[var(--primary)] hover:border-[var(--primary)] flex items-center justify-center transition-all"
                 >
-                  <Maximize className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                  {isFullscreen ? (
+                    <Minimize2 className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                  ) : (
+                    <Maximize2 className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                  )}
                 </button>
               </div>
             </div>

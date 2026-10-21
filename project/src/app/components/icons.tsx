@@ -26,4 +26,7 @@ export { default as Sun } from 'lucide-react/dist/esm/icons/sun';
 export { default as SunMedium } from 'lucide-react/dist/esm/icons/sun-medium';
 export { default as SunDim } from 'lucide-react/dist/esm/icons/sun-dim';
 export { default as Volume1 } from 'lucide-react/dist/esm/icons/volume-1';
+export { default as Maximize2 } from 'lucide-react/dist/esm/icons/maximize-2';
+export { default as Minimize2 } from 'lucide-react/dist/esm/icons/minimize-2';
+export { default as RectangleHorizontal } from 'lucide-react/dist/esm/icons/rectangle-horizontal';
 
