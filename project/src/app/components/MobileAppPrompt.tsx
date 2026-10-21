@@ -4,15 +4,15 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Smartphone, Download, X, Sparkles, CheckCircle2, ExternalLink } from 'lucide-react';
 
-const APP_URL = "https://katyalstore.vercel.app/app/cowatch";
+const APP_URL = process.env.NEXT_PUBLIC_ANDROID_APP_URL || "";
 
 export function MobileAppPrompt() {
   const [isOpen, setIsOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
-    // 1. Guard against SSR
-    if (typeof window === 'undefined') return;
+    // 1. Guard against SSR or missing app URL config
+    if (typeof window === 'undefined' || !APP_URL) return;
 
     // 2. Check if already inside the native Android App (via JavaScript interface bridge)
     const isInsideAndroidApp = 'AndroidUploadBridge' in window;
@@ -40,7 +40,9 @@ export function MobileAppPrompt() {
   };
 
   const handleOpenApp = () => {
-    window.open(APP_URL, '_blank', 'noopener,noreferrer');
+    if (APP_URL) {
+      window.open(APP_URL, '_blank', 'noopener,noreferrer');
+    }
   };
 
   return (
