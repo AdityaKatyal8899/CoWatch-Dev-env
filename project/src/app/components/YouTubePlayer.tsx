@@ -662,25 +662,14 @@ export function YouTubePlayer({
               </div>
 
               <div className="flex items-center gap-1 sm:gap-1.5 md:gap-2">
-                {/* Volume Group */}
-                <div className="flex items-center gap-0.5 group/volume bg-black/50 rounded-md sm:rounded-lg p-0.5 border border-white/5 backdrop-blur-xl">
-                  <button
-                    onClick={toggleMute}
-                    className="w-6 h-6 sm:w-7 sm:h-7 shrink-0 rounded hover:bg-white/10 flex items-center justify-center transition-all text-white/60 hover:text-white"
-                  >
-                    {isMuted || volume === 0 ? <VolumeX className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> : <Volume2 className="w-3 h-3 sm:w-3.5 sm:h-3.5" />}
-                  </button>
-                  <div className="w-0 group-hover/volume:w-14 sm:group-hover/volume:w-20 overflow-hidden transition-all duration-300">
-                    <input
-                      type="range"
-                      min="0"
-                      max="100"
-                      value={volume}
-                      onChange={(e) => handleVolumeChange(parseInt(e.target.value))}
-                      className="w-14 sm:w-20 h-1 bg-white/20 rounded-full appearance-none cursor-pointer accent-[var(--primary)]"
-                    />
-                  </div>
-                </div>
+                {/* Volume / Mute Button */}
+                <button
+                  onClick={toggleMute}
+                  title={isMuted ? "Unmute" : "Mute"}
+                  className="w-6 h-6 sm:w-7 sm:h-7 shrink-0 rounded-md sm:rounded-lg bg-black/50 border border-white/5 backdrop-blur-xl hover:bg-white/10 flex items-center justify-center transition-all text-white/60 hover:text-white"
+                >
+                  {isMuted || volume === 0 ? <VolumeX className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-red-400" /> : <Volume2 className="w-3 h-3 sm:w-3.5 sm:h-3.5" />}
+                </button>
 
                 {/* Host Specific: Lock Control */}
                 {isHost && (
