@@ -1020,11 +1020,11 @@ export function VideoPlayer({
 
         {/* Center Play/Seek Controls (Host Only - Netflix Style Modular Floating Buttons) */}
         {isHost && !isLocked && (
-          <div className="absolute inset-0 flex items-center justify-center gap-8 sm:gap-16 md:gap-24 pointer-events-none select-none">
+          <div className="absolute inset-0 flex items-center justify-center gap-4 sm:gap-12 md:gap-20 pointer-events-none select-none">
             {/* 10s Rewind with Subtle Spring Micro-Animation */}
             <button
               onClick={(e) => { e.stopPropagation(); stepSeek(-10); }}
-              className="relative group flex flex-col items-center justify-center p-3 text-white/90 hover:text-white hover:scale-110 active:scale-90 transition-all duration-200 cursor-pointer pointer-events-auto filter drop-shadow-[0_4px_16px_rgba(0,0,0,0.85)] focus:outline-none"
+              className="relative group flex flex-col items-center justify-center p-1.5 sm:p-3 text-white/90 hover:text-white hover:scale-110 active:scale-90 transition-all duration-200 cursor-pointer pointer-events-auto filter drop-shadow-[0_4px_16px_rgba(0,0,0,0.85)] focus:outline-none"
               title="Rewind 10 seconds"
               aria-label="Rewind 10 seconds"
             >
@@ -1033,10 +1033,10 @@ export function VideoPlayer({
                   <motion.div
                     key={seekFeedback.id}
                     initial={{ opacity: 0, y: 4, scale: 0.7 }}
-                    animate={{ opacity: 1, y: -22, scale: 1.1 }}
-                    exit={{ opacity: 0, y: -32, scale: 0.85 }}
+                    animate={{ opacity: 1, y: -18, scale: 1.05 }}
+                    exit={{ opacity: 0, y: -26, scale: 0.85 }}
                     transition={{ duration: 0.5, ease: 'easeOut' }}
-                    className="absolute -top-3 pointer-events-none px-2 py-0.5 rounded-full bg-white/20 border border-white/25 backdrop-blur-md text-white font-black text-[10px] tracking-tight shadow-[0_0_12px_rgba(255,255,255,0.4)]"
+                    className="absolute -top-3 pointer-events-none px-1.5 py-0.5 rounded-full bg-white/20 border border-white/25 backdrop-blur-md text-white font-black text-[8px] sm:text-[10px] tracking-tight shadow-[0_0_12px_rgba(255,255,255,0.4)]"
                   >
                     -10s
                   </motion.div>
@@ -1048,29 +1048,29 @@ export function VideoPlayer({
                 transition={{ type: 'spring', stiffness: 450, damping: 15 }}
                 className="relative flex items-center justify-center"
               >
-                <RotateCcw className="w-8 h-8 sm:w-11 sm:h-11 md:w-12 md:h-12 text-white stroke-[1.75]" />
-                <span className="absolute text-[9px] sm:text-[11px] font-black text-white select-none pointer-events-none mt-0.5">10</span>
+                <RotateCcw className="w-6 h-6 sm:w-9 sm:h-9 md:w-11 md:h-11 text-white stroke-[1.75]" />
+                <span className="absolute text-[7px] sm:text-[10px] font-black text-white select-none pointer-events-none mt-0.5">10</span>
               </motion.div>
             </button>
 
             {/* Center Play/Pause */}
             <button
               onClick={(e) => { e.stopPropagation(); handlePlayPause(); }}
-              className="p-3 sm:p-5 text-white hover:text-white hover:scale-110 active:scale-90 transition-all duration-200 cursor-pointer pointer-events-auto filter drop-shadow-[0_6px_24px_rgba(0,0,0,0.9)] focus:outline-none"
+              className="p-2 sm:p-4 text-white hover:text-white hover:scale-110 active:scale-90 transition-all duration-200 cursor-pointer pointer-events-auto filter drop-shadow-[0_6px_24px_rgba(0,0,0,0.9)] focus:outline-none"
               title={isPlaying ? "Pause" : "Play"}
               aria-label={isPlaying ? "Pause" : "Play"}
             >
               {isPlaying ? (
-                <Pause className="w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 text-white fill-white" />
+                <Pause className="w-8 h-8 sm:w-13 sm:h-13 md:w-18 md:h-18 text-white fill-white" />
               ) : (
-                <Play className="w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 text-white fill-white ml-1.5" />
+                <Play className="w-8 h-8 sm:w-13 sm:h-13 md:w-18 md:h-18 text-white fill-white ml-1" />
               )}
             </button>
 
             {/* 10s Forward with Subtle Spring Micro-Animation */}
             <button
               onClick={(e) => { e.stopPropagation(); stepSeek(10); }}
-              className="relative group flex flex-col items-center justify-center p-3 text-white/90 hover:text-white hover:scale-110 active:scale-90 transition-all duration-200 cursor-pointer pointer-events-auto filter drop-shadow-[0_4px_16px_rgba(0,0,0,0.85)] focus:outline-none"
+              className="relative group flex flex-col items-center justify-center p-1.5 sm:p-3 text-white/90 hover:text-white hover:scale-110 active:scale-90 transition-all duration-200 cursor-pointer pointer-events-auto filter drop-shadow-[0_4px_16px_rgba(0,0,0,0.85)] focus:outline-none"
               title="Forward 10 seconds"
               aria-label="Forward 10 seconds"
             >
@@ -1079,10 +1079,10 @@ export function VideoPlayer({
                   <motion.div
                     key={seekFeedback.id}
                     initial={{ opacity: 0, y: 4, scale: 0.7 }}
-                    animate={{ opacity: 1, y: -22, scale: 1.1 }}
-                    exit={{ opacity: 0, y: -32, scale: 0.85 }}
+                    animate={{ opacity: 1, y: -18, scale: 1.05 }}
+                    exit={{ opacity: 0, y: -26, scale: 0.85 }}
                     transition={{ duration: 0.5, ease: 'easeOut' }}
-                    className="absolute -top-3 pointer-events-none px-2 py-0.5 rounded-full bg-white/20 border border-white/25 backdrop-blur-md text-white font-black text-[10px] tracking-tight shadow-[0_0_12px_rgba(255,255,255,0.4)]"
+                    className="absolute -top-3 pointer-events-none px-1.5 py-0.5 rounded-full bg-white/20 border border-white/25 backdrop-blur-md text-white font-black text-[8px] sm:text-[10px] tracking-tight shadow-[0_0_12px_rgba(255,255,255,0.4)]"
                   >
                     +10s
                   </motion.div>
@@ -1094,14 +1094,14 @@ export function VideoPlayer({
                 transition={{ type: 'spring', stiffness: 450, damping: 15 }}
                 className="relative flex items-center justify-center"
               >
-                <RotateCw className="w-8 h-8 sm:w-11 sm:h-11 md:w-12 md:h-12 text-white stroke-[1.75]" />
-                <span className="absolute text-[9px] sm:text-[11px] font-black text-white select-none pointer-events-none mt-0.5">10</span>
+                <RotateCw className="w-6 h-6 sm:w-9 sm:h-9 md:w-11 md:h-11 text-white stroke-[1.75]" />
+                <span className="absolute text-[7px] sm:text-[10px] font-black text-white select-none pointer-events-none mt-0.5">10</span>
               </motion.div>
             </button>
           </div>
         )}
         {/* Bottom Controls */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 lg:p-6 space-y-4">
+        <div className="absolute bottom-0 left-0 right-0 p-2.5 sm:p-4 lg:p-6 space-y-2 sm:space-y-3.5">
           {/* Progress Bar Area */}
           <div className={`relative group/progress transition-all duration-300 ${isLocked ? 'opacity-30 pointer-events-none' : ''}`}>
             {/* Peek Time Indicator */}
@@ -1109,23 +1109,23 @@ export function VideoPlayer({
               {isScrubbing && (
                 <motion.div
                   initial={{ opacity: 0, y: 8, scale: 0.85 }}
-                  animate={{ opacity: 1, y: -24, scale: 1 }}
+                  animate={{ opacity: 1, y: -20, scale: 1 }}
                   exit={{ opacity: 0, y: 4, scale: 0.85 }}
                   transition={{ duration: 0.15 }}
                   style={{ left: `${Math.max(4, Math.min(progressPercent, 96))}%` }}
-                  className="absolute -top-1 -translate-x-1/2 pointer-events-none z-30 px-2 py-0.5 rounded-md bg-black/85 backdrop-blur-md border border-white/20 text-white font-mono text-[10px] font-bold shadow-xl"
+                  className="absolute -top-1 -translate-x-1/2 pointer-events-none z-30 px-1.5 py-0.5 rounded bg-black/85 backdrop-blur-md border border-white/20 text-white font-mono text-[9px] font-bold shadow-xl"
                 >
                   {formatTime(currentTime)}
                 </motion.div>
               )}
             </AnimatePresence>
-            <div className="h-1.5 bg-white/20 rounded-full overflow-hidden backdrop-blur-sm">
+            <div className="h-1 sm:h-1.5 bg-white/20 rounded-full overflow-hidden backdrop-blur-sm">
               <div
                 className="h-full transition-all duration-100 relative"
                 style={{ width: `${progressPercent}%`, background: 'var(--primary-gradient, var(--primary))' }}
               >
                 <div 
-                  className="absolute right-0 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full shadow-lg"
+                  className="absolute right-0 top-1/2 -translate-y-1/2 w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 rounded-full shadow-lg"
                   style={{ background: 'var(--primary, #ffffff)', boxShadow: '0 0 10px var(--primary)' }}
                 />
               </div>
@@ -1145,30 +1145,30 @@ export function VideoPlayer({
 
           {/* Control Buttons Bottom Bar */}
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 sm:gap-4">
               {/* Time Indicator */}
-              <div className="text-white/80 text-[9px] sm:text-[10px] font-black uppercase tracking-[0.15em] bg-black/40 px-2.5 py-1.5 rounded-lg border border-white/5 backdrop-blur-xl shadow-inner-lg">
+              <div className="text-white/80 text-[8px] sm:text-[10px] font-black uppercase tracking-[0.12em] bg-black/50 px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-md sm:rounded-lg border border-white/5 backdrop-blur-xl shadow-inner-lg">
                 {formatTime(currentTime)} <span className="text-white/20 mx-0.5">/</span> {formatTime(duration)}
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 sm:gap-1.5 md:gap-2">
               {/* Brightness Group */}
-              <div className="flex items-center gap-0.5 group/brightness bg-black/40 rounded-lg p-0.5 border border-white/5 backdrop-blur-xl">
+              <div className="flex items-center gap-0.5 group/brightness bg-black/50 rounded-md sm:rounded-lg p-0.5 border border-white/5 backdrop-blur-xl">
                 <button
                   onClick={() => handleBrightnessChange(brightness === 1.0 ? 1.3 : brightness > 1.0 ? 0.7 : 1.0)}
                   title={`Brightness: ${Math.round(brightness * 100)}% (Click to toggle preset, or hover to slide)`}
-                  className="w-7 h-7 shrink-0 rounded-md hover:bg-white/10 flex items-center justify-center transition-all text-white/60 hover:text-amber-400"
+                  className="w-6 h-6 sm:w-7 sm:h-7 shrink-0 rounded hover:bg-white/10 flex items-center justify-center transition-all text-white/60 hover:text-amber-400"
                 >
                   {brightness < 0.6 ? (
-                    <SunDim className="w-3.5 h-3.5" />
+                    <SunDim className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                   ) : brightness < 1.1 ? (
-                    <SunMedium className="w-3.5 h-3.5" />
+                    <SunMedium className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                   ) : (
-                    <Sun className="w-3.5 h-3.5 text-amber-400" />
+                    <Sun className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-amber-400" />
                   )}
                 </button>
-                <div className="w-0 group-hover/brightness:w-16 sm:group-hover/brightness:w-20 overflow-hidden transition-all duration-300 flex items-center pr-1.5">
+                <div className="w-0 group-hover/brightness:w-14 sm:group-hover/brightness:w-20 overflow-hidden transition-all duration-300 flex items-center pr-1">
                   <input
                     type="range"
                     min="0.2"
@@ -1176,20 +1176,20 @@ export function VideoPlayer({
                     step="0.05"
                     value={brightness}
                     onChange={(e) => handleBrightnessChange(parseFloat(e.target.value))}
-                    className="w-16 sm:w-20 h-1 bg-white/20 rounded-full appearance-none cursor-pointer accent-amber-400"
+                    className="w-14 sm:w-20 h-1 bg-white/20 rounded-full appearance-none cursor-pointer accent-amber-400"
                   />
                 </div>
               </div>
 
               {/* Volume Group */}
-              <div className="flex items-center gap-0.5 group/volume bg-black/40 rounded-lg p-0.5 border border-white/5 backdrop-blur-xl">
+              <div className="flex items-center gap-0.5 group/volume bg-black/50 rounded-md sm:rounded-lg p-0.5 border border-white/5 backdrop-blur-xl">
                 <button
                   onClick={toggleMute}
-                  className="w-7 h-7 shrink-0 rounded-md hover:bg-white/10 flex items-center justify-center transition-all text-white/60 hover:text-white"
+                  className="w-6 h-6 sm:w-7 sm:h-7 shrink-0 rounded hover:bg-white/10 flex items-center justify-center transition-all text-white/60 hover:text-white"
                 >
-                  {isMuted || volume === 0 ? <VolumeX className="w-3 h-3" /> : <Volume2 className="w-3 h-3" />}
+                  {isMuted || volume === 0 ? <VolumeX className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> : <Volume2 className="w-3 h-3 sm:w-3.5 sm:h-3.5" />}
                 </button>
-                <div className="w-0 group-hover/volume:w-16 sm:group-hover/volume:w-20 overflow-hidden transition-all duration-300">
+                <div className="w-0 group-hover/volume:w-14 sm:group-hover/volume:w-20 overflow-hidden transition-all duration-300">
                   <input
                     type="range"
                     min="0"
@@ -1197,7 +1197,7 @@ export function VideoPlayer({
                     step="0.01"
                     value={volume}
                     onChange={(e) => handleVolumeChange(parseFloat(e.target.value))}
-                    className="w-16 sm:w-20 h-1 bg-white/20 rounded-full appearance-none cursor-pointer accent-[var(--primary)]"
+                    className="w-14 sm:w-20 h-1 bg-white/20 rounded-full appearance-none cursor-pointer accent-[var(--primary)]"
                   />
                 </div>
               </div>
@@ -1207,13 +1207,13 @@ export function VideoPlayer({
                 <button
                   onClick={(e) => { e.stopPropagation(); setIsLocked(!isLocked); }}
                   title={isLocked ? "Unlock Controls" : "Lock Controls"}
-                  className={`w-7 h-7 shrink-0 rounded-lg flex items-center justify-center transition-all border ${isLocked
+                  className={`w-6 h-6 sm:w-7 sm:h-7 shrink-0 rounded-md sm:rounded-lg flex items-center justify-center transition-all border ${isLocked
                       ? 'border-[var(--primary)]/40 shadow-[0_0_15px_var(--primary)]'
-                      : 'bg-black/40 border-white/10 text-white/40 hover:text-white hover:bg-white/10'
+                      : 'bg-black/50 border-white/10 text-white/40 hover:text-white hover:bg-white/10'
                     }`}
                   style={isLocked ? { background: 'var(--primary-gradient, var(--primary))', color: 'var(--primary-foreground, #ffffff)' } : {}}
                 >
-                  {isLocked ? <Lock className="w-3 h-3" /> : <Unlock className="w-3 h-3" />}
+                  {isLocked ? <Lock className="w-2.5 h-2.5 sm:w-3 sm:h-3" /> : <Unlock className="w-2.5 h-2.5 sm:w-3 sm:h-3" />}
                 </button>
               )}
 
@@ -1224,14 +1224,14 @@ export function VideoPlayer({
                     onClick={(e) => { e.stopPropagation(); setShowAudioMenu(!showAudioMenu); }}
                     title="Audio Language"
                     className={cn(
-                      "h-7 px-2 shrink-0 rounded-lg flex items-center gap-1.5 transition-all border text-xs font-bold",
+                      "h-6 sm:h-7 px-1.5 sm:px-2 shrink-0 rounded-md sm:rounded-lg flex items-center gap-1 transition-all border text-[9px] sm:text-xs font-bold",
                       showAudioMenu
                         ? "border-[var(--primary)] shadow-[0_0_15px_var(--primary)]"
-                        : "bg-black/40 border-white/10 text-white/70 hover:text-white hover:bg-white/10"
+                        : "bg-black/50 border-white/10 text-white/70 hover:text-white hover:bg-white/10"
                     )}
                     style={showAudioMenu ? { background: 'var(--primary-gradient, var(--primary))', color: 'var(--primary-foreground, #ffffff)' } : {}}
                   >
-                    <Languages className="w-3.5 h-3.5" />
+                    <Languages className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                     <span className="hidden sm:inline uppercase text-[10px] tracking-wider">
                       {audioTracks[selectedAudioTrack]?.language && audioTracks[selectedAudioTrack]?.language !== 'und'
                         ? audioTracks[selectedAudioTrack]?.language?.toUpperCase()
@@ -1284,13 +1284,13 @@ export function VideoPlayer({
                 onClick={(e) => { e.stopPropagation(); cycleAspectMode(); }}
                 title={`Aspect Ratio: ${aspectMode.toUpperCase()} (Click or double-tap video to toggle Zoom to Fill)`}
                 className={cn(
-                  "h-7 px-2 shrink-0 rounded-lg flex items-center gap-1.5 transition-all border text-xs font-bold",
+                  "h-6 sm:h-7 px-1.5 sm:px-2 shrink-0 rounded-md sm:rounded-lg flex items-center gap-1 transition-all border text-[9px] sm:text-xs font-bold",
                   aspectMode !== 'contain'
                     ? "bg-[var(--primary)]/20 border-[var(--primary)] text-[var(--primary)] shadow-[0_0_12px_var(--primary)]"
-                    : "bg-black/40 border-white/10 text-white/60 hover:text-white hover:bg-white/10"
+                    : "bg-black/50 border-white/10 text-white/60 hover:text-white hover:bg-white/10"
                 )}
               >
-                <Scan className="w-3.5 h-3.5" />
+                <Scan className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                 <span className="hidden sm:inline text-[10px] uppercase tracking-wider">
                   {aspectMode === 'cover' ? 'Zoomed' : aspectMode === 'fill' ? 'Stretch' : 'Fit'}
                 </span>
@@ -1299,9 +1299,9 @@ export function VideoPlayer({
               {/* Fullscreen */}
               <button
                 onClick={toggleFullscreen}
-                className="w-7 h-7 shrink-0 rounded-lg bg-black/40 border border-white/10 text-white/60 hover:text-[var(--primary)] hover:border-[var(--primary)] flex items-center justify-center transition-all"
+                className="w-6 h-6 sm:w-7 sm:h-7 shrink-0 rounded-md sm:rounded-lg bg-black/50 border border-white/10 text-white/60 hover:text-[var(--primary)] hover:border-[var(--primary)] flex items-center justify-center transition-all"
               >
-                <Maximize className="w-3 h-3" />
+                <Maximize className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
               </button>
             </div>
           </div>
