@@ -148,6 +148,10 @@ export function VideoPlayer({
   const lastActionTime = useRef(0);
   const lastInteractionTimeRef = useRef(0);
   const hasInitialSyncRef = useRef(false);
+  const activeAudioTrackRef = useRef(activeAudioTrack);
+  useEffect(() => {
+    activeAudioTrackRef.current = activeAudioTrack;
+  }, [activeAudioTrack]);
 
   // Constants (CRITICAL CONFIG)
   const TARGET_OFFSET = 0.7;    // Optimized for 1s segments (stay ~0.7 segments behind host)
@@ -223,6 +227,14 @@ export function VideoPlayer({
             default: t.default,
           }));
           setAudioTracks(mapped);
+
+          const active = activeAudioTrackRef.current;
+          const activeId = active ? (typeof active.track_id === 'number' ? active.track_id : (active as any).trackId) : null;
+          if (!isHost && typeof activeId === 'number' && activeId >= 0 && activeId < hls.audioTracks.length) {
+            hls.audioTrack = activeId;
+            setSelectedAudioTrack(activeId);
+            return;
+          }
           setSelectedAudioTrack(hls.audioTrack >= 0 ? hls.audioTrack : 0);
         }
       };
@@ -740,13 +752,16 @@ export function VideoPlayer({
 
   // Viewer auto-follow: Sync active audio track from Host
   useEffect(() => {
-    if (!isHost && activeAudioTrack && hlsRef.current && typeof activeAudioTrack.track_id === 'number') {
-      const targetTrackId = activeAudioTrack.track_id;
-      if (hlsRef.current.audioTrack !== targetTrackId && hlsRef.current.audioTracks.length > targetTrackId) {
-        hlsRef.current.audioTrack = targetTrackId;
-        setSelectedAudioTrack(targetTrackId);
-        const track = audioTracks.find(t => t.id === targetTrackId);
-        toast.info(`Audio set to ${track?.name || activeAudioTrack.track_name || 'Host selection'}`);
+    if (!isHost && activeAudioTrack && hlsRef.current) {
+      const rawId = activeAudioTrack.track_id ?? (activeAudioTrack as any).trackId;
+      if (typeof rawId === 'number' && rawId >= 0) {
+        const targetTrackId = rawId;
+        if (hlsRef.current.audioTracks.length > targetTrackId && hlsRef.current.audioTrack !== targetTrackId) {
+          hlsRef.current.audioTrack = targetTrackId;
+          setSelectedAudioTrack(targetTrackId);
+          const track = audioTracks.find(t => t.id === targetTrackId) || audioTracks[targetTrackId];
+          toast.info(`Audio set to ${track?.name || activeAudioTrack.track_name || 'Host selection'}`);
+        }
       }
     }
   }, [activeAudioTrack, isHost, audioTracks]);
@@ -761,7 +776,7 @@ export function VideoPlayer({
       hls.audioTrack = trackId;
       setSelectedAudioTrack(trackId);
       setShowAudioMenu(false);
-      const track = audioTracks[trackId];
+      const track = audioTracks.find(t => t.id === trackId) || audioTracks[trackId];
       const trackName = track?.name || `Track ${trackId + 1}`;
       toast.success(`Switched audio to ${trackName}`);
       onAudioTrackChange?.(trackId, track?.name, track?.language);

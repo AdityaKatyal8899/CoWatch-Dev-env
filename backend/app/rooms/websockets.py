@@ -245,8 +245,8 @@ async def room_websocket(websocket: WebSocket, room_id: str, user_id: str):
                         })
 
                 elif msg_type == "change_audio_track" and is_host:
-                    track_id = message.get("track_id")
-                    track_name = message.get("track_name")
+                    track_id = message.get("track_id") if message.get("track_id") is not None else message.get("trackId")
+                    track_name = message.get("track_name") or message.get("trackName")
                     language = message.get("language")
                     room_audio_tracks[room_id] = {
                         "track_id": track_id,

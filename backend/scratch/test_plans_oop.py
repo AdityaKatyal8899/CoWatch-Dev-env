@@ -104,22 +104,27 @@ def test_pro_plan_monthly_uploads_and_processing():
     print("\n--- 2. Testing PRO Plan Uploads & Processing Hours ---")
     pro = ProPlan()
     assert pro.upload_period == "billing_period"
-    assert pro.upload_limit == 5
+    assert pro.upload_limit == 8
     assert pro.monthly_processing_hours == 10.0
+    assert pro.max_quality_p == 720
+    assert pro.max_participants == 10
+    assert pro.yt_rooms_per_month is None
+    assert pro.max_audio_tracks == 2
+    assert pro.max_video_duration_hours == 2.5
 
-    # 5 uploads -> Allowed
-    for count in range(5):
+    # 8 uploads -> Allowed
+    for count in range(8):
         pro.validate_upload_count(count)
-    print("  [PASS] 1 through 5 uploads allowed in billing period.")
+    print("  [PASS] 1 through 8 uploads allowed in billing period.")
 
-    # 6th upload -> Rejected
+    # 9th upload -> Rejected
     try:
-        pro.validate_upload_count(5)
-        assert False, "6th upload should be rejected"
+        pro.validate_upload_count(8)
+        assert False, "9th upload should be rejected"
     except HTTPException as e:
         assert e.status_code == 403
-        assert "capped at a maximum of 5" in e.detail
-        print("  [PASS] 6th upload in billing period rejected with HTTP 403.")
+        assert "capped at a maximum of 8" in e.detail
+        print("  [PASS] 9th upload in billing period rejected with HTTP 403.")
 
     # 10 processing hours -> Allowed
     pro.validate_processing_hours(current_hours_used=8.0, new_duration_hours=2.0)
@@ -139,73 +144,81 @@ def test_pro_plus_plan_uploads_and_processing():
     print("\n--- 3. Testing PRO+ Plan Uploads & Processing Hours ---")
     pro_plus = ProPlusPlan()
     assert pro_plus.upload_period == "billing_period"
-    assert pro_plus.upload_limit == 100
-    assert pro_plus.monthly_processing_hours == 50.0
+    assert pro_plus.upload_limit == 20
+    assert pro_plus.monthly_processing_hours == 25.0
+    assert pro_plus.max_quality_p == 1080
+    assert pro_plus.max_participants == 25
+    assert pro_plus.max_audio_tracks == 3
+    assert pro_plus.max_video_duration_hours == 4.0
 
-    # Up to 100 uploads -> Allowed
-    pro_plus.validate_upload_count(99)
-    print("  [PASS] Up to 100 uploads allowed in billing period.")
+    # Up to 20 uploads -> Allowed
+    pro_plus.validate_upload_count(19)
+    print("  [PASS] Up to 20 uploads allowed in billing period.")
 
-    # 101st upload -> Rejected
+    # 21st upload -> Rejected
     try:
-        pro_plus.validate_upload_count(100)
-        assert False, "101st upload should be rejected"
+        pro_plus.validate_upload_count(20)
+        assert False, "21st upload should be rejected"
     except HTTPException as e:
         assert e.status_code == 403
-        assert "capped at a maximum of 100" in e.detail
-        print("  [PASS] 101st upload in billing period rejected with HTTP 403.")
+        assert "capped at a maximum of 20" in e.detail
+        print("  [PASS] 21st upload in billing period rejected with HTTP 403.")
 
-    # Up to 50 processing hours -> Allowed
-    pro_plus.validate_processing_hours(current_hours_used=40.0, new_duration_hours=10.0)
-    print("  [PASS] Up to 50.0 processing hours allowed.")
+    # Up to 25 processing hours -> Allowed
+    pro_plus.validate_processing_hours(current_hours_used=20.0, new_duration_hours=5.0)
+    print("  [PASS] Up to 25.0 processing hours allowed.")
 
-    # > 50 processing hours -> Rejected
+    # > 25 processing hours -> Rejected
     try:
-        pro_plus.validate_processing_hours(current_hours_used=49.0, new_duration_hours=2.0)
-        assert False, "Exceeding 50 processing hours should be rejected"
+        pro_plus.validate_processing_hours(current_hours_used=24.0, new_duration_hours=2.0)
+        assert False, "Exceeding 25 processing hours should be rejected"
     except HTTPException as e:
         assert e.status_code == 403
-        assert "capped at 50.0 processing hours" in e.detail
-        print("  [PASS] Exceeding 50.0 processing hours rejected with HTTP 403.")
+        assert "capped at 25.0 processing hours" in e.detail
+        print("  [PASS] Exceeding 25.0 processing hours rejected with HTTP 403.")
 
 
-def test_vibers_plan_uploads_processing_and_4k():
-    print("\n--- 4. Testing VIBERS Plan Uploads, Processing & 4K ---")
+def test_vibers_plan_uploads_processing_and_quality():
+    print("\n--- 4. Testing VIBERS Plan Uploads, Processing & Limits ---")
     vibers = VibersPlan()
     assert vibers.upload_period == "billing_period"
-    assert vibers.upload_limit == 200
-    assert vibers.monthly_processing_hours == 50.0
-    assert vibers.max_quality_p == 2160  # 4K
+    assert vibers.upload_limit == 40
+    assert vibers.monthly_processing_hours == 45.0
+    assert vibers.max_quality_p == 1080
+    assert vibers.max_participants == 51
+    assert vibers.max_audio_tracks == 3
+    assert vibers.max_video_duration_hours == 4.0
 
-    # Up to 200 uploads -> Allowed
-    vibers.validate_upload_count(199)
-    print("  [PASS] Up to 200 uploads allowed in billing period.")
+    # Up to 40 uploads -> Allowed
+    vibers.validate_upload_count(39)
+    print("  [PASS] Up to 40 uploads allowed in billing period.")
 
-    # 201st upload -> Rejected
+    # 41st upload -> Rejected
     try:
-        vibers.validate_upload_count(200)
-        assert False, "201st upload should be rejected"
+        vibers.validate_upload_count(40)
+        assert False, "41st upload should be rejected"
     except HTTPException as e:
         assert e.status_code == 403
-        assert "capped at a maximum of 200" in e.detail
-        print("  [PASS] 201st upload in billing period rejected with HTTP 403.")
+        assert "capped at a maximum of 40" in e.detail
+        print("  [PASS] 41st upload in billing period rejected with HTTP 403.")
 
-    # Up to 50 processing hours -> Allowed
-    vibers.validate_processing_hours(current_hours_used=45.0, new_duration_hours=5.0)
-    print("  [PASS] Up to 50.0 processing hours allowed.")
+    # Up to 45 processing hours -> Allowed
+    vibers.validate_processing_hours(current_hours_used=40.0, new_duration_hours=5.0)
+    print("  [PASS] Up to 45.0 processing hours allowed.")
 
-    # > 50 processing hours -> Rejected
+    # > 45 processing hours -> Rejected
     try:
-        vibers.validate_processing_hours(current_hours_used=50.0, new_duration_hours=0.5)
-        assert False, "Exceeding 50 processing hours should be rejected"
+        vibers.validate_processing_hours(current_hours_used=44.5, new_duration_hours=1.0)
+        assert False, "Exceeding 45 processing hours should be rejected"
     except HTTPException as e:
         assert e.status_code == 403
-        assert "capped at 50.0 processing hours" in e.detail
-        print("  [PASS] Exceeding 50.0 processing hours rejected with HTTP 403.")
+        assert "capped at 45.0 processing hours" in e.detail
+        print("  [PASS] Exceeding 45.0 processing hours rejected with HTTP 403.")
 
-    # 4K Resolution verification
-    assert vibers.max_quality_p == 2160
-    print("  [PASS] Vibers plan provides 4K (2160p) resolution entitlement.")
+    # 1080p Resolution verification & 51 participants
+    assert vibers.max_quality_p == 1080
+    assert vibers.max_participants == 51
+    print("  [PASS] Vibers plan provides 1080p resolution and strictly 51 room capacity.")
 
 
 def test_independent_storage_enforcement():
@@ -250,8 +263,8 @@ def test_plan_resolution_and_owner_overrides():
     # 1. Owner email always resolves to VibersPlan regardless of stored plan or expiration
     owner1 = MockUser(email="founder@cowatch.io", plan="free", plan_expires_at=None)
     assert owner1.plan_tier.code == PLAN_VIBERS
-    assert owner1.plan_tier.max_quality_p == 2160
-    assert owner1.plan_tier.max_participants == 500
+    assert owner1.plan_tier.max_quality_p == 1080
+    assert owner1.plan_tier.max_participants == 51
 
     owner_expired = MockUser(email="admin@cowatch.io", plan="pro", plan_expires_at=now - timedelta(days=10))
     assert owner_expired.plan_tier.code == PLAN_VIBERS
@@ -294,12 +307,14 @@ def test_backwards_compatibility():
     assert PLAN_CONFIG["free"]["storage_limit"] == 2 * GB
     assert PLAN_CONFIG["free"]["monthly_uploads"] == 3
     assert PLAN_CONFIG["pro"]["monthly_processing_hours"] == 10.0
-    assert PLAN_CONFIG["pro_plus"]["upload_limit"] == 100
-    assert PLAN_CONFIG["vibers"]["monthly_processing_hours"] == 50.0
+    assert PLAN_CONFIG["pro"]["monthly_uploads"] == 8
+    assert PLAN_CONFIG["pro_plus"]["upload_limit"] == 20
+    assert PLAN_CONFIG["vibers"]["monthly_processing_hours"] == 45.0
+    assert PLAN_CONFIG["vibers"]["max_participants"] == 51
 
     u = MockUser(plan="pro_plus")
     assert get_effective_plan(u) == "pro_plus"
-    assert get_user_plan_config(u)["upload_limit"] == 100
+    assert get_user_plan_config(u)["upload_limit"] == 20
     assert plan_allows("pro_plus", "voice_chat") is True
     assert user_allows(u, "custom_themes") is True
 def test_custom_color_and_gradient_mode():
@@ -344,7 +359,7 @@ if __name__ == "__main__":
     test_free_plan_lifetime_uploads()
     test_pro_plan_monthly_uploads_and_processing()
     test_pro_plus_plan_uploads_and_processing()
-    test_vibers_plan_uploads_processing_and_4k()
+    test_vibers_plan_uploads_processing_and_quality()
     test_independent_storage_enforcement()
     test_plan_resolution_and_owner_overrides()
     test_billing_period_reset_logic()

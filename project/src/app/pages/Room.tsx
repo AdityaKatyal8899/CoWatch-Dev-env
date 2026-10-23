@@ -542,7 +542,13 @@ export default function Room() {
 
   const handleAudioTrackChange = useCallback((trackId: number, trackName?: string, language?: string) => {
     if (!ws || !isHost) return;
-    ws.sendHostControl('change_audio_track', { trackId, trackName, language });
+    ws.sendHostControl('change_audio_track', { 
+      track_id: trackId,
+      trackId, 
+      track_name: trackName,
+      trackName, 
+      language 
+    });
   }, [ws, isHost]);
 
   const [activeTab, setActiveTab] = useState<'chat' | 'invite' | 'episodes'>('chat');

@@ -108,8 +108,26 @@ with engine.connect() as conn:
             conn.commit()
             print(f"'rooms.{col}' column added successfully.")
 
-    # New moderation tables (moderation_warnings, moderation_reports, moderation_appeals)
-    # are auto-created by models.Base.metadata.create_all on backend startup (run on
-    # Windows / your deployment). No manual DDL needed here.
+    # --- Payment Transactions Table ---
+    conn.execute(text("""
+        CREATE TABLE IF NOT EXISTS payment_transactions (
+            id SERIAL PRIMARY KEY,
+            user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            stripe_session_id VARCHAR NOT NULL UNIQUE,
+            payment_intent_id VARCHAR,
+            plan_id VARCHAR NOT NULL,
+            billing_cycle VARCHAR NOT NULL DEFAULT 'monthly',
+            amount DOUBLE PRECISION NOT NULL,
+            currency VARCHAR NOT NULL DEFAULT 'usd',
+            status VARCHAR NOT NULL DEFAULT 'succeeded',
+            customer_email VARCHAR,
+            created_at TIMESTAMPTZ DEFAULT NOW()
+        );
+        CREATE INDEX IF NOT EXISTS ix_payment_transactions_user_id ON payment_transactions (user_id);
+        CREATE INDEX IF NOT EXISTS ix_payment_transactions_stripe_session_id ON payment_transactions (stripe_session_id);
+        CREATE INDEX IF NOT EXISTS ix_payment_transactions_payment_intent_id ON payment_transactions (payment_intent_id);
+    """))
+    conn.commit()
+    print("'payment_transactions' table verified / created successfully.")
 
     print("Migration check completed.")
