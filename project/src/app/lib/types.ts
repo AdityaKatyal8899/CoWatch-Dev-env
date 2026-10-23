@@ -104,7 +104,7 @@ export interface SyncState {
 }
 
 export interface WebSocketMessage {
-  type: 'room_state' | 'chat' | 'play' | 'pause' | 'seek' | 'sync_report' | 'sync' | 'participant_join' | 'participant_leave' | 'ROOM_ENDED' | 'host_disconnected' | 'request_sync' | 'error' | 'chat_warning';
+  type: 'room_state' | 'chat' | 'play' | 'pause' | 'seek' | 'sync_report' | 'sync' | 'participant_join' | 'participant_leave' | 'ROOM_ENDED' | 'host_disconnected' | 'request_sync' | 'error' | 'chat_warning' | 'audio_track_changed';
   data?: any;
   [key: string]: any; // Allow arbitrary keys for the WS payload
 }

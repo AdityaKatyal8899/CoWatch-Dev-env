@@ -41,6 +41,7 @@ export default function Room() {
     startedAt: null,
   });
   const [participantCount, setParticipantCount] = useState(1);
+  const [activeAudioTrack, setActiveAudioTrack] = useState<{ track_id: number; track_name?: string; language?: string } | null>(null);
   const [seekTrigger, setSeekTrigger] = useState(0);
   const [loading, setLoading] = useState(true);
   const [showEndConfirm, setShowEndConfirm] = useState(false);
@@ -290,7 +291,7 @@ export default function Room() {
 
       switch (message.type) {
         case 'room_state': {
-          const data = message.data as SyncState & { participant_count?: number; youtube_video_id?: string; media_type?: string; video_url?: string; video_id?: string; video_title?: string; stream_url?: string; thumbnail_url?: string; duration?: number };
+          const data = message.data as SyncState & { participant_count?: number; youtube_video_id?: string; media_type?: string; video_url?: string; video_id?: string; video_title?: string; stream_url?: string; thumbnail_url?: string; duration?: number; active_audio_track?: { track_id: number; track_name?: string; language?: string } };
           setSyncState({
             streamStatus: data.streamStatus || 'waiting',
             isPlaying: data.isPlaying,
@@ -301,6 +302,10 @@ export default function Room() {
 
           if (data.participant_count !== undefined) {
             setParticipantCount(data.participant_count);
+          }
+
+          if (data.active_audio_track) {
+            setActiveAudioTrack(data.active_audio_track);
           }
 
           // Dynamically update the media if it changed — works for both HLS (video_id) and YouTube
@@ -350,6 +355,12 @@ export default function Room() {
             setParticipantCount(message.data.participant_count);
           }
           break;
+        case 'audio_track_changed': {
+          if (message.data) {
+            setActiveAudioTrack(message.data);
+          }
+          break;
+        }
         case 'request_sync':
           // INJECTION 2: Host Side - Emit targeted sync_state via stable Ref
           if (isHostRef.current) {
@@ -529,6 +540,11 @@ export default function Room() {
     ws.sendSyncReport(currentTime);
   }, [ws, isHost]);
 
+  const handleAudioTrackChange = useCallback((trackId: number, trackName?: string, language?: string) => {
+    if (!ws || !isHost) return;
+    ws.sendHostControl('change_audio_track', { trackId, trackName, language });
+  }, [ws, isHost]);
+
   const [activeTab, setActiveTab] = useState<'chat' | 'invite' | 'episodes'>('chat');
   const [episodesOpen, setEpisodesOpen] = useState(false);
 
@@ -631,6 +647,8 @@ export default function Room() {
                 onPlayStateChange={handlePlayStateChange}
                 onSeek={handleSeek}
                 onSyncReport={handleSyncReport}
+                onAudioTrackChange={handleAudioTrackChange}
+                activeAudioTrack={activeAudioTrack}
                 syncState={syncState}
                 seekTrigger={seekTrigger}
                 isRemoteEvent={isProcessingRemoteEvent}

@@ -5,7 +5,7 @@ from ..database import models
 import json
 import time
 from datetime import datetime, timezone, timedelta
-from typing import Dict
+from typing import Dict, Any, Optional
 import uuid
 import traceback
 import asyncio
@@ -15,6 +15,7 @@ router = APIRouter()
 # In-memory connections (these cannot be in DB)
 active_connections: Dict[str, Dict[str, WebSocket]] = {}
 last_seek_time: Dict[str, float] = {}  # Tracks last seek per room
+room_audio_tracks: Dict[str, Dict[str, Any]] = {}  # room_id -> { track_id, track_name, language }
 
 # Chat-moderation state (in-memory; reset on restart — acceptable for v1 warn+mute)
 chat_violations: Dict[str, Dict[str, int]] = {}  # room_id -> user_id -> violation count
@@ -100,7 +101,8 @@ async def room_websocket(websocket: WebSocket, room_id: str, user_id: str):
             "video_title": room.video.title if room.video else room.title,
             "thumbnail_url": room.video.thumbnail_url if room.video else None,
             "duration": room.video.duration if room.video else None,
-            "participant_count": len(active_connections.get(room_id, {})) + 1
+            "participant_count": len(active_connections.get(room_id, {})) + 1,
+            "active_audio_track": room_audio_tracks.get(room_id)
         }
 
 
@@ -204,7 +206,6 @@ async def room_websocket(websocket: WebSocket, room_id: str, user_id: str):
                         # Basic rate limit: 1 seek per ~0.8s
                         now_ts = time.time()
                         if room_id in last_seek_time and now_ts - last_seek_time[room_id] < 0.8:
-
                             continue
                         last_seek_time[room_id] = now_ts
                         room.offset = msg_time
@@ -243,7 +244,24 @@ async def room_websocket(websocket: WebSocket, room_id: str, user_id: str):
                             "participant_count": len(active_connections.get(room_id, {}))
                         })
 
-                
+                elif msg_type == "change_audio_track" and is_host:
+                    track_id = message.get("track_id")
+                    track_name = message.get("track_name")
+                    language = message.get("language")
+                    room_audio_tracks[room_id] = {
+                        "track_id": track_id,
+                        "track_name": track_name,
+                        "language": language
+                    }
+                    await broadcast_to_room(room_id, {
+                        "type": "audio_track_changed",
+                        "data": {
+                            "track_id": track_id,
+                            "track_name": track_name,
+                            "language": language
+                        }
+                    })
+
                 elif msg_type == "sync_report" and is_host:
                     await broadcast_to_room(room_id, {
                         "type": "sync",

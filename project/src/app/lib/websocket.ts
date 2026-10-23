@@ -68,7 +68,7 @@ export class RealWebSocket {
   private handleInboundMessage(message: any) {
     // Standardize backend messages to frontend WebSocketMessage type
     if (message.type === 'room_state' || message.type === 'seek') {
-      const syncData: SyncState & { participant_count?: number; youtube_video_id?: string; media_type?: string; video_url?: string; video_id?: string; video_title?: string; stream_url?: string; thumbnail_url?: string; duration?: number; title?: string } = {
+      const syncData: SyncState & { participant_count?: number; youtube_video_id?: string; media_type?: string; video_url?: string; video_id?: string; video_title?: string; stream_url?: string; thumbnail_url?: string; duration?: number; title?: string; active_audio_track?: { track_id: number; track_name?: string; language?: string } } = {
         isPlaying: message.is_playing,
         currentTime: message.currentTime,
         startedAt: message.startedAt ? new Date(message.startedAt).getTime() : null,
@@ -83,7 +83,8 @@ export class RealWebSocket {
         stream_url: message.stream_url,
         thumbnail_url: message.thumbnail_url,
         duration: message.duration,
-        title: message.title
+        title: message.title,
+        active_audio_track: message.active_audio_track
       };
       
       this.handlers.forEach(handler => handler({
@@ -116,7 +117,7 @@ export class RealWebSocket {
     return () => this.handlers.delete(handler);
   }
 
-  sendHostControl(action: 'play' | 'pause' | 'seek' | 'sync_state', data?: any) {
+  sendHostControl(action: 'play' | 'pause' | 'seek' | 'sync_state' | 'change_audio_track', data?: any) {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
 
     const payload = {
@@ -124,6 +125,7 @@ export class RealWebSocket {
       event_type: "control",
       source: this.isHost ? "host" : "viewer",
       timestamp: data?.currentTime ?? data?.timestamp,
+      ...data,
     };
 
     this.ws.send(JSON.stringify(payload));

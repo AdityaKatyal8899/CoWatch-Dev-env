@@ -22,6 +22,8 @@ interface VideoPlayerProps {
   seekTrigger?: number;
   isRemoteEvent?: React.MutableRefObject<boolean>;
   hostName?: string;
+  activeAudioTrack?: { track_id: number; track_name?: string; language?: string } | null;
+  onAudioTrackChange?: (trackId: number, trackName?: string, language?: string) => void;
 }
 
 export function VideoPlayer({
@@ -33,7 +35,9 @@ export function VideoPlayer({
   syncState,
   seekTrigger,
   isRemoteEvent,
-  hostName = "Host"
+  hostName = "Host",
+  activeAudioTrack,
+  onAudioTrackChange
 }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
@@ -734,16 +738,35 @@ export function VideoPlayer({
     }
   }, []);
 
+  // Viewer auto-follow: Sync active audio track from Host
+  useEffect(() => {
+    if (!isHost && activeAudioTrack && hlsRef.current && typeof activeAudioTrack.track_id === 'number') {
+      const targetTrackId = activeAudioTrack.track_id;
+      if (hlsRef.current.audioTrack !== targetTrackId && hlsRef.current.audioTracks.length > targetTrackId) {
+        hlsRef.current.audioTrack = targetTrackId;
+        setSelectedAudioTrack(targetTrackId);
+        const track = audioTracks.find(t => t.id === targetTrackId);
+        toast.info(`Audio set to ${track?.name || activeAudioTrack.track_name || 'Host selection'}`);
+      }
+    }
+  }, [activeAudioTrack, isHost, audioTracks]);
+
   const handleAudioTrackChange = useCallback((trackId: number) => {
+    if (!isHost) {
+      toast.info("Audio language is managed by the Host");
+      return;
+    }
     const hls = hlsRef.current;
     if (hls && trackId >= 0 && trackId < hls.audioTracks.length) {
       hls.audioTrack = trackId;
       setSelectedAudioTrack(trackId);
       setShowAudioMenu(false);
-      const trackName = audioTracks[trackId]?.name || `Track ${trackId + 1}`;
-      toast.success(`Audio language changed to ${trackName}`);
+      const track = audioTracks[trackId];
+      const trackName = track?.name || `Track ${trackId + 1}`;
+      toast.success(`Switched audio to ${trackName}`);
+      onAudioTrackChange?.(trackId, track?.name, track?.language);
     }
-  }, [audioTracks]);
+  }, [isHost, audioTracks, onAudioTrackChange]);
 
   // Keyboard Shortcuts
   useEffect(() => {
@@ -1205,15 +1228,22 @@ export function VideoPlayer({
               {audioTracks.length > 1 && (
                 <div className="relative">
                   <button
-                    onClick={(e) => { e.stopPropagation(); setShowAudioMenu(!showAudioMenu); }}
-                    title="Audio Language"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (!isHost) {
+                        toast.info("Audio language is managed by the Host");
+                        return;
+                      }
+                      setShowAudioMenu(!showAudioMenu);
+                    }}
+                    title={isHost ? "Audio Language" : "Audio language is managed by the Host"}
                     className={cn(
                       "h-6 sm:h-7 px-1.5 sm:px-2 shrink-0 rounded-md sm:rounded-lg flex items-center gap-1 transition-all border text-[9px] sm:text-xs font-bold",
-                      showAudioMenu
+                      isHost && showAudioMenu
                         ? "border-[var(--primary)] shadow-[0_0_15px_var(--primary)]"
                         : "bg-black/50 border-white/10 text-white/70 hover:text-white hover:bg-white/10"
                     )}
-                    style={showAudioMenu ? { background: 'var(--primary-gradient, var(--primary))', color: 'var(--primary-foreground, #ffffff)' } : {}}
+                    style={isHost && showAudioMenu ? { background: 'var(--primary-gradient, var(--primary))', color: 'var(--primary-foreground, #ffffff)' } : {}}
                   >
                     <Languages className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                     <span className="hidden sm:inline uppercase text-[10px] tracking-wider">
@@ -1221,17 +1251,25 @@ export function VideoPlayer({
                         ? audioTracks[selectedAudioTrack]?.language?.toUpperCase()
                         : audioTracks[selectedAudioTrack]?.name || "Audio"}
                     </span>
+                    {!isHost && (
+                      <span className="hidden sm:inline text-[7.5px] px-1 py-0.2 rounded bg-white/10 text-white/40 uppercase font-mono ml-0.5">
+                        HOST
+                      </span>
+                    )}
                   </button>
 
-                  {/* Audio Language Menu Popover */}
-                  {showAudioMenu && (
+                  {/* Audio Language Menu Popover (Host Only) */}
+                  {isHost && showAudioMenu && (
                     <div
                       onClick={(e) => e.stopPropagation()}
                       className="absolute bottom-9 right-0 z-50 min-w-[200px] p-2 bg-neutral-900/95 backdrop-blur-2xl border border-white/10 rounded-xl shadow-[0_10px_30px_rgba(0,0,0,0.8)] space-y-1 animate-in fade-in slide-in-from-bottom-2 duration-200"
                     >
-                      <div className="px-2 py-1 text-[10px] font-black uppercase tracking-widest text-white/40 border-b border-white/5 mb-1 flex items-center gap-1.5">
-                        <Languages className="w-3 h-3 text-[var(--primary)]" />
-                        Audio Languages
+                      <div className="px-2 py-1 text-[10px] font-black uppercase tracking-widest text-white/40 border-b border-white/5 mb-1 flex items-center justify-between">
+                        <div className="flex items-center gap-1.5">
+                          <Languages className="w-3 h-3 text-[var(--primary)]" />
+                          Audio Languages
+                        </div>
+                        <span className="text-[8px] px-1 rounded bg-[var(--primary)]/20 text-[var(--primary)] font-bold">HOST</span>
                       </div>
                       {audioTracks.map((track) => {
                         const isSelected = track.id === selectedAudioTrack;
